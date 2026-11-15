@@ -1,0 +1,12 @@
+use std::time::Duration;
+
+async fn save_log() {
+    tokio::time::sleep(Duration::from_millis(10)).await;
+    println!("저장 완료");
+}
+
+#[tokio::main]
+async fn main() {
+    save_log();
+    println!("끝");
+}

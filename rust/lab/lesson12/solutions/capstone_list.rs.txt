@@ -1,0 +1,21 @@
+#[derive(Debug, Deserialize)]
+pub struct ListParams {
+    done: Option<bool>,
+    limit: Option<usize>,
+    #[serde(default)]
+    offset: usize,
+}
+
+pub async fn list_tasks(
+    State(store): State<TaskStore>,
+    Query(params): Query<ListParams>,
+) -> Json<Vec<Task>> {
+    let tasks = store
+        .list()
+        .into_iter()
+        .filter(|task| params.done.is_none_or(|done| task.done == done))
+        .skip(params.offset)
+        .take(params.limit.unwrap_or(usize::MAX))
+        .collect();
+    Json(tasks)
+}

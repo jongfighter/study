@@ -1,0 +1,2 @@
+# golab/lesson04/mine/structs
+lesson04\mine\structs\main.go:14:9: cannot call pointer method Toggle on Task

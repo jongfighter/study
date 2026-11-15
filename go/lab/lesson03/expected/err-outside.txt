@@ -1,0 +1,2 @@
+# golab/lesson03/mine/variables
+lesson03\mine\variables\main.go:5:1: syntax error: non-declaration statement outside function body

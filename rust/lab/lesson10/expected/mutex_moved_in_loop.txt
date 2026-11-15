@@ -1,0 +1,15 @@
+error[E0382]: use of moved value: `counter`
+ --> lesson10\examples\scratch.rs:8:36
+  |
+5 |     let counter = Mutex::new(0);
+  |         ------- move occurs because `counter` has type `std::sync::Mutex<i32>`, which does not implement the `Copy` trait
+6 |     let mut handles = Vec::new();
+7 |     for _ in 0..2 {
+  |     ------------- inside of this loop
+8 |         handles.push(thread::spawn(move || {
+  |                                    ^^^^^^^ value moved into closure here, in previous iteration of loop
+9 |             *counter.lock().unwrap() += 1;
+  |              ------- use occurs due to use in closure
+
+For more information about this error, try `rustc --explain E0382`.
+error: could not compile `lesson10` (example "scratch") due to 1 previous error

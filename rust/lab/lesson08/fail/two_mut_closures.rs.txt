@@ -1,0 +1,9 @@
+fn main() {
+    let mut count = 0;
+    let mut first = || count += 1;
+    let mut second = || count += 10;
+
+    first();
+    second();
+    println!("{count}");
+}

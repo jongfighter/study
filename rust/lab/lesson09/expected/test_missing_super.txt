@@ -1,0 +1,18 @@
+error[E0425]: cannot find function `double` in this scope
+ --> lesson09\examples\scratch.rs:9:20
+  |
+9 |         assert_eq!(double(2), 4);
+  |                    ^^^^^^ not found in this scope
+  |
+help: perhaps you intended to use this type
+  |
+9 -         assert_eq!(double(2), 4);
+9 +         assert_eq!(f64(2), 4);
+  |
+help: consider importing this function
+  |
+7 +     use crate::double;
+  |
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `lesson09` (example "scratch" test) due to 1 previous error

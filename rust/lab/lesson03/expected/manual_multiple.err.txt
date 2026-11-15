@@ -1,0 +1,10 @@
+warning: manual implementation of `.is_multiple_of()`
+ --> lesson03\src\bin\scratch.rs:2:5
+  |
+2 |     n % 15 == 0
+  |     ^^^^^^^^^^^ help: replace with: `n.is_multiple_of(15)`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#manual_is_multiple_of
+  = note: `#[warn(clippy::manual_is_multiple_of)]` on by default
+
+warning: `lesson03` (bin "scratch") generated 1 warning (run `cargo clippy --fix --bin "scratch" -p lesson03 -- ` to apply 1 suggestion)

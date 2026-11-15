@@ -1,0 +1,59 @@
+# Task API 캡스톤 요청 모음 (VS Code REST Client 확장: humao.rest-client)
+# 요청 안에 커서를 두고 Ctrl+Alt+R 을 누르거나, 요청 위의 Send Request 링크를 클릭합니다.
+# 서버 실행: lab 폴더에서 go run ./lesson11/cmd/taskapi
+# 파일에 저장하려면: DATA_FILE=tasks.json 환경변수를 주고 실행합니다.
+
+@host = http://localhost:8080
+
+### 서버 상태 확인
+GET {{host}}/health
+
+### 할 일 몇 개 만들기 (아래 목록 조회를 시험하려면 여러 번 보내 보세요)
+POST {{host}}/tasks
+Content-Type: application/json
+
+{
+  "title": "Go 공부하기"
+}
+
+###
+POST {{host}}/tasks
+Content-Type: application/json
+
+{
+  "title": "장보기"
+}
+
+###
+POST {{host}}/tasks
+Content-Type: application/json
+
+{
+  "title": "go 테스트 작성"
+}
+
+### 전체 목록 (응답 헤더 X-Total-Count 확인)
+GET {{host}}/tasks
+
+### 제목 검색 (대소문자 무시)
+GET {{host}}/tasks?q=go
+
+### 완료되지 않은 것만
+GET {{host}}/tasks?done=false
+
+### 쪽 나누기: 한 쪽에 1개씩, 두 번째 쪽
+GET {{host}}/tasks?limit=1&offset=1
+
+### 오류 확인: done 값이 true/false가 아님
+GET {{host}}/tasks?done=maybe
+
+### 오류 확인: limit이 범위를 벗어남
+GET {{host}}/tasks?limit=1000
+
+### 첫 번째 할 일을 완료로 표시
+PATCH {{host}}/tasks/1
+Content-Type: application/json
+
+{
+  "done": true
+}

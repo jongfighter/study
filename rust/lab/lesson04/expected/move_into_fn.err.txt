@@ -1,0 +1,24 @@
+error[E0382]: use of moved value: `name`
+ --> lesson04\src\bin\scratch.rs:8:14
+  |
+6 |     let name = String::from("Rust");
+  |         ---- move occurs because `name` has type `String`, which does not implement the `Copy` trait
+7 |     print_it(name);
+  |              ---- value moved here
+8 |     print_it(name);
+  |              ^^^^ value used here after move
+  |
+note: consider changing this parameter type in function `print_it` to borrow instead if owning the value isn't necessary
+ --> lesson04\src\bin\scratch.rs:1:16
+  |
+1 | fn print_it(s: String) {
+  |    --------    ^^^^^^ this parameter takes ownership of the value
+  |    |
+  |    in this function
+help: consider cloning the value if the performance cost is acceptable
+  |
+7 |     print_it(name.clone());
+  |                  ++++++++
+
+For more information about this error, try `rustc --explain E0382`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error

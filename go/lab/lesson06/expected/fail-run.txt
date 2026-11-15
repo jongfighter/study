@@ -1,0 +1,13 @@
+--- FAIL: TestNormalize (0.00s)
+    --- FAIL: TestNormalize/연속_공백 (0.00s)
+        titles_test.go:43: Normalize("Go   공부하기") = "Go,공부하기"; "Go 공부하기" 이어야 합니다
+    --- FAIL: TestNormalize/탭과_줄바꿈 (0.00s)
+        titles_test.go:43: Normalize("a\tb\nc") = "a,b,c"; "a b c" 이어야 합니다
+--- FAIL: ExampleNormalize (0.00s)
+got:
+Go,공부하기
+want:
+Go 공부하기
+FAIL
+FAIL	golab/lesson06/mine/titles	0.241s
+FAIL

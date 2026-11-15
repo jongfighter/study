@@ -1,0 +1,8 @@
+[package]
+name = "lesson10"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }

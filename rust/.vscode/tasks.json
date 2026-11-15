@@ -1,0 +1,176 @@
+// 작업(task) 정의입니다. 명령 팔레트(Ctrl+Shift+P)에서 "Tasks: Run Task"를 고르면 아래 label 목록이 나옵니다.
+// Ctrl+Shift+B 는 "기본 빌드 작업"(아래에서 isDefault 로 지정한 cargo: check all)을 바로 실행합니다.
+// type 을 process 로 둔 이유: 셸을 거치지 않고 cargo 를 직접 실행하므로, 기본 터미널이 bash든 PowerShell이든 똑같이 동작합니다.
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // lab 워크스페이스의 모든 크레이트(레슨)를 컴파일만 검사합니다. 실행 파일은 만들지 않아 빠릅니다.
+      "label": "cargo: check all",
+      "type": "process",
+      "command": "cargo",
+      "args": ["check", "--workspace", "--all-targets"],
+      "options": {
+        "cwd": "${workspaceFolder}/lab"
+      },
+      // 빌드 그룹의 기본 작업입니다(Ctrl+Shift+B 로 실행).
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      // 컴파일러 메시지(error[E0382]: ... 다음 줄의 --> 파일:줄:열)를 문제 패널(Ctrl+Shift+M)에 모아 보여 줍니다.
+      "problemMatcher": {
+        "owner": "rust-lab-task",
+        "source": "rustc",
+        "fileLocation": ["relative", "${workspaceFolder}/lab"],
+        "pattern": [
+          {
+            "regexp": "^(warning|error)(?:\\[(\\w+)\\])?: (.*)$",
+            "severity": 1,
+            "code": 2,
+            "message": 3
+          },
+          {
+            "regexp": "^\\s*--> (.+?):(\\d+):(\\d+)\\s*$",
+            "file": 1,
+            "line": 2,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      // lab 워크스페이스의 모든 크레이트 테스트를 실행합니다(문서 테스트 포함).
+      "label": "cargo: test all",
+      "type": "process",
+      "command": "cargo",
+      "args": ["test", "--workspace"],
+      "options": {
+        "cwd": "${workspaceFolder}/lab"
+      },
+      // 테스트 그룹의 기본 작업입니다(명령 팔레트의 "Tasks: Run Test Task"가 이 작업을 실행).
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": {
+        "owner": "rust-lab-task",
+        "source": "rustc",
+        "fileLocation": ["relative", "${workspaceFolder}/lab"],
+        "pattern": [
+          {
+            "regexp": "^(warning|error)(?:\\[(\\w+)\\])?: (.*)$",
+            "severity": 1,
+            "code": 2,
+            "message": 3
+          },
+          {
+            "regexp": "^\\s*--> (.+?):(\\d+):(\\d+)\\s*$",
+            "file": 1,
+            "line": 2,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      // clippy(Rust 린터)를 돌리고, 경고가 하나라도 있으면 실패로 처리합니다(-D warnings).
+      "label": "cargo: clippy all",
+      "type": "process",
+      "command": "cargo",
+      "args": ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"],
+      "options": {
+        "cwd": "${workspaceFolder}/lab"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": {
+        "owner": "rust-lab-task",
+        "source": "clippy",
+        "fileLocation": ["relative", "${workspaceFolder}/lab"],
+        "pattern": [
+          {
+            "regexp": "^(warning|error)(?:\\[(\\w+)\\])?: (.*)$",
+            "severity": 1,
+            "code": 2,
+            "message": 3
+          },
+          {
+            "regexp": "^\\s*--> (.+?):(\\d+):(\\d+)\\s*$",
+            "file": 1,
+            "line": 2,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      // Task API 서버(레슨 11, axum)를 실행합니다. 서버는 계속 켜져 있으므로 끝내려면 터미널에서 Ctrl+C 를 누릅니다.
+      "label": "cargo: run task api",
+      "type": "process",
+      "command": "cargo",
+      "args": ["run", "-p", "lesson11"],
+      "options": {
+        "cwd": "${workspaceFolder}/lab",
+        // 환경변수 PORT 로 포트를 바꿀 수 있습니다(기본 3000).
+        "env": {
+          "PORT": "3000"
+        }
+      },
+      // 서버 출력이 다른 작업 결과와 섞이지 않도록 전용 패널을 씁니다.
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      // (디버그 준비용) Task API 크레이트만 디버그 모드로 빌드합니다. "Rust: Task API 디버그"가 시작 전에 자동으로 실행합니다.
+      "label": "cargo: build task api",
+      "type": "process",
+      "command": "cargo",
+      "args": ["build", "-p", "lesson11"],
+      "options": {
+        "cwd": "${workspaceFolder}/lab"
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      // (디버그 준비용) 지금 열어 둔 파일이 속한 레슨 크레이트의 모든 실행 파일을 디버그 모드로 빌드합니다.
+      // 폴더 안(cwd)에서 cargo build 를 실행하면 cargo 가 가장 가까운 Cargo.toml 의 크레이트를 찾아 빌드합니다.
+      // "Rust: 현재 레슨 디버그"가 시작 전에 자동으로 실행합니다.
+      "label": "cargo: build current lesson",
+      "type": "process",
+      "command": "cargo",
+      "args": ["build"],
+      "options": {
+        "cwd": "${fileDirname}"
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+#[tokio::test]
+async fn list_can_filter_by_done() {
+    let app = capstone::app();
+    send(&app, Method::POST, "/tasks", Some(r#"{"title": "첫째"}"#)).await;
+    send(&app, Method::POST, "/tasks", Some(r#"{"title": "둘째"}"#)).await;
+    send(&app, Method::PATCH, "/tasks/2", Some(r#"{"done": true}"#)).await;
+
+    let (_, all) = send(&app, Method::GET, "/tasks", None).await;
+    assert_eq!(all.as_array().unwrap().len(), 2);
+
+    let (_, done) = send(&app, Method::GET, "/tasks?done=true", None).await;
+    assert_eq!(done.as_array().unwrap().len(), 1);
+    assert_eq!(done[0]["title"], "둘째");
+
+    let (_, open) = send(&app, Method::GET, "/tasks?done=false", None).await;
+    assert_eq!(open[0]["title"], "첫째");
+}
+
+#[tokio::test]
+async fn list_supports_limit_and_offset() {
+    let app = capstone::app();
+    for title in ["하나", "둘", "셋", "넷"] {
+        let body = format!(r#"{{"title": "{title}"}}"#);
+        send(&app, Method::POST, "/tasks", Some(&body)).await;
+    }
+
+    let (status, page) = send(&app, Method::GET, "/tasks?limit=2&offset=1", None).await;
+    assert_eq!(status, StatusCode::OK);
+    let titles: Vec<&str> = page
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|task| task["title"].as_str().unwrap())
+        .collect();
+    assert_eq!(titles, vec!["둘", "셋"]);
+
+    let (_, rest) = send(&app, Method::GET, "/tasks?offset=3", None).await;
+    assert_eq!(rest.as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn list_rejects_invalid_query_with_axum_default_response() {
+    let app = capstone::app();
+    let (status, body) = send(&app, Method::GET, "/tasks?limit=abc", None).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body.is_string());
+}

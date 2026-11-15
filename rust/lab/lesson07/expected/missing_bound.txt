@@ -1,0 +1,15 @@
+error[E0369]: binary operation `>` cannot be applied to type `&T`
+ --> lesson07\examples\scratch.rs:4:17
+  |
+4 |         if item > max {
+  |            ---- ^ --- &T
+  |            |
+  |            &T
+  |
+help: consider restricting type parameter `T` with trait `PartialOrd`
+  |
+1 | fn largest<T: std::cmp::PartialOrd>(items: &[T]) -> &T {
+  |             ++++++++++++++++++++++
+
+For more information about this error, try `rustc --explain E0369`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error

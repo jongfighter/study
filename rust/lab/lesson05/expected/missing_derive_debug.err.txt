@@ -1,0 +1,15 @@
+error[E0277]: `Point` doesn't implement `Debug`
+ --> lesson05\src\bin\scratch.rs:8:15
+  |
+8 |     println!("{p:?}");
+  |               ^^^^^ `Point` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+  |
+  = help: the trait `Debug` is not implemented for `Point`
+help: consider annotating `Point` with `#[derive(Debug)]`
+  |
+1 + #[derive(Debug)]
+2 | struct Point {
+  |
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `lesson05` (bin "scratch") due to 1 previous error

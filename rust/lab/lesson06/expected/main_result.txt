@@ -1,0 +1,2 @@
+성공: 42
+Error: ParseIntError { kind: InvalidDigit }

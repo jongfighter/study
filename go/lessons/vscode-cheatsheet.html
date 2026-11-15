@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="go" data-lesson="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="VS Code 단축키와 설정 키를 분류별 표로 정리한 Windows 기준 치트시트입니다.">
+  <title>VS Code 단축키·설정 치트시트 — Go 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Go 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Go</span>
+      <span>Go 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html" aria-current="page">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">REFERENCE · 치트시트</p>
+        <h1>VS Code 단축키·설정 치트시트</h1>
+        <p class="lead">Go 실전 입문 코스에서 쓰는 VS Code 단축키, 설정 키, 명령 팔레트 이름을 분류별로 모았습니다. 모든 단축키는 Windows 기본값이며, VS Code 1.146 기준으로 공식 문서와 설치된 VS Code로 확인했습니다.</p>
+        <ul class="meta">
+          <li><b>기준</b> Windows · VS Code 1.146</li>
+          <li><b>단축키 수</b> 108개</li>
+          <li><b>코스 홈</b> <a href="../index.html">Go 실전 입문 홈</a></li>
+          <li><b>처음이라면</b> <a href="00-vscode-start.html">레슨 00 · VS Code 첫걸음</a></li>
+        </ul>
+      </header>
+
+      <section id="guide" class="lesson-section" data-section="guide">
+        <h2><span class="tag">GUIDE</span>이 표를 읽는 법</h2>
+        <ul>
+          <li>단축키 안의 <code>+</code>는 키를 <b>동시에</b> 누른다는 뜻입니다(예: <kbd class="key">Ctrl+Shift+P</kbd>는 <code>Ctrl</code>과 <code>Shift</code>를 누른 채 <code>P</code>).</li>
+          <li>공백으로 이어진 조합은 <b>차례로</b> 입력합니다(예: <kbd class="key">Ctrl+K Ctrl+S</kbd>는 <code>Ctrl+K</code>를 누른 뒤 이어서 <code>Ctrl+S</code>). 공식 문서에서는 이를 chord(코드)라고 부릅니다.</li>
+          <li><b>공식 명령 이름</b>은 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)에서 검색하는 이름입니다. 단축키가 먹지 않거나 키보드 배열 때문에 누르기 어렵다면 이 이름을 입력해 실행하세요. 백틱(<code>`</code>) 키가 없는 키보드도 같은 방법으로 해결됩니다.</li>
+          <li><b>레슨</b> 열은 이 단축키를 처음 자세히 다루는 레슨 번호입니다. 다른 레슨에서도 쓸 수 있습니다. <code>—</code>는 특정 레슨에서 따로 다루지 않는 참고용 단축키입니다.</li>
+          <li>표시되는 단축키는 현재 키보드 배열 기준이고, 내가 바꾼 단축키는 기본값과 다를 수 있습니다. 단축키 편집기(<kbd class="key">Ctrl+K Ctrl+S</kbd>)의 더 보기(<code>...</code>) 메뉴에서 <code>Show User Keybindings</code>를 고르면 내가 바꾼 것만 모아 볼 수 있습니다.</li>
+        </ul>
+      </section>
+
+      <section id="basic" class="lesson-section" data-section="basic">
+        <h2><span class="tag">KEYS</span>기본 조작 키</h2>
+        <p>입력창을 다루거나 터미널에서 프로그램을 멈출 때 자주 쓰는 키입니다.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>동작</th><th>키</th><th>설명</th><th>레슨</th></tr></thead>
+            <tbody>
+              <tr><td>입력창 선택 확정 / 줄 바꿈</td><td><kbd class="key">Enter</kbd></td><td>명령 팔레트·빠른 열기의 선택 항목 실행, 에디터에서는 줄 바꿈</td><td>00</td></tr>
+              <tr><td>입력창·설정 화면 닫기</td><td><kbd class="key">Esc</kbd></td><td>명령 팔레트, 빠른 열기, 설정 화면 같은 입력창을 닫습니다</td><td>00</td></tr>
+              <tr><td>들여쓰기 / 제안 적용</td><td><kbd class="key">Tab</kbd></td><td>들여쓰기. 자동 완성 제안 창이 열려 있으면 선택한 제안을 적용</td><td>03</td></tr>
+              <tr><td>메뉴 표시줄 보이기</td><td><kbd class="key">Alt</kbd></td><td>메뉴가 숨겨져 있을 때 한 번 눌러 표시(<code>window.menuBarVisibility</code>가 <code>toggle</code>일 때)</td><td>00</td></tr>
+              <tr><td>터미널에서 프로그램 중단<br><span class="muted small">1.146 Windows 기본값 확인: 선택이 없을 때는 VS Code가 가로채지 않습니다.</span></td><td><kbd class="key">Ctrl+C</kbd></td><td>터미널에서 글자를 선택한 상태면 복사, 선택이 없으면 셸로 전달되어 실행 중인 프로그램(서버 등)을 중단</td><td>08</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="nav" class="lesson-section" data-section="nav">
+        <h2><span class="tag">NAVIGATE</span>화면과 탐색</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>공식 명령 이름</th><th>레슨</th></tr></thead>
+            <tbody>
+              <tr><td>명령 팔레트 열기<br><span class="muted small">명령 이름 일부만 입력해도 찾아 줍니다.</span></td><td><kbd class="key">Ctrl+Shift+P</kbd> <kbd class="key">F1</kbd></td><td><code>Show All Commands</code></td><td>00</td></tr>
+              <tr><td>빠른 열기 (파일 이름으로 열기)<br><span class="muted small">입력창 맨 앞에 <code>&gt;</code>를 붙이면 명령 팔레트가 됩니다.</span></td><td><kbd class="key">Ctrl+P</kbd></td><td><code>Go to File...</code></td><td>00</td></tr>
+              <tr><td>폴더 열기<br><span class="muted small">Windows·Linux 기본값입니다.</span></td><td><kbd class="key">Ctrl+K Ctrl+O</kbd></td><td><code>Open Folder...</code></td><td>00</td></tr>
+              <tr><td>파일 열기 (파일 하나만)</td><td><kbd class="key">Ctrl+O</kbd></td><td><code>Open File...</code></td><td>00</td></tr>
+              <tr><td>새 파일<br><span class="muted small">저장하기 전의 이름 없는 파일을 만듭니다.</span></td><td><kbd class="key">Ctrl+N</kbd></td><td><code>New File</code></td><td>—</td></tr>
+              <tr><td>사이드바 켜고 끄기</td><td><kbd class="key">Ctrl+B</kbd></td><td><code>Toggle Primary Side Bar Visibility</code></td><td>00</td></tr>
+              <tr><td>패널 켜고 끄기</td><td><kbd class="key">Ctrl+J</kbd></td><td><code>Toggle Panel Visibility</code></td><td>00</td></tr>
+              <tr><td>보조 사이드바 켜고 끄기<br><span class="muted small">기본으로 채팅 보기가 들어 있는 오른쪽 사이드바입니다.</span></td><td><kbd class="key">Ctrl+Alt+B</kbd></td><td><code>Toggle Secondary Side Bar Visibility</code></td><td>00</td></tr>
+              <tr><td>터미널 열고 닫기<br><span class="muted small">백틱(`) 키가 없는 키보드는 명령 팔레트에서 <code>Create New Terminal</code>을 씁니다.</span></td><td><kbd class="key">Ctrl+`</kbd></td><td><code>Toggle Terminal</code></td><td>00</td></tr>
+              <tr><td>새 터미널</td><td><kbd class="key">Ctrl+Shift+`</kbd></td><td><code>Create New Terminal</code></td><td>00, 01</td></tr>
+              <tr><td>터미널 분할<br><span class="muted small">터미널에 포커스가 있을 때만 동작합니다(1.146 확인).</span></td><td><kbd class="key">Ctrl+Shift+5</kbd></td><td><code>Split Terminal</code></td><td>08</td></tr>
+              <tr><td>설정 열기</td><td><kbd class="key">Ctrl+,</kbd></td><td><code>Open Settings (UI)</code></td><td>00</td></tr>
+              <tr><td>단축키 편집기</td><td><kbd class="key">Ctrl+K Ctrl+S</kbd></td><td><code>Open Keyboard Shortcuts</code></td><td>00</td></tr>
+              <tr><td>단축키 입력 도우미<br><span class="muted small"><span class="file">keybindings.json</span>을 고칠 때 키 조합을 입력해 줍니다.</span></td><td><kbd class="key">Ctrl+K Ctrl+K</kbd></td><td><code>Define Keybinding</code></td><td>—</td></tr>
+              <tr><td>탐색기</td><td><kbd class="key">Ctrl+Shift+E</kbd></td><td><code>Show Explorer / Toggle Focus</code></td><td>00, 02</td></tr>
+              <tr><td>검색 (전체 파일)</td><td><kbd class="key">Ctrl+Shift+F</kbd></td><td><code>Show Search</code></td><td>09</td></tr>
+              <tr><td>소스 제어</td><td><kbd class="key">Ctrl+Shift+G</kbd></td><td><code>Show Source Control</code></td><td>09</td></tr>
+              <tr><td>실행 및 디버그</td><td><kbd class="key">Ctrl+Shift+D</kbd></td><td><code>Show Run</code></td><td>02, 07</td></tr>
+              <tr><td>확장<br><span class="muted small"><code>@recommended</code>, <code>@installed</code> 검색 필터를 쓸 수 있습니다.</span></td><td><kbd class="key">Ctrl+Shift+X</kbd></td><td><code>Show Extensions</code></td><td>00, 01</td></tr>
+              <tr><td>문제 패널</td><td><kbd class="key">Ctrl+Shift+M</kbd></td><td><code>Show Problems</code></td><td>03, 05</td></tr>
+              <tr><td>디버그 콘솔</td><td><kbd class="key">Ctrl+Shift+Y</kbd></td><td><code>Debug Console</code></td><td>02, 07</td></tr>
+              <tr><td>출력 패널</td><td><kbd class="key">Ctrl+Shift+U</kbd></td><td><code>Show Output</code></td><td>01</td></tr>
+              <tr><td>새 창</td><td><kbd class="key">Ctrl+Shift+N</kbd></td><td><code>New Window</code></td><td>—</td></tr>
+              <tr><td>탭 닫기<br><span class="muted small">Windows에서는 <kbd class="key">Ctrl+F4</kbd>와 <kbd class="key">Ctrl+W</kbd> 둘 다 같은 명령입니다(1.146 확인).</span></td><td><kbd class="key">Ctrl+W</kbd></td><td><code>Close Editor</code></td><td>00, 02</td></tr>
+              <tr><td>닫은 탭 다시 열기</td><td><kbd class="key">Ctrl+Shift+T</kbd></td><td><code>Reopen Closed Editor</code></td><td>—</td></tr>
+              <tr><td>최근에 본 탭으로 전환<br><span class="muted small">반복해서 누르면 최근 파일을 차례로 돌아갑니다.</span></td><td><kbd class="key">Ctrl+Tab</kbd></td><td><code>Navigate Editor Group History</code></td><td>00, 02</td></tr>
+              <tr><td>다음·이전 탭 (탭 순서대로)</td><td><kbd class="key">Ctrl+PageDown</kbd> <kbd class="key">Ctrl+PageUp</kbd></td><td><code>Open Next Editor / Open Previous Editor</code></td><td>—</td></tr>
+              <tr><td>에디터 분할</td><td><kbd class="key">Ctrl+\</kbd></td><td><code>Split Editor</code></td><td>02</td></tr>
+              <tr><td>에디터 그룹 번호로 이동<br><span class="muted small">분할한 에디터 사이를 옮겨 다닙니다.</span></td><td><kbd class="key">Ctrl+1</kbd> <kbd class="key">Ctrl+2</kbd> <kbd class="key">Ctrl+3</kbd></td><td><code>Focus into First Editor Group</code></td><td>—</td></tr>
+              <tr><td>확대</td><td><kbd class="key">Ctrl+=</kbd></td><td><code>Zoom in</code></td><td>00</td></tr>
+              <tr><td>축소</td><td><kbd class="key">Ctrl+-</kbd></td><td><code>Zoom out</code></td><td>00</td></tr>
+              <tr><td>확대·축소 초기화<br><span class="muted small">숫자 키패드의 0입니다. 없으면 명령 팔레트를 씁니다.</span></td><td><kbd class="key">Ctrl+Numpad0</kbd></td><td><code>Reset Zoom</code></td><td>00</td></tr>
+              <tr><td>줄 번호로 이동</td><td><kbd class="key">Ctrl+G</kbd></td><td><code>Go to Line...</code></td><td>00</td></tr>
+              <tr><td>파일 안 심볼로 이동<br><span class="muted small">함수·구조체 이름으로 현재 파일 안을 이동합니다.</span></td><td><kbd class="key">Ctrl+Shift+O</kbd></td><td><code>Go to Symbol...</code></td><td>04</td></tr>
+              <tr><td>워크스페이스 전체 심볼 검색</td><td><kbd class="key">Ctrl+T</kbd></td><td><code>Show All Symbols</code></td><td>04</td></tr>
+              <tr><td>뒤로 (이전 커서 위치)</td><td><kbd class="key">Alt+←</kbd></td><td><code>Go Back</code></td><td>04</td></tr>
+              <tr><td>앞으로</td><td><kbd class="key">Alt+→</kbd></td><td><code>Go Forward</code></td><td>04</td></tr>
+              <tr><td>탐색기에서 현재 파일 위치 보기<br><span class="muted small">Windows 파일 탐색기에서 파일이 있는 폴더를 엽니다.</span></td><td><kbd class="key">Ctrl+K R</kbd></td><td><code>Reveal Active File in Windows</code></td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="edit" class="lesson-section" data-section="edit">
+        <h2><span class="tag">EDIT</span>편집</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>공식 명령 이름</th><th>레슨</th></tr></thead>
+            <tbody>
+              <tr><td>저장<br><span class="muted small">저장 시 서식 정리(<code>editor.formatOnSave</code>)가 이때 동작합니다.</span></td><td><kbd class="key">Ctrl+S</kbd></td><td><code>Save</code></td><td>00, 02</td></tr>
+              <tr><td>실행 취소</td><td><kbd class="key">Ctrl+Z</kbd></td><td><code>Undo</code></td><td>03</td></tr>
+              <tr><td>다시 실행</td><td><kbd class="key">Ctrl+Y</kbd></td><td><code>Redo</code></td><td>—</td></tr>
+              <tr><td>잘라내기·복사·붙여넣기<br><span class="muted small">선택 없이 누르면 현재 줄 전체가 대상입니다(공식 키 표의 "empty selection" 항목).</span></td><td><kbd class="key">Ctrl+X</kbd> <kbd class="key">Ctrl+C</kbd> <kbd class="key">Ctrl+V</kbd></td><td><code>Cut / Copy / Paste</code></td><td>—</td></tr>
+              <tr><td>찾기</td><td><kbd class="key">Ctrl+F</kbd></td><td><code>Find</code></td><td>06</td></tr>
+              <tr><td>바꾸기</td><td><kbd class="key">Ctrl+H</kbd></td><td><code>Replace</code></td><td>06</td></tr>
+              <tr><td>전체 파일에서 바꾸기</td><td><kbd class="key">Ctrl+Shift+H</kbd></td><td><code>Replace in Files</code></td><td>09</td></tr>
+              <tr><td>자동 완성 열기 (IntelliSense)<br><span class="muted small">제안 창에서 <kbd class="key">Tab</kbd> 또는 <kbd class="key">Enter</kbd>로 적용합니다.</span></td><td><kbd class="key">Ctrl+Space</kbd></td><td><code>Trigger Suggest</code></td><td>03</td></tr>
+              <tr><td>자동 완성 열기의 보조 키<br><span class="muted small">1.146에서 이 키는 인라인 채팅(<code>Open Inline Chat</code>)에도 묶여 있고 우선순위가 더 높습니다. 채팅 기능이 켜진 환경에서는 자동 완성 대신 인라인 채팅이 열릴 수 있으니 <kbd class="key">Ctrl+Space</kbd>를 쓰세요.</span></td><td><kbd class="key">Ctrl+I</kbd></td><td>Trigger Suggest (보조 키)</td><td>—</td></tr>
+              <tr><td>매개변수 힌트</td><td><kbd class="key">Ctrl+Shift+Space</kbd></td><td><code>Trigger Parameter Hints</code></td><td>03</td></tr>
+              <tr><td>호버 정보 보기 (키보드로)<br><span class="muted small">마우스를 올렸을 때 나오는 설명 창을 키보드로 엽니다.</span></td><td><kbd class="key">Ctrl+K Ctrl+I</kbd></td><td><code>Show Hover</code></td><td>05</td></tr>
+              <tr><td>줄 위·아래로 이동</td><td><kbd class="key">Alt+↑</kbd> <kbd class="key">Alt+↓</kbd></td><td><code>Move Line Up / Move Line Down</code></td><td>03</td></tr>
+              <tr><td>줄 복사</td><td><kbd class="key">Shift+Alt+↑</kbd> <kbd class="key">Shift+Alt+↓</kbd></td><td><code>Copy Line Up / Copy Line Down</code></td><td>03</td></tr>
+              <tr><td>줄 삭제</td><td><kbd class="key">Ctrl+Shift+K</kbd></td><td><code>Delete Line</code></td><td>03</td></tr>
+              <tr><td>줄 주석 토글</td><td><kbd class="key">Ctrl+/</kbd></td><td><code>Toggle Line Comment</code></td><td>03</td></tr>
+              <tr><td>블록 주석 토글</td><td><kbd class="key">Shift+Alt+A</kbd></td><td><code>Toggle Block Comment</code></td><td>—</td></tr>
+              <tr><td>들여쓰기·내어쓰기</td><td><kbd class="key">Ctrl+]</kbd> <kbd class="key">Ctrl+[</kbd></td><td><code>Indent Line / Outdent Line</code></td><td>—</td></tr>
+              <tr><td>문서 서식 정리</td><td><kbd class="key">Shift+Alt+F</kbd></td><td><code>Format Document</code></td><td>02</td></tr>
+              <tr><td>같은 단어 다음 위치 추가 선택<br><span class="muted small">멀티 커서입니다.</span></td><td><kbd class="key">Ctrl+D</kbd></td><td><code>Add Selection To Next Find Match</code></td><td>06</td></tr>
+              <tr><td>선택한 글자와 같은 것 모두 선택</td><td><kbd class="key">Ctrl+Shift+L</kbd></td><td><code>Select all occurrences of current selection</code></td><td>06</td></tr>
+              <tr><td>위·아래에 커서 추가<br><span class="muted small">그래픽 드라이버 단축키와 겹칠 수 있습니다(아래 "주의" 참고).</span></td><td><kbd class="key">Ctrl+Alt+↑</kbd> <kbd class="key">Ctrl+Alt+↓</kbd></td><td><code>Insert Cursor Above / Insert Cursor Below</code></td><td>06</td></tr>
+              <tr><td>클릭한 곳에 커서 추가<br><span class="muted small"><code>editor.multiCursorModifier</code> 기본값 <code>alt</code> 기준입니다.</span></td><td><kbd class="key">Alt+클릭</kbd></td><td>Add cursor (마우스)</td><td>06</td></tr>
+              <tr><td>열(박스) 선택<br><span class="muted small">공식 문서 기준 Windows·Linux는 <code>Shift</code>와 <code>Alt</code>를 누른 채 드래그합니다.</span></td><td><kbd class="key">Shift+Alt+드래그</kbd></td><td>Column (box) selection (마우스)</td><td>—</td></tr>
+              <tr><td>현재 줄 선택</td><td><kbd class="key">Ctrl+L</kbd></td><td><code>Select current line</code></td><td>06</td></tr>
+              <tr><td>코드 접기 (현재 영역)</td><td><kbd class="key">Ctrl+Shift+[</kbd></td><td><code>Fold (collapse) region</code></td><td>—</td></tr>
+              <tr><td>코드 펼치기 (현재 영역)</td><td><kbd class="key">Ctrl+Shift+]</kbd></td><td><code>Unfold (uncollapse) region</code></td><td>—</td></tr>
+              <tr><td>모든 영역 접기</td><td><kbd class="key">Ctrl+K Ctrl+0</kbd></td><td><code>Fold (collapse) all regions</code></td><td>—</td></tr>
+              <tr><td>모든 영역 펼치기</td><td><kbd class="key">Ctrl+K Ctrl+J</kbd></td><td><code>Unfold (uncollapse) all regions</code></td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="code" class="lesson-section" data-section="code">
+        <h2><span class="tag">CODE</span>코드 탐색과 수정</h2>
+        <p>언어 서버(gopls)가 코드를 분석해 주기 때문에 동작하는 기능들입니다. 확장을 설치하고 폴더를 신뢰한 상태에서만 쓸 수 있습니다.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>공식 명령 이름</th><th>레슨</th></tr></thead>
+            <tbody>
+              <tr><td>정의로 이동</td><td><kbd class="key">F12</kbd></td><td><code>Go to Definition</code></td><td>04</td></tr>
+              <tr><td>정의 미리보기 (Peek)<br><span class="muted small">현재 파일을 떠나지 않고 작은 창으로 정의를 봅니다.</span></td><td><kbd class="key">Alt+F12</kbd></td><td><code>Peek Definition</code></td><td>04</td></tr>
+              <tr><td>참조 찾기</td><td><kbd class="key">Shift+F12</kbd></td><td><code>Go to References</code></td><td>04</td></tr>
+              <tr><td>구현으로 이동<br><span class="muted small">interface·trait을 구현한 곳으로 이동합니다.</span></td><td><kbd class="key">Ctrl+F12</kbd></td><td><code>Go to Implementations</code></td><td>05</td></tr>
+              <tr><td>이름 바꾸기 (심볼 전체)<br><span class="muted small">같은 심볼을 쓰는 모든 곳이 함께 바뀝니다.</span></td><td><kbd class="key">F2</kbd></td><td><code>Rename Symbol</code></td><td>04</td></tr>
+              <tr><td>빠른 수정 (Quick Fix)<br><span class="muted small">전구 아이콘이 가리키는 수정안을 엽니다.</span></td><td><kbd class="key">Ctrl+.</kbd></td><td><code>Quick Fix</code></td><td>05</td></tr>
+              <tr><td>다음 문제로 이동<br><span class="muted small">문제가 있는 모든 파일을 차례로 돕니다. 현재 파일 안에서만 돌려면 <kbd class="key">Alt+F8</kbd>입니다.</span></td><td><kbd class="key">F8</kbd></td><td><code>Go to Next Error or Warning</code></td><td>05</td></tr>
+              <tr><td>이전 문제로 이동</td><td><kbd class="key">Shift+F8</kbd></td><td><code>Go to Previous Error or Warning</code></td><td>05</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="run" class="lesson-section" data-section="run">
+        <h2><span class="tag">RUN</span>실행·디버그·테스트</h2>
+        <p>Go 확장도 테스트를 VS Code의 테스트 보기(Testing)에 표시하므로 테스트 단축키가 동작할 수 있습니다. 이 코스에서는 Go 확장의 <code>Go: Test ...</code> 명령과 터미널의 <code>go test</code>를 주로 씁니다.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>공식 명령 이름</th><th>레슨</th></tr></thead>
+            <tbody>
+              <tr><td>실행·디버그 시작 / 계속<br><span class="muted small">디버그 중에는 "계속(Continue)"으로 바뀝니다.</span></td><td><kbd class="key">F5</kbd></td><td><code>Start / Continue</code></td><td>02, 07</td></tr>
+              <tr><td>디버그 없이 실행</td><td><kbd class="key">Ctrl+F5</kbd></td><td><code>Start (without debugging)</code></td><td>02</td></tr>
+              <tr><td>디버그 중지</td><td><kbd class="key">Shift+F5</kbd></td><td><code>Stop</code></td><td>07</td></tr>
+              <tr><td>디버그 다시 시작</td><td><kbd class="key">Ctrl+Shift+F5</kbd></td><td><code>Restart</code></td><td>07</td></tr>
+              <tr><td>중단점 토글</td><td><kbd class="key">F9</kbd></td><td><code>Toggle Breakpoint</code></td><td>07</td></tr>
+              <tr><td>한 줄 실행 (함수는 통째로)</td><td><kbd class="key">F10</kbd></td><td><code>Step Over</code></td><td>07</td></tr>
+              <tr><td>함수 안으로 들어가기</td><td><kbd class="key">F11</kbd></td><td><code>Step Into</code></td><td>07</td></tr>
+              <tr><td>함수 밖으로 나오기</td><td><kbd class="key">Shift+F11</kbd></td><td><code>Step Out</code></td><td>07</td></tr>
+              <tr><td>기본 빌드 작업 실행<br><span class="muted small">이 폴더에서는 <code>go: vet all</code>이 기본 빌드 작업입니다.</span></td><td><kbd class="key">Ctrl+Shift+B</kbd></td><td><code>Run Build Task</code></td><td>08</td></tr>
+              <tr><td>테스트 전체 실행<br><span class="muted small">테스트 보기(Testing)가 테스트를 인식해야 동작합니다. <code>Ctrl+;</code>를 누른 뒤 이어서 <code>A</code>를 누릅니다.</span></td><td><kbd class="key">Ctrl+; A</kbd></td><td><code>Run All Tests</code></td><td>—</td></tr>
+              <tr><td>현재 파일의 테스트 실행<br><span class="muted small">에디터에 포커스가 있을 때 동작합니다(1.146 확인).</span></td><td><kbd class="key">Ctrl+; F</kbd></td><td><code>Run Tests in Current File</code></td><td>—</td></tr>
+              <tr><td>커서 위치의 테스트 실행<br><span class="muted small">에디터에 포커스가 있을 때 동작합니다(1.146 확인).</span></td><td><kbd class="key">Ctrl+; C</kbd></td><td><code>Run Test at Cursor</code></td><td>—</td></tr>
+              <tr><td>테스트 디버그 (전체 / 파일 / 커서)<br><span class="muted small">실행 키와 같은 글자를 <code>Ctrl</code>과 함께 누릅니다.</span></td><td><kbd class="key">Ctrl+; Ctrl+A</kbd> <kbd class="key">Ctrl+; Ctrl+F</kbd> <kbd class="key">Ctrl+; Ctrl+C</kbd></td><td><code>Debug All Tests / Debug Tests in Current File / Debug Test at Cursor</code></td><td>—</td></tr>
+              <tr><td>테스트 실행 취소</td><td><kbd class="key">Ctrl+; X</kbd></td><td><code>Cancel Test Run</code></td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="ext" class="lesson-section" data-section="ext">
+        <h2><span class="tag">EXTENSION</span>확장 전용 단축키와 명령</h2>
+        <p>아래 단축키는 확장을 설치해야 동작합니다. REST Client는 레슨 08의 <span class="file">requests.http</span> 실습에서 씁니다.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>공식 명령 이름</th><th>레슨</th></tr></thead>
+            <tbody>
+              <tr><td>REST Client: 요청 보내기<br><span class="muted small"><span class="file">.http</span> 파일(언어 모드 HTTP)에서 커서가 있는 요청을 보냅니다. 요청 위의 <code>Send Request</code> 링크를 눌러도 같습니다.</span></td><td><kbd class="key">Ctrl+Alt+R</kbd></td><td><code>Rest Client: Send Request</code></td><td>08</td></tr>
+              <tr><td>REST Client: 마지막 요청 다시 보내기</td><td><kbd class="key">Ctrl+Alt+L</kbd></td><td><code>Rest Client: Rerun Last Request</code></td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Go 확장(golang.go) 명령 (명령 팔레트에서 이름으로 실행)</h3>
+        <p>기본 단축키가 없는 명령들입니다. 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)에 이름의 일부를 입력해 실행합니다.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>명령 팔레트 이름</th><th>하는 일</th><th>레슨</th></tr></thead>
+            <tbody>
+              <tr><td><code>Go: Install/Update Tools</code></td><td>확장이 쓰는 도구(gopls, dlv 등)를 설치·갱신합니다.</td><td>01</td></tr>
+              <tr><td><code>Go: Locate Configured Go Tools</code></td><td>확장이 사용하는 도구의 위치를 목록으로 보여 줍니다.</td><td>01</td></tr>
+              <tr><td><code>Go: Restart Language Server</code></td><td>언어 서버(gopls)를 다시 시작합니다. 자동 완성이 이상할 때 먼저 해 봅니다.</td><td>참고</td></tr>
+              <tr><td><code>Go: Test Function At Cursor</code></td><td>커서가 있는 테스트 함수 하나를 실행합니다.</td><td>06</td></tr>
+              <tr><td><code>Go: Test Package</code></td><td>현재 파일이 속한 패키지의 테스트를 실행합니다.</td><td>06</td></tr>
+              <tr><td><code>Go: Debug Test At Cursor</code></td><td>커서가 있는 테스트 함수를 디버그합니다.</td><td>참고</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="palette" class="lesson-section" data-section="palette">
+        <h2><span class="tag">PALETTE</span>알아 두면 좋은 명령 팔레트 이름</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>명령 팔레트 이름</th><th>하는 일</th><th>레슨</th></tr></thead>
+            <tbody>
+              <tr><td><code>Preferences: Open Workspace Settings (JSON)</code></td><td>이 폴더의 <span class="file">.vscode/settings.json</span>을 엽니다.</td><td>00</td></tr>
+              <tr><td><code>Preferences: Open User Settings (JSON)</code></td><td>내 PC 전체 설정 파일을 엽니다.</td><td>00</td></tr>
+              <tr><td><code>Preferences: Open Settings (UI)</code></td><td>설정 화면을 엽니다.</td><td>참고</td></tr>
+              <tr><td><code>Preferences: Open Keyboard Shortcuts</code></td><td>단축키 편집기를 엽니다.</td><td>10</td></tr>
+              <tr><td><code>Preferences: Configure Language Specific Settings</code></td><td>언어별(예: 특정 언어 파일에만) 설정을 엽니다.</td><td>참고</td></tr>
+              <tr><td><code>Workspaces: Manage Workspace Trust</code></td><td>폴더 신뢰 상태를 확인·변경합니다.</td><td>00, 01</td></tr>
+              <tr><td><code>Terminal: Create New Terminal</code></td><td>새 통합 터미널을 엽니다.</td><td>00</td></tr>
+              <tr><td><code>Terminal: Select Default Profile</code></td><td>새 터미널의 기본 셸(PowerShell, bash 등)을 고릅니다.</td><td>00, 01</td></tr>
+              <tr><td><code>Extensions: Show Recommended Extensions</code></td><td>확장 보기에서 <code>@recommended</code> 필터를 적용합니다.</td><td>참고</td></tr>
+              <tr><td><code>Tasks: Run Task</code></td><td><span class="file">tasks.json</span>의 작업 목록에서 골라 실행합니다.</td><td>08</td></tr>
+              <tr><td><code>Tasks: Run Test Task</code></td><td>기본 테스트 작업을 실행합니다.</td><td>06</td></tr>
+              <tr><td><code>Configure Display Language</code></td><td>VS Code 메뉴의 표시 언어를 바꿉니다(언어 팩 설치 포함).</td><td>00</td></tr>
+              <tr><td><code>Developer: Toggle Keyboard Shortcuts Troubleshooting</code></td><td>키를 눌렀을 때 VS Code가 인식한 키와 실행한 명령을 출력 패널에 기록합니다.</td><td>00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="settings" class="lesson-section" data-section="settings">
+        <h2><span class="tag">SETTINGS</span>설정 키 표</h2>
+        <p>설정 화면(<kbd class="key">Ctrl+,</kbd>)의 검색창에 설정 키를 입력하면 바로 찾을 수 있습니다. 이 코스 폴더의 <span class="file">.vscode/settings.json</span>에 이미 들어 있는 설정은 "이 폴더는 ..."으로 표시했습니다. 값을 바꾸면 <span class="file">settings.json</span>에 기록되고, <code>Reset Setting</code>으로 되돌릴 수 있습니다.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>설정 키</th><th>값</th><th>의미</th><th>레슨</th></tr></thead>
+            <tbody>
+              <tr><td><code>files.autoSave</code></td><td><code>off</code> (기본), <code>afterDelay</code>, <code>onFocusChange</code>, <code>onWindowChange</code></td><td>파일을 자동으로 저장하는 시점. <code>afterDelay</code>이면 저장 시 서식 정리는 직접 저장할 때만 동작합니다.</td><td>00</td></tr>
+              <tr><td><code>window.zoomLevel</code></td><td><code>0</code> (기본), 숫자</td><td>창 전체의 확대·축소 단계. <kbd class="key">Ctrl+=</kbd>, <kbd class="key">Ctrl+-</kbd>가 이 값을 바꿉니다.</td><td>00</td></tr>
+              <tr><td><code>editor.minimap.enabled</code></td><td><code>true</code> / <code>false</code></td><td>에디터 오른쪽의 미니맵 표시. 설정 체험(사용자·워크스페이스 차이) 예제로 씁니다.</td><td>00</td></tr>
+              <tr><td><code>security.workspace.trust.startupPrompt</code></td><td><code>never</code> (기본), <code>once</code></td><td>폴더를 처음 열 때 신뢰 질문 창을 띄울지. 기본값에서는 제한 모드 배너로 알립니다.</td><td>00</td></tr>
+              <tr><td><code>files.eol</code></td><td><code>"\n"</code></td><td>새 파일의 줄바꿈 문자. 이 폴더는 LF로 고정해 두었습니다.</td><td>00, 10</td></tr>
+              <tr><td><code>editor.formatOnSave</code></td><td><code>true</code></td><td>저장할 때 서식을 자동으로 정리. 이 폴더는 .go 파일 전용 블록(<code>"[go]"</code>)에 들어 있습니다.</td><td>02</td></tr>
+              <tr><td><code>editor.defaultFormatter</code></td><td><code>"golang.go"</code></td><td>서식 정리를 맡길 확장의 ID.</td><td>00</td></tr>
+              <tr><td><code>editor.inlayHints.enabled</code></td><td><code>on</code>, <code>off</code>, <code>onUnlessPressed</code>, <code>offUnlessPressed</code></td><td>코드 옆에 흐리게 보이는 추론 정보(타입, 매개변수 이름) 표시. 이 폴더는 <code>on</code>으로 두었습니다.</td><td>03</td></tr>
+              <tr><td><code>editor.multiCursorModifier</code></td><td><code>alt</code> (기본), <code>ctrlCmd</code></td><td>마우스 클릭으로 커서를 추가할 때 누르는 키. 바꾸면 <kbd class="key">Alt+클릭</kbd>이 <code>Ctrl+클릭</code>이 됩니다.</td><td>참고</td></tr>
+              <tr><td><code>workbench.settings.editor</code></td><td><code>ui</code> (기본), <code>json</code></td><td><kbd class="key">Ctrl+,</kbd>가 설정 화면을 열지 JSON 파일을 바로 열지 결정.</td><td>00</td></tr>
+              <tr><td><code>terminal.integrated.defaultProfile.windows</code></td><td>프로필 이름(문자열)</td><td>새 터미널의 기본 셸. 사용자 설정에만 두는 것이 안전합니다(공식 문서: 실행 파일을 정하는 설정은 보안상 제한될 수 있음).</td><td>01</td></tr>
+              <tr><td><code>gopls → ui.inlayhint.hints</code></td><td><code>{ "assignVariableTypes": true, ... }</code></td><td>gopls가 보여 줄 인레이 힌트 종류(실험적 설정, 기본은 모두 꺼짐). 이 폴더는 변수 타입, 매개변수 이름, range 변수 타입을 켜 두었습니다.</td><td>03</td></tr>
+              <tr><td><code>go.useLanguageServer</code></td><td><code>true</code> (기본)</td><td>언어 서버(gopls) 사용 여부. 끄면 자동 완성·정의 이동이 대부분 동작하지 않습니다.</td><td>참고</td></tr>
+              <tr><td><code>go.toolsManagement.autoUpdate</code></td><td><code>false</code> (기본)</td><td>Go 확장이 쓰는 도구를 자동으로 갱신할지 여부.</td><td>참고</td></tr>
+              <tr><td><code>go.testTimeout</code></td><td><code>"30s"</code> (기본)</td><td>확장이 실행하는 테스트의 제한 시간.</td><td>참고</td></tr>
+              <tr><td><code>go.testExplorer.enable</code></td><td><code>true</code> (기본)</td><td>테스트를 VS Code의 테스트 보기에 표시할지 여부.</td><td>참고</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="caveats" class="lesson-section" data-section="caveats">
+        <h2><span class="tag">NOTE</span>Windows에서 알아 둘 주의사항</h2>
+        <div class="callout warn"><strong>그래픽 드라이버와 단축키 충돌</strong>공식 문서는 "그래픽 카드 드라이버(예: NVIDIA)가 이 기본 단축키(위·아래에 커서 추가)를 덮어쓸 수 있다"고 안내합니다. Intel 그래픽 제어판이 <kbd class="key">Ctrl+Alt+↑</kbd>·<kbd class="key">Ctrl+Alt+↓</kbd>를 화면 회전 단축키로 가로채 VS Code에서 동작하지 않았다는 사용자 보고도 있습니다(VS Code 저장소 이슈 #106089). 그래픽 드라이버의 단축키를 끄거나, 단축키 편집기에서 다른 키로 바꾸세요.</div>
+        <ul>
+          <li><b>터미널 분할</b> <kbd class="key">Ctrl+Shift+5</kbd>는 터미널에 포커스가 있을 때만 동작합니다. 에디터에서 누르면 아무 일도 일어나지 않는 것이 정상입니다.</li>
+          <li><b>테스트 단축키</b> <kbd class="key">Ctrl+; F</kbd>, <kbd class="key">Ctrl+; C</kbd>는 에디터에 포커스가 있을 때만 동작하고, <kbd class="key">Ctrl+; A</kbd>는 어디서든 동작합니다.</li>
+          <li><b>탭 닫기</b>: Windows에서는 <kbd class="key">Ctrl+F4</kbd>와 <kbd class="key">Ctrl+W</kbd>가 모두 탭 닫기입니다. 공식 키 표에는 <kbd class="key">Ctrl+F4</kbd> 쪽만 보이므로, <kbd class="key">Ctrl+W</kbd>는 설치된 VS Code로 직접 확인했습니다.</li>
+          <li><b>폴더 열기</b> <kbd class="key">Ctrl+K Ctrl+O</kbd>는 공식 키 표에 없습니다. 설치된 VS Code 1.146에서 Windows·Linux 기본값으로 확인했습니다. macOS에서는 <code>Cmd+O</code>가 파일·폴더 열기입니다.</li>
+          <li><b>다음 문제로 이동</b> <kbd class="key">F8</kbd>은 문제가 있는 모든 파일을 차례로 돕니다. 현재 파일 안에서만 돌려면 <kbd class="key">Alt+F8</kbd>을 씁니다.</li>
+          <li><b>키보드 배열</b>: 공식 문서에 따르면 단축키는 현재 키보드 배열에 맞게 표시됩니다. 한국어 키보드에서 백틱·대괄호 같은 기호 키 조합이 다르게 보이면 단축키 편집기에 보이는 표기를 기준으로 삼으세요.</li>
+          <li><b>제한 모드</b>(Restricted Mode)에서는 터미널, 작업, 디버깅, 확장 기능이 막혀 있어 일부 단축키가 동작하지 않을 수 있습니다. 상태 표시줄에 제한 모드 배지가 있는지 먼저 확인하세요.</li>
+        </ul>
+      </section>
+
+      <section id="sources" class="lesson-section" data-section="sources">
+        <h2><span class="tag">SOURCE</span>출처 (공식 문서)</h2>
+        <p>아래 문서와 설치된 VS Code 1.146에서 직접 확인한 내용만 실었습니다. 모두 영문 문서입니다.</p>
+        <ul>
+          <li><a href="https://code.visualstudio.com/docs/configure/keybindings">VS Code 키보드 단축키 안내</a> (공식 문서)</li>
+          <li><a href="https://code.visualstudio.com/docs/reference/default-keybindings">기본 단축키 참조표</a> (공식 문서)</li>
+          <li><a href="https://code.visualstudio.com/shortcuts/keyboard-shortcuts-windows.pdf">Windows 키맵 PDF</a> (공식 문서)</li>
+          <li><a href="https://code.visualstudio.com/docs/configure/settings">사용자·워크스페이스 설정</a> (공식 문서)</li>
+          <li><a href="https://code.visualstudio.com/docs/editing/workspaces/workspace-trust">워크스페이스 신뢰(Workspace Trust)</a> (공식 문서)</li>
+          <li><a href="https://code.visualstudio.com/docs/terminal/profiles">터미널 프로필</a> (공식 문서)</li>
+          <li><a href="https://go.dev/gopls/workspace">gopls 워크스페이스 설정</a> (공식 문서)</li>
+          <li><a href="https://go.dev/gopls/inlayHints">gopls 인레이 힌트</a> (공식 문서)</li>
+          <li><a href="https://marketplace.visualstudio.com/items?itemName=golang.Go">Go 확장 소개 페이지</a> (Marketplace)</li>
+          <li><a href="https://github.com/Huachao/vscode-restclient">REST Client 확장 소개</a> (GitHub)</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Go 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

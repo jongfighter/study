@@ -1,0 +1,14 @@
+error[E0597]: `title_b` does not live long enough
+  --> lesson07\examples\scratch.rs:14:44
+   |
+13 |         let title_b = String::from("라이프타임");
+   |             ------- binding `title_b` declared here
+14 |         result = longest(title_a.as_str(), title_b.as_str());
+   |                                            ^^^^^^^ borrowed value does not live long enough
+15 |     }
+   |     - `title_b` dropped here while still borrowed
+16 |     println!("더 긴 제목: {result}");
+   |                            ------ borrow later used here
+
+For more information about this error, try `rustc --explain E0597`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error

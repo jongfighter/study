@@ -1,0 +1,13 @@
+error[E0282]: type annotations needed for `Vec<_>`
+ --> lesson07\examples\scratch.rs:2:9
+  |
+2 |     let items = Vec::new();
+  |         ^^^^^   ---------- type must be known at this point
+  |
+help: consider giving `items` an explicit type, where the type for type parameter `T` is specified
+  |
+2 |     let items: Vec<T> = Vec::new();
+  |              ++++++++
+
+For more information about this error, try `rustc --explain E0282`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error

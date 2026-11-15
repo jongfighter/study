@@ -1,0 +1,2 @@
+{"error":"요청 본문을 읽을 수 없습니다: Failed to parse the request body as JSON: key must be a string at line 1 column 2"}
+HTTP 400

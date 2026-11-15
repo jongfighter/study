@@ -1,0 +1,5 @@
+use crate::extra::hello;
+
+fn main() {
+    println!("{}", hello());
+}

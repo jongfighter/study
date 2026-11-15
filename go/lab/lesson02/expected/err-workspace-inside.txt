@@ -1,0 +1,1 @@
+main module (golab) does not contain package golab/lesson02/scratch

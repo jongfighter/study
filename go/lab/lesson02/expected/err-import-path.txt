@@ -1,0 +1,1 @@
+lesson02\mine\main.go:6:2: package golab/lesson02/mine/greeter is not in std (C:\Program Files\Go\src\golab\lesson02\mine\greeter)

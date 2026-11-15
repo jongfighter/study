@@ -1,0 +1,26 @@
+     Running unittests src\lib.rs (...)
+
+running 3 tests
+test tests::parallel_sum_rejects_zero_workers - should panic ... ok
+test tests::parallel_sum_matches_sequential_sum ... ok
+test tests::fetch_all_keeps_input_order ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running unittests src\bin\async_basics.rs (...)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\threads.rs (...)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests lesson10
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

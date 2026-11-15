@@ -1,0 +1,9 @@
+running 6 tests
+test tests::largest_finds_max_and_handles_empty ... ok
+test tests::broadcast_all_uses_every_notifier ... ok
+test tests::longest_line_picks_longest_and_first_on_tie ... ok
+test tests::longest_returns_longer_string ... ok
+test tests::stack_works_like_a_stack ... ok
+test tests::sms_notifier_formats_message ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

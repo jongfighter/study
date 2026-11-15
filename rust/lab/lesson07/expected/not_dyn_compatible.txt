@@ -1,0 +1,19 @@
+error[E0038]: the trait `Cloner` is not dyn compatible
+  --> lesson07\examples\scratch.rs:14:28
+   |
+14 |     let items: Vec<Box<dyn Cloner>> = vec![Box::new(Note)];
+   |                            ^^^^^^ `Cloner` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> lesson07\examples\scratch.rs:2:28
+   |
+ 1 | trait Cloner {
+   |       ------ this trait is not dyn compatible...
+ 2 |     fn duplicate(&self) -> Self;
+   |                            ^^^^ ...because method `duplicate` references the `Self` type in its return type
+   = help: consider moving `duplicate` to another trait
+   = help: only type `Note` implements `Cloner`; consider using it directly instead.
+
+For more information about this error, try `rustc --explain E0038`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error

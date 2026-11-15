@@ -1,0 +1,11 @@
+   Doc-tests lesson09
+
+running 4 tests
+test lesson09\src\text.rs - text::slugify (line 17) ... ok
+test lesson09\src\text.rs - text::normalize_title (line 3) ... ok
+test lesson09\src\text.rs - text::truncate (line 41) ... ok
+test lesson09\src\text.rs - text::word_count (line 59) ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+all doctests ran in 0.26s; merged doctests compilation took 0.20s

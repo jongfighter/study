@@ -1,0 +1,21 @@
+error[E0277]: `?` couldn't convert the error to `String`
+ --> lesson06\src\bin\scratch.rs:2:33
+  |
+1 | fn parse_age(text: &str) -> Result<u8, String> {
+  |                             ------------------ expected `String` because of this
+2 |     let age = text.parse::<u8>()?;
+  |                    -------------^ the trait `From<ParseIntError>` is not implemented for `String`
+  |                    |
+  |                    this can't be annotated with `?` because it has type `Result<_, ParseIntError>`
+  |
+  = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+  = help: `String` implements trait `From<T>`:
+            From<&String>
+            From<&mut str>
+            From<&str>
+            From<Box<str>>
+            From<Cow<'_, str>>
+            From<char>
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `lesson06` (bin "scratch") due to 1 previous error

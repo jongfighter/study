@@ -1,0 +1,16 @@
+trait Cloner {
+    fn duplicate(&self) -> Self;
+}
+
+struct Note;
+
+impl Cloner for Note {
+    fn duplicate(&self) -> Self {
+        Note
+    }
+}
+
+fn main() {
+    let items: Vec<Box<dyn Cloner>> = vec![Box::new(Note)];
+    println!("{}", items.len());
+}

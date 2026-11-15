@@ -1,0 +1,22 @@
+     Running tests\api.rs (...)
+
+running 17 tests
+test health_returns_ok ... ok
+test missing_content_type_returns_415 ... ok
+test invalid_id_returns_400_json ... ok
+test put_is_not_allowed ... ok
+test list_rejects_invalid_query_with_axum_default_response ... ok
+test create_sets_location_header ... ok
+test create_rejects_empty_title ... ok
+test create_rejects_broken_json_and_unknown_fields ... ok
+test create_limits_title_to_100_characters ... ok
+test create_then_get_task ... ok
+test list_can_filter_by_done ... ok
+test patch_updates_only_the_sent_fields ... ok
+test delete_then_get_returns_404 ... ok
+test patch_checks_body_before_looking_up_the_task ... ok
+test list_supports_limit_and_offset ... ok
+test list_is_empty_array_then_ordered_by_id ... ok
+test unknown_task_returns_404_json ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

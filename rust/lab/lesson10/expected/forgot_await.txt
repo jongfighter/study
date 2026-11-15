@@ -1,0 +1,10 @@
+warning: unused implementer of `Future` that must be used
+  --> lesson10\examples\scratch.rs:10:5
+   |
+10 |     save_log();
+   |     ^^^^^^^^^^
+   |
+   = note: futures do nothing unless you `.await` or poll them
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lesson10` (example "scratch") generated 1 warning

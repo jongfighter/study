@@ -1,0 +1,10 @@
+// 권장 확장 목록입니다. 이 폴더를 처음 열면 VS Code가 "권장 확장을 설치할까요?"라고 묻습니다.
+// 확장 보기(Ctrl+Shift+X)에서 @recommended 를 검색해도 같은 목록이 나옵니다.
+{
+  "recommendations": [
+    // Go 공식 확장: 자동 완성, 정의로 이동, 디버깅, 테스트 실행을 제공합니다(내부에서 gopls와 dlv를 사용).
+    "golang.go",
+    // .http 파일에 적은 요청을 편집기 안에서 바로 보내 봅니다(레슨 08의 REST API 실습에서 사용).
+    "humao.rest-client"
+  ]
+}

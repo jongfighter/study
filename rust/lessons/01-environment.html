@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="rust" data-lesson="01">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="rustup 도구 체인을 확인하고 VS Code에 rust-analyzer를 연결합니다.">
+  <title>01 · 환경 준비: Rust와 VS Code 연결 — Rust 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Rust 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Rs</span>
+      <span>Rust 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 01 · 환경 준비</p>
+        <h1>환경 준비: Rust와 VS Code 연결</h1>
+        <p class="lead">Rust 도구 체인이 이 PC에 제대로 설치됐는지 직접 확인하고, VS Code에 rust-analyzer를 연결해 코스 폴더를 엽니다. 마지막에 <code>cargo check</code>가 성공하는 것을 눈으로 확인하면 준비 끝입니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 90분</li>
+          <li><b>난이도</b> ★☆☆☆☆</li>
+          <li><b>선행</b> <a href="00-vscode-start.html">레슨 00</a></li>
+          <li><b>실습 폴더</b> <span class="file">D:\study\rust</span></li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li><code>rustc --version</code>, <code>cargo --version</code>, <code>rustup show</code>를 실행해 Rust 도구 체인(toolchain)이 설치돼 있는지 직접 확인할 수 있다.</li>
+          <li>VS Code 터미널 프로필(PowerShell, MSYS2 bash)마다 <code>cargo</code>가 보이는지 확인하고, 안 보이면 원인을 설명하고 고칠 수 있다.</li>
+          <li>확장 탭에서 rust-analyzer, Even Better TOML, 디버거 확장을 설치하고 <code>@recommended</code> 필터로 권장 확장을 찾을 수 있다.</li>
+          <li><span class="file">D:\study\rust</span> 폴더를 열고, 작업 영역 신뢰(Workspace Trust)와 <code>rust-analyzer.linkedProjects</code> 설정이 왜 필요한지 설명할 수 있다.</li>
+          <li><code>cargo check -p lesson02</code>가 성공하는 것을 확인해 도구 체인·터미널·확장이 모두 연결됐음을 증명할 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>이 페이지의 한국어 해설을 먼저 읽고, 궁금한 부분만 원문으로 확인하세요. 로컬 파일은 VS Code에서 <kbd class="key">Ctrl+P</kbd>로 파일 이름을 입력해 바로 열 수 있습니다.</p>
+        <ul>
+          <li><a href="https://doc.rust-lang.org/book/ch01-01-installation.html">The Rust Programming Language · 1.1 Installation (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch01-01-installation.md">the-rust-book/src/ch01-01-installation.md</span></li>
+          <li><a href="https://doc.rust-lang.org/book/ch01-00-getting-started.html">The Rust Programming Language · 1장 Getting Started (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch01-00-getting-started.md">the-rust-book/src/ch01-00-getting-started.md</span></li>
+          <li><a href="https://code.visualstudio.com/docs/languages/rust">VS Code 공식 문서 · Rust in Visual Studio Code (영문)</a> — 확장 설치, 링커 오류 FAQ가 들어 있습니다.</li>
+          <li><a href="https://rust-analyzer.github.io/book/vs_code.html">rust-analyzer 매뉴얼 · VS Code (영문)</a></li>
+          <li><a href="https://rust-lang.github.io/rustup/installation/windows-msvc.html">rustup 문서 · Windows MSVC 설치 (영문)</a> — 책에서 링크하는 MSVC 빌드 도구 안내입니다. Visual Studio가 없으면 rustup 설치 프로그램이 자동 설치를 제안한다고 설명합니다.</li>
+          <li><a href="https://rustup.rs">rustup.rs (영문)</a> — rustup 공식 설치 안내입니다. 이 PC에는 이미 설치돼 있으므로 따로 설치하지 않습니다.</li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>rustup</b>은 Rust 도구 체인 관리자입니다. JDK를 설치하고 버전을 바꿔 주는 SDKMAN, Gradle 래퍼(wrapper)를 합쳐 놓은 도구라고 생각하면 됩니다. rustup이 설치하는 것은 컴파일러 <code>rustc</code>, 빌드·의존성·테스트를 한 곳에서 맡는 <code>cargo</code>, 코드 정렬기 <code>rustfmt</code>, 린터 <code>clippy</code> 같은 프로그램들이고, 모두 <span class="file">%USERPROFILE%\.cargo\bin</span> 폴더에 들어갑니다. 이 폴더가 PATH에 있어야 터미널에서 <code>cargo</code>를 부를 수 있습니다.</p>
+        <p>Rust에는 <b>stable</b>(안정), beta, nightly 채널이 있고 이 코스는 stable만 씁니다. Windows에서는 두 종류의 도구 체인이 있습니다. 기본인 <code>x86_64-pc-windows-msvc</code>는 최종 실행 파일을 만들 때 Microsoft의 <b>링커(linker)</b> <code>link.exe</code>가 필요하고, 이것은 Visual Studio Build Tools의 C++ 도구에 들어 있습니다. 책도 설치 중에 Visual Studio를 설치하라는 안내가 나오는 이유가 링커와 네이티브 라이브러리 때문이라고 설명합니다.</p>
+        <p><b>rust-analyzer</b>는 VS Code가 Rust 코드를 이해하게 해 주는 언어 서버(language server)입니다. 자동 완성, 정의로 이동, 오류 표시가 모두 여기서 나옵니다. 공식 매뉴얼에 따르면 서버 실행 파일은 확장 설치 폴더에 함께 들어 있으므로 따로 설치하지 않아도 됩니다. rust-analyzer는 <code>cargo</code>에게 프로젝트 구조를 물어서 코드를 분석하기 때문에, <code>Cargo.toml</code>이 어디 있는지 알아야 합니다. 그래서 어떤 폴더를 열었는지, 그리고 <code>linkedProjects</code> 설정이 중요합니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>이 레슨은 설치 확인이 중심이라 입력할 코드가 없습니다. 모든 단계는 앞 단계의 결과 위에서 이어집니다. 화면과 출력이 조금 다르면 맨 아래 "자주 나는 오류"를 먼저 확인하세요. 출력의 버전 숫자는 여러분 PC에서 다를 수 있습니다.</p>
+        <ol class="steps">
+          <li>
+            <strong>코스 폴더를 VS Code로 열기</strong>
+            <p>(앞 단계 없음) VS Code 안에서 <kbd class="key">Ctrl+K Ctrl+O</kbd>를 누릅니다. 폴더 선택 창이 열리면 <span class="file">D:\study\rust</span>를 선택하고 <b>폴더 선택</b>을 누릅니다. 이미 다른 폴더가 열려 있다면 같은 창에서 새 폴더로 바뀝니다.</p>
+            <p>"이 폴더의 파일 작성자를 신뢰하십니까?"라는 취지의 대화 상자(Workspace Trust)가 나오면, 이 폴더는 직접 받아 둔 코스 자료이므로 신뢰하는 쪽(영문 UI에서는 <b>Yes, I trust the authors</b>)을 선택합니다. 신뢰하지 않으면 제한 모드(Restricted Mode)가 되어 터미널, 작업, 디버깅, 일부 확장이 막힙니다(공식 문서).</p>
+            <p>왼쪽 탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에 아래 폴더들이 보이면 성공입니다.</p>
+<pre class="code" data-lang="text">assets
+axum
+lab
+lessons
+rust-by-example
+rustlings
+the-rust-book</pre>
+          </li>
+          <li>
+            <strong>PowerShell 터미널에서 버전 확인하기</strong>
+            <p>(1단계 이후) <kbd class="key">Ctrl+`</kbd>로 통합 터미널을 엽니다. 터미널 패널 오른쪽 위의 <b>+</b> 옆 <b>∨</b> 화살표를 누르면 프로필 목록이 나옵니다. 프로필 이름을 고르면 그 셸로 새 터미널이 열립니다. 여기서 <b>PowerShell</b>(또는 <b>PowerShell 7</b>) 항목을 골라 새 터미널을 엽니다. 프로필이 보이지 않으면 <kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열어 <code>Terminal: Select Default Profile</code>을 찾아봅니다. 키보드 배열 때문에 백틱 키가 다르게 보이면 명령 팔레트에서 <code>View: Toggle Terminal</code>을 실행해도 됩니다.</p>
+            <p>터미널에 다음 두 줄을 한 줄씩 입력하고 Enter를 누릅니다.</p>
+<pre class="code" data-lang="powershell">rustc --version
+cargo --version</pre>
+<pre class="output">rustc 1.99.1 (58cf8f9c3 2026-10-13)
+cargo 1.99.1 (5f94df478 2026-08-27)</pre>
+            <p>두 줄 모두 버전이 나오면 컴파일러와 cargo가 PATH에 있다는 뜻입니다. 오류가 나면 "자주 나는 오류"의 첫 번째 항목을 보세요.</p>
+          </li>
+          <li>
+            <strong>MSYS2 bash 터미널에서도 같은 명령 실행하기</strong>
+            <p>(2단계의 터미널은 열어 둔 채로) 패널의 <b>∨</b> 목록에서 이번에는 기본 프로필인 MSYS2 bash(이름은 환경마다 다르며 예: <b>MSYS2 UCRT64</b>) 항목으로 새 터미널을 엽니다. 같은 명령을 입력합니다.</p>
+<pre class="code" data-lang="bash">cargo --version</pre>
+            <p>MSYS2 프로필에 <code>MSYS2_PATH_TYPE</code> 환경 변수를 따로 주지 않았다면(기본값) 다음처럼 <b>실패하는 것이 정상</b>입니다.</p>
+<pre class="output">bash: cargo: 명령을 찾을 수 없음</pre>
+            <p>원인은 MSYS2 로그인 셸이 Windows의 PATH를 그대로 물려받지 않고 필요한 시스템 폴더만 남기기 때문입니다. 아래 명령으로 PATH를 줄 바꿈해서 보면 <span class="file">.cargo\bin</span>이 없다는 것을 직접 확인할 수 있습니다.</p>
+<pre class="code" data-lang="bash">echo "$PATH" | tr ':' '\n'</pre>
+<pre class="output">/ucrt64/bin
+/usr/local/bin
+/usr/bin
+/bin
+/c/Windows/System32
+/c/Windows
+/c/Windows/System32/Wbem
+/c/Windows/System32/WindowsPowerShell/v1.0/
+/usr/bin/site_perl
+/usr/bin/vendor_perl
+/usr/bin/core_perl</pre>
+            <p>이번 터미널에서만 고치려면 아래 한 줄을 입력합니다. <code>cygpath</code>는 Windows 경로를 MSYS2 경로로 바꿔 주는 도구입니다.</p>
+<pre class="code" data-lang="bash">export PATH="$PATH:$(cygpath -u "$USERPROFILE")/.cargo/bin"
+cargo --version
+which cargo</pre>
+<pre class="output">cargo 1.99.1 (5f94df478 2026-08-27)
+/c/Users/&lt;사용자&gt;/.cargo/bin/cargo</pre>
+            <p>새 터미널을 열 때마다 자동으로 적용하려면 MSYS2 홈의 <span class="file">~/.bashrc</span> 끝에 같은 줄을 추가합니다. 이 파일은 VS Code 설정이 아니라 MSYS2 셸 설정이라서 다른 프로젝트에도 영향을 줍니다. 부담스럽다면 이 코스에서는 터미널 프로필로 PowerShell을 골라 쓰면 됩니다. 세 번째 방법은 사용자 설정의 해당 프로필에 <code>"MSYS2_PATH_TYPE": "inherit"</code> 환경 변수를 추가해 MSYS2가 Windows의 PATH를 그대로 이어받게 하는 것입니다(이 코스의 <span class="file">README.md</span>가 소개하며, 적용 후 <code>cargo</code>가 찾아지는 것을 직접 확인했습니다). 다만 이것은 모든 프로젝트에 적용되는 <b>사용자 설정</b> 변경이라서 바꾸기 전에 어떤 영향이 있는지 이해한 뒤에만 쓰세요.</p>
+<pre class="code" data-lang="bash">echo 'export PATH="$PATH:$(cygpath -u "$USERPROFILE")/.cargo/bin"' >> ~/.bashrc</pre>
+            <p>새 터미널을 열어 <code>cargo --version</code>이 바로 되는지 확인합니다.</p>
+          </li>
+          <li>
+            <strong><code>rustup show</code>로 도구 체인 읽기</strong>
+            <p>(PowerShell 또는 보정한 bash 터미널에서) 다음 명령을 실행합니다.</p>
+<pre class="code" data-lang="powershell">rustup show</pre>
+<pre class="output">Default host: x86_64-pc-windows-msvc
+rustup home:  C:\Users\&lt;사용자&gt;\.rustup
+
+installed toolchains
+--------------------
+stable-x86_64-pc-windows-msvc (active, default)
+
+active toolchain
+----------------
+name: stable-x86_64-pc-windows-msvc
+active because: it's the default toolchain
+installed targets:
+  x86_64-pc-windows-msvc</pre>
+            <p>읽는 법은 세 가지입니다. <code>Default host</code>가 <code>x86_64-pc-windows-msvc</code>이면 MSVC 도구 체인입니다. <code>installed toolchains</code>에 <code>stable-…</code>이 <code>(active, default)</code>로 있으면 지금 쓰는 컴파일러가 stable입니다. <code>installed targets</code>는 이 도구 체인이 만들 수 있는 실행 파일의 종류입니다. 설치된 부속 도구는 다음 명령으로 봅니다.</p>
+<pre class="code" data-lang="powershell">rustup component list --installed</pre>
+<pre class="output">cargo-x86_64-pc-windows-msvc
+clippy-x86_64-pc-windows-msvc
+rust-docs-x86_64-pc-windows-msvc
+rust-src
+rust-std-x86_64-pc-windows-msvc
+rustc-x86_64-pc-windows-msvc
+rustfmt-x86_64-pc-windows-msvc</pre>
+            <p><code>rustfmt</code>와 <code>clippy</code>가 있으면 레슨 02에서 쓸 포맷터와 린터가 이미 준비된 것입니다.</p>
+          </li>
+          <li>
+            <strong>MSVC 빌드 도구가 있는지 확인하기</strong>
+            <p>(4단계 이후) Visual Studio 설치 위치를 찾아 주는 Microsoft의 <code>vswhere</code> 도구로 C++ 도구가 설치돼 있는지 확인합니다. PowerShell에서는 다음 명령을 입력합니다.</p>
+<pre class="code" data-lang="powershell">&amp; "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath</pre>
+            <p>bash에서는 경로 표기와 별표 따옴표만 다릅니다.</p>
+<pre class="code" data-lang="bash">"/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath</pre>
+<pre class="output">C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools</pre>
+            <p>설치 경로가 한 줄 나오면 C++ 도구가 있다는 뜻입니다(폴더 이름의 숫자는 버전에 따라 다릅니다). 아무것도 안 나오면 Visual Studio Build Tools를 설치하면서 <b>C++를 사용한 데스크톱 개발</b>(Desktop development with C++) 워크로드를 선택해야 합니다(VS Code 공식 문서). Visual Studio 설치 프로그램의 작업은 관리자 권한을 요구하므로 UAC 승인 창이 뜰 수 있습니다(Microsoft Learn의 설치 명령줄 문서가 "Visual Studio Installer operations currently require administrator privileges"라고 안내합니다). 이 PC에는 이미 설치돼 있어 따로 할 필요가 없으니, 설치 창을 띄우기 전에 위 명령으로 먼저 확인하세요. 가장 확실한 증거는 9단계의 <code>cargo check</code>와 레슨 02의 <code>cargo run</code> 성공입니다. 참고로 MSYS2 bash에서는 <code>which link</code>가 MSYS2 자체의 <code>link</code> 프로그램을 가리키지만, PATH를 보정한 뒤에도 이 PC에서는 <code>cargo</code> 빌드가 성공했습니다(직접 확인).</p>
+          </li>
+          <li>
+            <strong>확장 설치하기</strong>
+            <p>(1단계에서 연 폴더 기준) <kbd class="key">Ctrl+Shift+X</kbd>로 확장 탭을 엽니다. 검색창에 <code>@recommended</code>를 입력하면 <b>작업 영역 권장 사항</b>(Workspace Recommendations) 아래에 이 코스 폴더의 <span class="file">.vscode/extensions.json</span>이 권하는 확장이 나타납니다. 폴더를 처음 열 때 "권장 확장을 설치하시겠습니까?" 알림이 뜬 경우에도 같은 목록입니다.</p>
+            <p>권장 목록에는 네 가지가 들어 있습니다. 이 레슨에서는 아래 세 가지를 설치하고, <b>REST Client</b>(<code>humao.rest-client</code>)는 API를 만드는 레슨 11에서 쓰니 지금 함께 설치해도 됩니다. 각 항목에서 <b>설치</b>(Install) 버튼을 누르고, 게시자 이름(Publisher)이 맞는지 확인합니다. 처음 설치하는 게시자라면 게시자를 신뢰하는지 묻는 대화 상자가 뜰 수 있습니다.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>확장</th><th>확장 ID</th><th>용도</th></tr></thead>
+                <tbody>
+                  <tr><td>rust-analyzer (게시자 rust-lang, <b>Release Version</b>)</td><td><code>rust-lang.rust-analyzer</code></td><td>자동 완성, 정의로 이동, 오류 표시, 실행·디버그 버튼</td></tr>
+                  <tr><td>Even Better TOML</td><td><code>tamasfe.even-better-toml</code></td><td><span class="file">Cargo.toml</span> 문법 강조와 검증</td></tr>
+                  <tr><td>C/C++ (게시자 Microsoft)</td><td><code>ms-vscode.cpptools</code></td><td>Windows에서 Rust 디버깅에 쓰는 디버거 확장</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>디버거 확장은 VS Code 공식 Rust 문서가 Windows에서 Microsoft C++ 확장을, macOS·Linux에서 CodeLLDB를 안내합니다. 설치하지 않고 디버그를 시작하면 rust-analyzer가 설치 링크를 알림으로 보여 줍니다. 이 코스의 <span class="file">.vscode/launch.json</span>도 이 확장의 디버거(<code>cppvsdbg</code>)를 씁니다. 디버거는 레슨 02에서 맛만 보고 레슨 09~11에서 본격적으로 씁니다. 오래된 <code>rust-lang.rust</code> 확장이 보이면 폐기된 것이므로 설치하지 않습니다.</p>
+          </li>
+          <li>
+            <strong>rust-analyzer가 코스 폴더를 읽는지 확인하기</strong>
+            <p>(6단계 이후) <kbd class="key">Ctrl+P</kbd>를 눌러 <code>lesson02/src/main</code>을 입력하고 Enter로 <span class="file">lab/lesson02/src/main.rs</span>를 엽니다. 창 아래 상태 표시줄 왼쪽에 rust-analyzer 진행 표시가 나타났다가 사라질 때까지 기다립니다(처음 열 때 크레이트를 분석하느라 잠시 걸립니다). 로딩이 끝나면 다음을 확인합니다.</p>
+            <ul>
+              <li><code>let day = 2;</code> 같은 줄 뒤에 회색 글씨로 <code>: i32</code>처럼 타입이 덧붙어 보입니다(인레이 힌트).</li>
+              <li><code>println!</code>에 마우스를 올리면 설명이 나옵니다.</li>
+              <li><code>fn main()</code> 위에 <b>Run | Debug</b> 링크(CodeLens)가 보입니다.</li>
+            </ul>
+            <p>아무것도 안 보이면 <kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열고 <code>rust-analyzer: Restart server</code>를 실행해 봅니다.</p>
+          </li>
+          <li>
+            <strong>설정 두 가지를 읽고 바꿔 보기</strong>
+            <p>(7단계 이후) 설정은 아래 "오늘의 VS Code 기능"의 <b>설정 체험하기</b>에서 따로 다룹니다. 여기서는 <code>rust-analyzer.linkedProjects</code> 값이 <span class="file">lab/Cargo.toml</span>을 가리키는지 읽어 보고, <code>rust-analyzer.lens.enable</code>을 껐다 켜서 <b>Run | Debug</b> 링크가 사라졌다 나타나는지 봅니다. 그다음 9단계로 넘어옵니다.</p>
+          </li>
+          <li>
+            <strong><code>cargo check</code>로 전체 연결 증명하기</strong>
+            <p>(PowerShell 또는 PATH를 보정한 bash 터미널에서) 새 터미널은 열어 둔 폴더(<span class="file">D:\study\rust</span>)에서 시작합니다. 먼저 <code>cargo</code>가 <code>Cargo.toml</code>을 못 찾는 상황을 일부러 확인해 봅니다.</p>
+<pre class="code" data-lang="powershell">cargo run</pre>
+<pre class="output">error: could not find `Cargo.toml` in `D:\study\rust` or any parent directory</pre>
+            <p>cargo는 현재 폴더와 그 위쪽 폴더에서만 <span class="file">Cargo.toml</span>을 찾습니다. 이 코스의 Rust 프로젝트는 <span class="file">lab</span> 폴더 안에 있으므로 먼저 이동한 다음 검사합니다.</p>
+<pre class="code" data-lang="powershell">cd lab
+cargo check -p lesson02</pre>
+<pre class="output">    Checking lesson02 v0.1.0 (D:\study\rust\lab\lesson02)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.13s</pre>
+            <p><code>Checking</code>과 <code>Finished</code>가 나오면 도구 체인, 링커 환경, 터미널 설정이 모두 정상입니다. 걸린 시간(<code>in 0.15s</code>)은 PC마다 다릅니다. <code>cargo check</code>는 실행 파일을 만들지 않고 오류만 검사하는 빠른 명령이며 자세한 의미는 레슨 02에서 다룹니다.</p>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong> 같은 레슨의 "자주 나는 오류"를 먼저 확인하세요. 새 터미널이 <code>cargo</code>를 못 찾는다면 십중팔구 PATH 문제입니다.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Rust</th></tr></thead>
+            <tbody>
+              <tr><td>버전 확인</td><td><code>java -version</code>, <code>./gradlew --version</code></td><td><code>python --version</code></td><td><code>rustc --version</code>, <code>cargo --version</code></td></tr>
+              <tr><td>도구 체인 관리</td><td>JDK 설치 + SDKMAN, Gradle 래퍼가 Gradle 버전을 고정</td><td>pyenv, <code>python -m venv</code></td><td><code>rustup</code>이 컴파일러와 부속 도구를 관리</td></tr>
+              <tr><td>프로젝트 정의 파일</td><td><code>build.gradle.kts</code></td><td><code>pyproject.toml</code>, <code>requirements.txt</code></td><td><code>Cargo.toml</code></td></tr>
+              <tr><td>의존성 저장소</td><td>Maven Central</td><td>PyPI</td><td>crates.io</td></tr>
+              <tr><td>VS Code 언어 확장</td><td><code>redhat.java</code>, <code>fwcd.kotlin</code></td><td><code>ms-python.python</code></td><td><code>rust-lang.rust-analyzer</code></td></tr>
+              <tr><td>설치 필요한 네이티브 도구</td><td>JDK만 있으면 됨 (JVM이 실행)</td><td>인터프리터만 있으면 됨</td><td>Windows에서는 C++ 링커(MSVC 빌드 도구)도 필요</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정</strong>JVM 언어는 컴파일 결과가 바이트코드라서 JDK 하나면 어디서든 실행되지만, Rust는 CPU용 기계어 실행 파일을 직접 만들기 때문에 링커 같은 시스템 도구가 필요합니다. 또한 Gradle은 프로젝트마다 래퍼 파일이 도구 버전을 고정하지만, cargo에는 래퍼가 없고 rustup이 고른 도구 체인 하나를 모든 프로젝트가 공유합니다. 그래서 "내 PC에서는 되는데"를 줄이려면 <code>rustc --version</code>을 이슈나 문서에 같이 적는 습관이 도움이 됩니다.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 확장과 터미널을 코스 폴더에 연결하기</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>확장 탭 열기</td><td><kbd class="key">Ctrl+Shift+X</kbd></td><td>확장을 검색·설치하고 <code>@recommended</code>로 권장 목록을 볼 때</td></tr>
+                <tr><td>명령 팔레트</td><td><kbd class="key">Ctrl+Shift+P</kbd></td><td><code>Terminal: Select Default Profile</code>, <code>Workspaces: Manage Workspace Trust</code> 같은 명령을 이름으로 실행할 때</td></tr>
+                <tr><td>폴더 열기</td><td><kbd class="key">Ctrl+K Ctrl+O</kbd></td><td>코스 폴더를 열 때</td></tr>
+                <tr><td>터미널 열기/닫기</td><td><kbd class="key">Ctrl+`</kbd></td><td>명령을 실행할 때 (백틱 키는 키보드 배열에 따라 위치가 다릅니다)</td></tr>
+                <tr><td>새 터미널</td><td><kbd class="key">Ctrl+Shift+`</kbd></td><td>PowerShell과 bash를 나란히 확인할 때</td></tr>
+                <tr><td>설정 열기</td><td><kbd class="key">Ctrl+,</kbd></td><td>rust-analyzer 설정을 확인할 때</td></tr>
+                <tr><td>빠른 파일 열기</td><td><kbd class="key">Ctrl+P</kbd></td><td>파일 이름 일부로 바로 열 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <h3>폴더 열기와 워크스페이스, 작업 영역 신뢰</h3>
+        <p>VS Code에서 <b>폴더를 연다</b>는 것은 그 폴더 하나를 작업 영역(workspace)으로 쓴다는 뜻입니다. 이 코스는 <span class="file">D:\study\rust</span> 폴더를 그대로 엽니다. 설정은 그 폴더의 <span class="file">.vscode</span> 안에 저장되고, 사용자 전체 설정보다 우선합니다. 폴더 여러 개를 한 창에서 열고 싶을 때는 <code>.code-workspace</code> 파일을 쓰는 다중 루트 작업 영역이 있지만, 이 코스에서는 쓰지 않습니다.</p>
+        <p>이 폴더 안에는 클론해 둔 외부 저장소(<span class="file">axum</span>, <span class="file">rustlings</span>, <span class="file">the-rust-book</span>)가 있고 각각 <code>Cargo.toml</code>을 갖고 있습니다(GitHub에서 이 저장소를 새로 받았다면 이 폴더들은 없으니, 맨 위 <span class="file">README.md</span>의 <code>git clone</code> 명령으로 받으세요. 받지 않아도 <span class="file">lab</span> 실습은 진행됩니다). rust-analyzer가 이것들을 모두 분석하려 하면 느려지고 관계없는 오류가 섞입니다. 그래서 <code>rust-analyzer.linkedProjects</code>로 <span class="file">lab/Cargo.toml</span>만 지정합니다. 공식 설정 설명은 이 값을 "프로젝트 자동 탐색을 끄고 명시한 프로젝트 목록만 쓴다"로 정의합니다.</p>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>작업 영역 설정 읽기: <code>rust-analyzer.linkedProjects</code></strong>
+            <p><kbd class="key">Ctrl+,</kbd>로 설정 화면을 열고, 검색창에 <code>rust-analyzer.linkedProjects</code>를 입력합니다. 검색 결과 아래의 <b>작업 영역</b>(Workspace) 탭을 누릅니다. 배열 형식 설정은 화면에서 직접 고치지 못하고 <b>settings.json에서 편집</b>(Edit in settings.json) 링크로 이동합니다. 링크를 눌러 <span class="file">.vscode/settings.json</span>이 열리면 <span class="file">lab/Cargo.toml</span>을 가리키는 항목이 이미 들어 있는지 확인합니다. 이 코스의 완성본 설정 파일에 들어 있는 값입니다.</p>
+          </li>
+          <li>
+            <strong>작업 영역 설정 켜고 끄기: <code>rust-analyzer.lens.enable</code></strong>
+            <p>설정 화면 검색창에 <code>rust-analyzer.lens.enable</code>을 입력하고 <b>작업 영역</b> 탭에서 체크를 끕니다. <span class="file">lab/lesson02/src/main.rs</span> 탭으로 돌아가면 <code>fn main()</code> 위의 <b>Run | Debug</b> 링크가 사라집니다. 이제 <span class="file">.vscode/settings.json</span>을 다시 열면 화면에서 바꾼 값이 <code>"rust-analyzer.lens.enable": false</code>처럼 JSON으로 기록된 것을 볼 수 있습니다. UI 체크박스는 결국 이 JSON 파일을 대신 편집해 주는 도구입니다. 확인이 끝나면 체크를 다시 켭니다. 그러면 <b>Run | Debug</b> 링크가 다시 나타납니다(JSON 항목이 <code>true</code>로 바뀌거나 사라질 수 있습니다).</p>
+          </li>
+          <li>
+            <strong>사용자 설정과 터미널 프로필 읽기 (바꾸지 않습니다)</strong>
+            <p>설정 검색창에 <code>terminal.integrated.defaultProfile.windows</code>를 입력하고 <b>사용자</b> 탭에서 현재 값을 읽어 봅니다. 기본 프로필을 바꾸는 것은 모든 프로젝트에 영향을 주므로 이 코스에서는 바꾸지 않고, 필요할 때마다 터미널 목록(<b>∨</b>)에서 프로필을 골라 씁니다. 기본 프로필을 바꾸려면 명령 팔레트의 <code>Terminal: Select Default Profile</code>을 쓰며, VS Code는 이 명령이 설정을 <code>terminal.integrated.defaultProfile.windows</code>에 기록한다고 설명합니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <h3>문제 1. 두 프로필의 도구 체인 점검표 만들기</h3>
+        <p>PowerShell 터미널과 MSYS2 bash 터미널 <b>둘 다</b>에서 <code>rustc --version</code>, <code>cargo --version</code>이 성공하게 만들고, 두 터미널의 출력 버전이 같은지 눈으로 비교합니다. <b>완료 조건</b>: 두 프로필 모두 두 명령이 버전을 출력하고, 어느 프로필에서 PATH 보정이 필요했는지 말할 수 있습니다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>bash에서 <code>command not found</code>가 나오면 3단계의 <code>export</code> 한 줄을 입력해 봅니다. 영구 적용은 <span class="file">~/.bashrc</span>에 같은 줄을 넣고 새 터미널을 여는 방법입니다. PowerShell만 쓰기로 했다면 bash는 확인만 하고 넘어가도 됩니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="bash">export PATH="$PATH:$(cygpath -u "$USERPROFILE")/.cargo/bin"
+rustc --version
+cargo --version</pre>
+            <p>PowerShell에서는 PATH 보정 없이 두 명령이 바로 성공해야 합니다.</p>
+          </div>
+        </details>
+        <h3>문제 2. 틀린 패키지 이름의 오류 읽기</h3>
+        <p><span class="file">lab</span> 폴더에서 일부러 패키지 이름을 틀리게 입력해 cargo의 오류 메시지를 읽습니다. <b>완료 조건</b>: 오류 메시지가 제안하는 올바른 이름을 찾아 다시 입력해 <code>cargo check</code>를 성공시킵니다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p><code>cargo check -p lesson2</code>를 실행해 보세요. 메시지의 <code>help:</code> 줄에 비슷한 이름이 있다고 알려 줍니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="powershell">cargo check -p lesson2</pre>
+<pre class="output">error: package ID specification `lesson2` did not match any packages
+
+help: a package with a similar name exists: `lesson02`</pre>
+<pre class="code" data-lang="powershell">cargo check -p lesson02</pre>
+          </div>
+        </details>
+        <h3>문제 3. 로컬 문서 열어 보기</h3>
+        <p>rustup은 문서도 함께 설치합니다. 터미널에 <code>rustup doc --book</code>을 입력해 설치된 책(The Rust Programming Language)이 브라우저에 열리는지 확인합니다. <b>완료 조건</b>: 브라우저에 책 첫 화면이 열립니다. 인터넷 없이도 열려야 합니다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>표준 라이브러리 문서는 <code>rustup doc --std</code>입니다. 둘 다 rustlings 공식 설치 안내가 소개하는 명령입니다.</p></div>
+        </details>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="rust-01-versions"><span>PowerShell 터미널에서 <code>rustc --version</code>과 <code>cargo --version</code>의 출력을 직접 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-01-bash-path"><span>MSYS2 bash 터미널에서 <code>cargo --version</code>이 되는지 확인했고, 안 되면 PATH 보정이 필요한 이유를 내 말로 설명할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-01-rustup-show"><span><code>rustup show</code>에서 <code>x86_64-pc-windows-msvc</code>와 <code>stable</code>이 active인 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-01-extensions"><span>rust-analyzer, Even Better TOML, 디버거 확장이 확장 탭의 설치됨 목록에 보인다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-01-open-folder"><span><span class="file">D:\study\rust</span>를 폴더로 열었고 신뢰 대화 상자에서 신뢰를 선택했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-01-analyzer"><span><span class="file">lesson02/src/main.rs</span>에서 인레이 힌트와 <b>Run | Debug</b> 링크가 보이는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-01-setting"><span>설정 화면에서 <code>rust-analyzer.lens.enable</code>을 껐다 켜고 <span class="file">.vscode/settings.json</span>에 기록되는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-01-check"><span><span class="file">lab</span> 폴더에서 <code>cargo check -p lesson02</code>의 <code>Finished</code> 줄을 직접 봤다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <h3>증상: PowerShell에서 <code>rustc</code>를 인식하지 못한다</h3>
+        <p>한국어 Windows에서는 다음과 같은 메시지가 나옵니다(앞에 <code>rustc:</code> 같은 접두어가 붙기도 합니다). rustup 설치 직후에 열어 둔 터미널과 VS Code는 갱신된 PATH를 모르기 때문에 생기는 경우가 많습니다. VS Code 공식 문서도 설치 후 터미널과 VS Code를 다시 시작하라고 안내합니다. 새로 시작해도 같다면 <span class="file">%USERPROFILE%\.cargo\bin</span>이 PATH에 있는지 확인합니다.</p>
+<pre class="output">'rustc' 용어는 cmdlet, 함수, 스크립트 파일 또는 실행 프로그램의 이름으로 인식되지 않습니다.
+이름의 철자를 확인하거나 경로가 포함되어 있으면 경로가 올바른지 확인하고 다시 시도합니다.</pre>
+        <h3>증상: MSYS2 bash에서 <code>cargo: 명령을 찾을 수 없음</code></h3>
+        <p>3단계에서 설명한 PATH 문제입니다. 임시로는 <code>export PATH=…</code>, 영구적으로는 <span class="file">~/.bashrc</span>에 한 줄을 추가하거나 PowerShell 프로필을 씁니다.</p>
+<pre class="output">bash: cargo: 명령을 찾을 수 없음</pre>
+        <h3>증상: <code>could not find Cargo.toml</code></h3>
+        <p><code>cargo run</code>이나 <code>cargo check</code>를 <span class="file">Cargo.toml</span>이 없는 폴더에서 실행한 것입니다. 터미널 현재 위치가 <span class="file">D:\study\rust</span>이면 <code>cd lab</code>으로 이동하세요.</p>
+<pre class="output">error: could not find `Cargo.toml` in `D:\study\rust` or any parent directory</pre>
+        <h3>증상: 링커를 찾을 수 없다는 오류</h3>
+        <p>VS Code 공식 문서가 소개하는 대표 메시지는 <code>error: linker `link.exe` not found</code>입니다. MSVC 빌드 도구(C++ 워크로드)가 없을 때 나옵니다. 아래는 링커 이름을 일부러 틀리게 지정해서 재현한 같은 계열의 메시지이며, 따라 할 필요는 없습니다. 마지막 두 <code>note</code>가 MSVC 도구 설치를 안내하는 부분입니다. Visual Studio Build Tools 설치 프로그램에서 <b>C++를 사용한 데스크톱 개발</b>을 추가한 뒤 터미널을 다시 시작합니다.</p>
+<pre class="output">error: linker `no-such-linker` not found
+  |
+  = note: program not found
+
+note: the msvc targets depend on the msvc linker but `link.exe` was not found
+
+note: please ensure that Visual Studio 2017 or later, or Build Tools for Visual Studio were installed with the Visual C++ option</pre>
+        <h3>증상: 터미널에서 <code>rust-analyzer --version</code>이 오류를 낸다</h3>
+        <p><code>rust-analyzer</code> 구성요소를 rustup으로 설치하지 않았다면 <code>Unknown binary 'rust-analyzer.exe' in official toolchain …</code> 같은 오류가 나옵니다(이 PC에서 확인). <span class="file">.cargo\bin</span>의 <code>rust-analyzer.exe</code>는 rustup이 만들어 둔 중계 프로그램일 뿐이기 때문입니다. VS Code 확장은 자신의 설치 폴더에 있는 서버를 쓰므로(공식 매뉴얼) 문제가 아닙니다. 확장이 동작하는지는 7단계의 인레이 힌트로 확인하세요.</p>
+        <h3>증상: rust-analyzer가 계속 로딩 중이거나 아무 기능이 없다</h3>
+        <p>폴더를 <span class="file">D:\study\rust</span>로 열었는지, 상태 표시줄에 제한 모드(Restricted Mode) 배지가 없는지 확인합니다. 제한 모드에서는 확장 기능이 막힐 수 있으므로 <code>Workspaces: Manage Workspace Trust</code> 명령으로 폴더를 신뢰합니다. 그다음 <code>rust-analyzer: Restart server</code>를 실행합니다.</p>
+      </section>
+
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨에서는 <code>cargo new</code>로 프로젝트를 만들고 <code>cargo run</code>·<code>check</code>·<code>build --release</code>·<code>fmt</code>·<code>clippy</code>를 하나씩 실행합니다. <span class="file">Cargo.toml</span>과 <span class="file">src/main.rs</span>를 읽는 법과 <code>println!</code> 서식도 익힙니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="00-vscode-start.html"><small>← 이전 레슨</small>00 · VS Code 첫걸음</a>
+          <a class="next" rel="next" href="02-hello-cargo.html"><small>다음 레슨 →</small>02 · 첫 프로그램과 cargo</a>
+        </nav>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Rust 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="rust" data-lesson="04">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="이동·복제·빌림·슬라이스를 실제 컴파일 오류와 함께 이해합니다.">
+  <title>04 · 소유권·빌림·슬라이스 — Rust 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Rust 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Rs</span>
+      <span>Rust 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 04 · 소유권</p>
+        <h1>소유권·빌림·슬라이스</h1>
+        <p class="lead">Rust에서 가장 낯선 개념인 소유권을 JVM 참조와 대비해 이해합니다. 컴파일 오류를 일부러 만들어 보고, 오류 메시지가 소유권 규칙의 어느 줄을 어겼다고 말하는지 읽을 수 있게 됩니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 150분</li>
+          <li><b>난이도</b> ★★★★☆</li>
+          <li><b>선행</b> <a href="03-basics.html">레슨 03</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson04</span></li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li>소유권 규칙 세 가지(값마다 소유자 하나, 소유자는 한 번에 하나, 소유자가 사라지면 값도 정리)를 JVM 참조와 비교해 말로 설명할 수 있다.</li>
+          <li><code>let s2 = s1;</code>이 이동(move)이라는 것을 실행해서 확인하고, <code>borrow of moved value</code> 오류를 읽어 <code>clone</code>이나 참조로 고칠 수 있다.</li>
+          <li><code>clone</code>과 <code>Copy</code>의 차이를 설명하고, 어떤 타입이 <code>Copy</code>인지 구분할 수 있다.</li>
+          <li><code>&amp;</code>(읽기 참조)와 <code>&amp;mut</code>(쓰기 참조)의 규칙을 어기는 코드를 일부러 만들어 컴파일러 메시지(<code>E0499</code>, <code>E0502</code>, <code>E0596</code>)를 읽고 고칠 수 있다.</li>
+          <li>슬라이스(<code>&amp;str</code>, <code>&amp;[T]</code>)로 <code>first_word</code>를 구현하고 테스트할 수 있다.</li>
+          <li>VS Code의 문제 패널, 다음 문제 이동, Quick Fix, 호버로 소유권 오류를 읽는 흐름을 손으로 해 볼 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>이 코스에서 가장 중요한 레슨입니다. 한국어 해설을 먼저 읽고, 원문은 예제의 컴파일 오류 메시지를 눈으로 확인하는 용도로 쓰세요. 로컬 파일은 <kbd class="key">Ctrl+P</kbd>로 열 수 있습니다.</p>
+        <ul>
+          <li><a href="https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html">The Rust Programming Language · 4.1 What is Ownership? (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch04-01-what-is-ownership.md">the-rust-book/src/ch04-01-what-is-ownership.md</span></li>
+          <li><a href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html">The Rust Programming Language · 4.2 References and Borrowing (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch04-02-references-and-borrowing.md">the-rust-book/src/ch04-02-references-and-borrowing.md</span></li>
+          <li><a href="https://doc.rust-lang.org/book/ch04-03-slices.html">The Rust Programming Language · 4.3 The Slice Type (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch04-03-slices.md">the-rust-book/src/ch04-03-slices.md</span></li>
+          <li><a href="https://doc.rust-lang.org/rust-by-example/scope/move.html">Rust by Example · Ownership and moves (영문)</a> — 로컬 파일: <span class="file" data-local="rust-by-example/src/scope/move.md">rust-by-example/src/scope/move.md</span>, 빌림은 <span class="file" data-local="rust-by-example/src/scope/borrow.md">rust-by-example/src/scope/borrow.md</span>, 정리(RAII)는 <span class="file" data-local="rust-by-example/src/scope/raii.md">rust-by-example/src/scope/raii.md</span></li>
+          <li>연습: rustlings <span class="file" data-local="rustlings/exercises/06_move_semantics">rustlings/exercises/06_move_semantics</span> 폴더의 <code>move_semantics1.rs</code>~<code>move_semantics5.rs</code>와 <span class="file" data-local="rustlings/exercises/06_move_semantics/README.md">README.md</span></li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>소유권(ownership) 규칙</b>은 세 줄입니다. 값마다 <b>소유자(owner)</b>인 변수가 있고, 소유자는 한 번에 하나뿐이며, 소유자가 <b>범위(scope)</b>를 벗어나면 값이 정리(drop)됩니다. JVM에서는 <code>val b = a</code>가 같은 객체를 가리키는 참조를 하나 더 만들 뿐이고, 가비지 컬렉터(GC)가 마지막 참조가 사라진 뒤 언젠가 메모리를 거둡니다. Rust에는 GC가 없습니다. 대신 컴파일러가 코드 구조만 보고 "이 값은 이 줄에서 정리된다"를 정해 둡니다. 같은 값이 두 곳에서 정리되는 사고(이중 해제)를 막으려면 소유자가 하나여야 하기 때문에, 대입하면 소유권이 <b>이동(move)</b>하고 원래 변수는 더 이상 쓸 수 없습니다.</p>
+        <p><code>String</code> 변수는 글자 데이터가 있는 힙 메모리를 가리키는 작은 머리(포인터, 길이, 용량 세 값)입니다. <code>let s2 = s1;</code>은 이 머리만 복사하고 <code>s1</code>을 무효로 표시하며, 힙의 글자는 복사하지 않아서 빠릅니다. 실습에서 이 머리의 크기가 24바이트인 것을 직접 확인합니다. 글자까지 통째로 복사하려면 <code>s1.clone()</code>이라고 <b>명시적으로</b> 비용을 치릅니다. 정수, <code>bool</code>, <code>char</code>, 소수처럼 스택에 다 들어가는 작은 값은 <b><code>Copy</code></b> 타입이라서 대입해도 이동이 아니라 비트 복사이고 원본도 계속 씁니다. 함수에 값을 넘기는 것도 대입과 같아서, <code>String</code>을 인자로 넘기면 소유권이 함수로 이동합니다.</p>
+        <p>매번 소유권을 넘기고 돌려받으면 불편하니 <b>참조(reference)</b>로 <b>빌립니다(borrow)</b>. <code>&amp;s</code>는 읽기 전용 참조, <code>&amp;mut s</code>는 읽고 쓸 수 있는 참조입니다. 규칙은 하나로 외울 수 있습니다. <b>같은 시점에 읽기 참조 여러 개이거나, 쓰기 참조 딱 하나</b>이며 둘이 섞일 수 없습니다. 읽는 사람이 있는 동안 아무도 바꾸지 못하고, 바꾸는 사람이 있는 동안 아무도 읽지 못하게 해서 데이터 경쟁과 반복 중 수정 같은 버그를 컴파일 시점에 없애는 규칙입니다. 참조의 빌림은 참조를 <b>마지막으로 쓰는 줄</b>에서 끝납니다. 참조는 가리키는 값보다 오래 살 수 없어서, 함수가 지역 변수의 참조를 반환하는 <b>댕글링 참조(dangling reference)</b>도 컴파일러가 막습니다.</p>
+        <p><b>슬라이스(slice)</b>는 컬렉션의 일부를 가리키는 참조입니다. <code>&amp;str</code>은 문자열 일부(또는 전체)를 가리키는 슬라이스이고, 포인터와 길이 두 값이라 16바이트입니다. 슬라이스도 빌림이므로 슬라이스가 살아 있는 동안 원본을 수정할 수 없습니다. 함수 인자로는 <code>&amp;String</code>보다 <code>&amp;str</code>이 더 널리 쓰이는 이유가 여기에 있습니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>앞 레슨의 <span class="file">lab</span> 터미널에서 이어갑니다(<code>cd lab</code>). 파일 이름 막대는 완성본이고, 직접 입력할 파일은 <span class="file">lab/lesson04/src/bin</span> 안에 <code>my_</code>를 붙여 만듭니다. 오류를 일부러 만들 때 쓰는 파일은 항상 같은 이름 <code>scratch.rs</code>로 하며, 오류 메시지의 파일 경로가 아래 출력과 같아지도록 하기 위해서입니다. 오류 재현용 코드는 <span class="file">lab/lesson04/fail</span> 폴더의 <code>.rs.txt</code> 파일에 있습니다. 확장자가 <code>.txt</code>라서 cargo가 컴파일하지 않으므로 안전하게 열어 볼 수 있습니다.</p>
+        <ol class="steps">
+          <li>
+            <strong>이동·복제·Copy 입력하기</strong>
+            <p>(앞 단계 없음) 탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson04/src/bin</span>에 <code>my_move_basics.rs</code>를 만들고 아래 코드를 입력한 뒤 <kbd class="key">Ctrl+S</kbd>로 저장하고 실행합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/src/bin/move_basics.rs">fn takes_ownership(s: String) {
+    println!("함수 안: {s}");
+}
+
+fn makes_copy(n: i32) {
+    println!("함수 안: {n}");
+}
+
+fn gives_back(s: String) -&gt; String {
+    s
+}
+
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1;
+    println!("s2 = {s2}");
+
+    let s3 = s2.clone();
+    println!("s2 = {s2}, s3 = {s3}");
+
+    let n = 5;
+    let m = n;
+    println!("n = {n}, m = {m}");
+
+    makes_copy(n);
+    println!("makes_copy 뒤에도 n = {n}");
+
+    takes_ownership(s3);
+
+    let s4 = gives_back(s2);
+    println!("돌려받은 s4 = {s4}");
+
+    println!(
+        "String 값 하나의 크기: {}바이트",
+        std::mem::size_of::&lt;String&gt;()
+    );
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson04 --bin my_move_basics</pre>
+<pre class="output" data-src="lab/lesson04/expected/move_basics.txt">s2 = hello
+s2 = hello, s3 = hello
+n = 5, m = 5
+함수 안: 5
+makes_copy 뒤에도 n = 5
+함수 안: hello
+돌려받은 s4 = hello
+String 값 하나의 크기: 24바이트</pre>
+            <p>줄 순서대로 읽습니다. <code>let s2 = s1;</code> 뒤에는 <code>s1</code>을 쓰지 않고 <code>s2</code>만 씁니다. <code>s2.clone()</code>은 글자까지 복사해서 두 변수 모두 쓸 수 있습니다. <code>n</code>과 <code>m</code>은 정수라 <code>Copy</code>이므로 둘 다 살아 있고, <code>makes_copy(n)</code> 뒤에도 <code>n</code>을 씁니다. <code>takes_ownership(s3)</code> 뒤에는 <code>s3</code>를 쓸 수 없습니다. 마지막의 <code>gives_back</code>은 소유권을 받았다가 그대로 돌려주는 함수입니다. 끝 줄은 <code>String</code> 변수 하나의 크기가 24바이트라는 것을 보여 줍니다(포인터·길이·용량).</p>
+          </li>
+          <li>
+            <strong>이동 오류 만들고 VS Code로 읽기 (문제 패널, <kbd class="key">F8</kbd>, 호버, Quick Fix)</strong>
+            <p>(1단계 이후) <code>src/bin</code>에 <code>scratch.rs</code>를 만들고 <span class="file">lab/lesson04/fail/use_after_move.rs.txt</span>의 내용을 복사해 붙여 넣은 뒤 저장합니다. 값을 <code>s2</code>로 옮긴 뒤 <code>s1</code>을 쓰는 코드입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/fail/use_after_move.rs.txt">fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1;
+    println!("{s1}, world!");
+    println!("{s2}");
+}</pre>
+            <p>저장하면 이 코스의 설정이 rust-analyzer에게 검사(clippy)를 돌리게 하므로 몇 초 뒤 <code>println!</code> 줄의 <code>s1</code>에 빨간 밑줄이 생깁니다. 터미널 실행 결과와 비교해 읽어 봅니다.</p>
+<pre class="code" data-lang="powershell">cargo run -p lesson04 --bin scratch</pre>
+<pre class="output" data-src="lab/lesson04/expected/use_after_move.err.txt">error[E0382]: borrow of moved value: `s1`
+ --&gt; lesson04\src\bin\scratch.rs:4:16
+  |
+2 |     let s1 = String::from("hello");
+  |         -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait
+3 |     let s2 = s1;
+  |              -- value moved here
+4 |     println!("{s1}, world!");
+  |                ^^ value borrowed here after move
+  |
+help: consider cloning the value if the performance cost is acceptable
+  |
+3 |     let s2 = s1.clone();
+  |                ++++++++
+
+For more information about this error, try `rustc --explain E0382`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error</pre>
+            <p>메시지를 위에서 아래로 읽습니다. 제목은 "이동된 값을 빌렸다"입니다. <code>s1</code> 선언 줄에는 "<code>String</code>은 <code>Copy</code>가 아니라서 이동이 일어난다"는 설명이, <code>let s2 = s1;</code> 줄에는 "여기서 이동됨"이, <code>println!</code> 줄에는 "이동된 뒤에 빌림"이 붙어 있습니다. 즉, 이동한 곳과 이동된 뒤 쓴 곳을 모두 짚어 줍니다. 이제 같은 정보를 에디터에서 찾아봅니다.</p>
+            <ol>
+              <li><kbd class="key">Ctrl+Shift+M</kbd>을 눌러 아래쪽 패널에 <b>문제</b>(Problems) 탭을 엽니다. 방금 오류가 파일 이름, 줄 번호와 함께 목록으로 보입니다. 항목을 클릭하면 해당 줄로 이동합니다.</li>
+              <li>에디터로 돌아와 <kbd class="key">F8</kbd>을 누르면 가장 가까운 오류로 이동하며 설명 창이 바로 아래에 열립니다. <kbd class="key">F8</kbd>은 오류가 있는 <b>파일 전체를 차례로</b> 돕니다(다른 탭에 남은 오류도 포함). 지금 보는 파일 안에서만 돌려면 <kbd class="key">Alt+F8</kbd>을 씁니다. 이전 문제는 <kbd class="key">Shift+F8</kbd>입니다.</li>
+              <li>커서를 밑줄 친 <code>s1</code> 위에 두고 <kbd class="key">Ctrl+K Ctrl+I</kbd>를 누르면 마우스를 올린 것과 같은 호버 설명이 키보드만으로 열립니다. 빨간 오류 메시지와 <b>빠른 수정</b>(Quick Fix) 링크가 함께 보입니다.</li>
+              <li><kbd class="key">Ctrl+.</kbd>을 누르면 Quick Fix 목록이 열립니다. 목록에 <code>clone</code>을 붙이라는 제안이 있으면 적용해 보세요. 어떤 제안이 보이는지는 오류 종류와 rust-analyzer 버전에 따라 다르며, 제안이 없으면 메시지의 <code>help:</code> 줄(<code>s1.clone()</code>)을 보고 직접 <code>let s2 = s1.clone();</code>으로 고칩니다.</li>
+            </ol>
+            <p>고치고 저장하면 밑줄과 문제 목록이 사라집니다. 다시 실행하면 <code>hello, world!</code>와 <code>hello</code>가 출력됩니다. 소유권 오류는 컴파일 중에 모두 잡히므로 실행 중에 이 문제로 죽는 일은 없습니다.</p>
+          </li>
+          <li>
+            <strong>빌림 입력하기</strong>
+            <p>(2단계의 <span class="file">scratch.rs</span>는 두고) <code>my_borrowing.rs</code>를 만들어 입력하고 실행합니다. 빌림이 소유권을 옮기지 않기 때문에 <code>length(&amp;s)</code> 뒤에도 <code>s</code>를 계속 쓸 수 있습니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/src/bin/borrowing.rs">fn length(s: &amp;str) -&gt; usize {
+    s.len()
+}
+
+fn add_world(s: &amp;mut String) {
+    s.push_str(", world");
+}
+
+fn main() {
+    let mut s = String::from("hello");
+
+    let len = length(&amp;s);
+    println!("'{s}'의 길이는 {len}");
+
+    add_world(&amp;mut s);
+    println!("바뀐 값: {s}");
+
+    let r1 = &amp;s;
+    let r2 = &amp;s;
+    println!("읽기 참조 두 개: {r1} / {r2}");
+
+    let r3 = &amp;mut s;
+    r3.push('!');
+    println!("가변 참조: {r3}");
+    println!("원래 변수: {s}");
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson04 --bin my_borrowing</pre>
+<pre class="output" data-src="lab/lesson04/expected/borrowing.txt">'hello'의 길이는 5
+바뀐 값: hello, world
+읽기 참조 두 개: hello, world / hello, world
+가변 참조: hello, world!
+원래 변수: hello, world!</pre>
+            <p>읽기 참조 <code>r1</code>, <code>r2</code>는 동시에 둘이 있어도 됩니다. 두 참조를 마지막으로 쓴 <code>println!</code> 줄이 지나면 빌림이 끝나므로, 그 뒤에 <code>&amp;mut s</code>인 <code>r3</code>를 만들어도 컴파일됩니다. 이처럼 "마지막 사용 줄에서 빌림이 끝난다"는 규칙 덕분에 대부분의 코드는 규칙을 의식하지 않고도 통과합니다.</p>
+          </li>
+          <li>
+            <strong>빌림 규칙을 어기는 오류 두 가지 읽기</strong>
+            <p>(3단계 이후) <span class="file">scratch.rs</span>의 내용을 <span class="file">fail/two_mut_refs.rs.txt</span>로 교체합니다. 같은 값에 쓰기 참조를 둘 만드는 코드입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/fail/two_mut_refs.rs.txt">fn main() {
+    let mut s = String::from("hello");
+    let r1 = &amp;mut s;
+    let r2 = &amp;mut s;
+    r1.push('!');
+    r2.push('?');
+    println!("{s}");
+}</pre>
+<pre class="output" data-src="lab/lesson04/expected/two_mut_refs.err.txt">error[E0499]: cannot borrow `s` as mutable more than once at a time
+ --&gt; lesson04\src\bin\scratch.rs:4:14
+  |
+3 |     let r1 = &amp;mut s;
+  |              ------ first mutable borrow occurs here
+4 |     let r2 = &amp;mut s;
+  |              ^^^^^^ second mutable borrow occurs here
+5 |     r1.push('!');
+  |     -- first borrow later used here
+
+For more information about this error, try `rustc --explain E0499`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error</pre>
+            <p>"한 번에 두 번 이상 가변으로 빌렸다"는 <code>E0499</code>입니다. 첫 번째 쓰기 빌림이 <code>r1.push('!')</code> 줄에서 아직 쓰이고 있는데 두 번째를 만들었다고 짚어 줍니다. 이어서 <span class="file">fail/mut_while_shared.rs.txt</span>로 교체합니다. 읽기 참조 <code>first</code>가 살아 있는 동안 원본을 수정하는 코드입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/fail/mut_while_shared.rs.txt">fn main() {
+    let mut log = String::from("시작");
+    let first = &amp;log;
+    log.push_str(" -&gt; 진행");
+    println!("{first}");
+}</pre>
+<pre class="output" data-src="lab/lesson04/expected/mut_while_shared.err.txt">error[E0502]: cannot borrow `log` as mutable because it is also borrowed as immutable
+ --&gt; lesson04\src\bin\scratch.rs:4:5
+  |
+3 |     let first = &amp;log;
+  |                 ---- immutable borrow occurs here
+4 |     log.push_str(" -&gt; 진행");
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+5 |     println!("{first}");
+  |                ----- immutable borrow later used here
+
+For more information about this error, try `rustc --explain E0502`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error</pre>
+            <p><code>E0502</code>는 "읽기 빌림이 있는데 쓰기 빌림을 했다"는 뜻입니다. 세 줄 표시가 한 이야기를 이룹니다. 읽기 빌림이 여기서 시작하고(3번 줄), 쓰기 빌림이 여기서 일어나며(4번 줄), 읽기 참조가 나중에 또 쓰입니다(5번 줄). 고치는 방법은 읽기 참조의 마지막 사용을 쓰기보다 앞으로 옮기는 것입니다. <code>println!("{first}");</code> 줄을 <code>log.push_str(…)</code> 줄 위로 옮기고 저장하면 통과합니다. 줄 이동은 레슨 03에서 익힌 <kbd class="key">Alt+↑</kbd>로 합니다.</p>
+          </li>
+          <li>
+            <strong>읽기 참조로는 못 바꾼다: E0596과 Quick Fix</strong>
+            <p>(4단계 이후) <span class="file">scratch.rs</span>를 <span class="file">fail/mutate_via_shared_ref.rs.txt</span>로 교체합니다. 읽기 참조(<code>&amp;String</code>)로 받은 값을 함수 안에서 수정하려는 코드입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/fail/mutate_via_shared_ref.rs.txt">fn add_exclamation(s: &amp;String) {
+    s.push('!');
+}
+
+fn main() {
+    let s = String::from("hello");
+    add_exclamation(&amp;s);
+    println!("{s}");
+}</pre>
+<pre class="output" data-src="lab/lesson04/expected/mutate_via_shared_ref.err.txt">error[E0596]: cannot borrow `*s` as mutable, as it is behind a `&amp;` reference
+ --&gt; lesson04\src\bin\scratch.rs:2:5
+  |
+2 |     s.push('!');
+  |     ^ `s` is a `&amp;` reference, so it cannot be borrowed as mutable
+  |
+help: consider changing this to be a mutable reference
+  |
+1 | fn add_exclamation(s: &amp;mut String) {
+  |                        +++
+
+For more information about this error, try `rustc --explain E0596`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error</pre>
+            <p><code>s.push('!')</code>에 밑줄이 생기면 그 줄에 커서를 두고 <kbd class="key">Ctrl+.</kbd>를 누릅니다. 제안 목록에 매개변수를 <code>&amp;mut String</code>으로 바꾸는 항목이 보이면 선택합니다. 없으면 메시지의 <code>help:</code>대로 <code>s: &amp;mut String</code>으로 직접 고칩니다. 그러면 오류가 호출하는 쪽(<code>add_exclamation(&amp;s)</code>)으로 옮겨 가 <code>error[E0308]: mismatched types</code>가 나타납니다. 표시 문구는 <code>types differ in mutability</code>(가변성이 다르다)입니다. <code>&amp;s</code>를 <code>&amp;mut s</code>로 바꾸면 이번에는 <code>error[E0596]: cannot borrow `s` as mutable, as it is not declared as mutable</code>가 나타나고, <code>main</code>의 <code>let s</code>를 <code>let mut s</code>로 바꾸면 컴파일됩니다. 실행하면 <code>hello!</code>가 출력됩니다. 오류가 하나 해결되면 다음 오류가 보이는 것은 컴파일러가 단계별로 검사하기 때문입니다. 이 단계에서 문제가 있는 파일은 <span class="file">scratch.rs</span>뿐이니 <kbd class="key">F8</kbd>로 다음 문제를 확인하며 고쳐도 됩니다.</p>
+          </li>
+          <li>
+            <strong>슬라이스 입력하고 테스트하기</strong>
+            <p>(5단계 이후) <code>my_slices.rs</code>를 만들어 입력합니다. <code>first_word</code>는 문자열을 바이트로 훑다가 첫 공백을 만나면 그 앞까지를 슬라이스로 돌려줍니다. 반환하는 <code>&amp;str</code>은 입력 <code>s</code>의 일부를 가리키는 참조입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/src/bin/slices.rs">fn first_word(s: &amp;str) -&gt; &amp;str {
+    let bytes = s.as_bytes();
+    for (i, &amp;item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &amp;s[0..i];
+        }
+    }
+    s
+}
+
+fn main() {
+    let sentence = String::from("hello wide world");
+    let word = first_word(&amp;sentence);
+    println!("첫 단어: {word}");
+
+    let hello = &amp;sentence[0..5];
+    let world = &amp;sentence[11..];
+    println!("{hello} / {world}");
+
+    let numbers = [10, 20, 30, 40, 50];
+    let middle = &amp;numbers[1..4];
+    println!("가운데 조각: {middle:?}, 길이 {}", middle.len());
+
+    println!(
+        "&amp;str 참조 하나의 크기: {}바이트",
+        std::mem::size_of::&lt;&amp;str&gt;()
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn picks_first_word() {
+        assert_eq!(first_word("hello wide world"), "hello");
+    }
+
+    #[test]
+    fn single_word_is_returned_whole() {
+        assert_eq!(first_word("rust"), "rust");
+    }
+
+    #[test]
+    fn empty_input_gives_empty_word() {
+        assert_eq!(first_word(""), "");
+    }
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson04 --bin my_slices
+cargo test -p lesson04 --bin my_slices</pre>
+<pre class="output" data-src="lab/lesson04/expected/slices.txt">첫 단어: hello
+hello / world
+가운데 조각: [20, 30, 40], 길이 3
+&amp;str 참조 하나의 크기: 16바이트</pre>
+<pre class="output">running 3 tests
+test tests::empty_input_gives_empty_word ... ok
+test tests::picks_first_word ... ok
+test tests::single_word_is_returned_whole ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+          <p>테스트 줄의 순서와 걸린 시간(<code>finished in …s</code>)은 실행마다 조금 다를 수 있습니다.</p>
+            <p><code>&amp;sentence[0..5]</code>는 <code>0</code>번째 바이트부터 <code>5</code>번째 앞까지입니다. <code>&amp;sentence[11..]</code>은 11번째부터 끝까지입니다. <code>&amp;numbers[1..4]</code>도 같은 문법으로 배열 일부를 빌립니다. 끝 줄은 <code>&amp;str</code> 참조 자체가 포인터와 길이로 16바이트임을 보여 줍니다. 이 함수의 반환값이 살아 있는 동안 <code>sentence</code>를 수정하려고 하면 어떤 오류가 나는지는 아래 "자주 나는 오류"에서 확인합니다.</p>
+          </li>
+          <li>
+            <strong>정리(drop)와 구현으로 이동 (<kbd class="key">Ctrl+F12</kbd>)</strong>
+            <p>(6단계와 별개) JVM은 객체를 언제 정리할지 GC가 정하지만, Rust는 소유자가 범위를 벗어나는 줄에서 정리합니다. 이 시점을 눈으로 보기 위해 <code>Drop</code> trait을 구현한 예제를 실행합니다. trait과 <code>impl</code> 문법은 레슨 05, 07에서 배우니 지금은 "정리될 때 <code>drop</code> 함수가 자동으로 불린다"로만 이해합니다. 이미 들어 있는 <span class="file">drop_order.rs</span>를 열어 읽고 실행합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/src/bin/drop_order.rs">struct Noisy {
+    name: String,
+}
+
+impl Noisy {
+    fn new(name: &amp;str) -&gt; Noisy {
+        println!("{name} 만들어짐");
+        Noisy {
+            name: name.to_string(),
+        }
+    }
+}
+
+impl Drop for Noisy {
+    fn drop(&amp;mut self) {
+        println!("{} 정리됨", self.name);
+    }
+}
+
+fn consume(item: Noisy) {
+    println!("consume 안: {}", item.name);
+}
+
+fn main() {
+    let a = Noisy::new("a");
+    {
+        let _b = Noisy::new("b");
+        println!("안쪽 블록 끝");
+    }
+    consume(a);
+
+    let c = Noisy::new("c");
+    drop(c);
+
+    println!("main 끝");
+    let _d = Noisy::new("d");
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson04 --bin drop_order</pre>
+<pre class="output" data-src="lab/lesson04/expected/drop_order.txt">a 만들어짐
+b 만들어짐
+안쪽 블록 끝
+b 정리됨
+consume 안: a
+a 정리됨
+c 만들어짐
+c 정리됨
+main 끝
+d 만들어짐
+d 정리됨</pre>
+            <p>출력 순서를 코드와 맞춰 봅니다. <code>b</code>는 안쪽 블록이 끝나는 줄에서, <code>a</code>는 <code>consume</code>에 넘겨져 그 함수가 끝나는 줄에서, <code>c</code>는 <code>drop(c)</code>를 부른 줄에서, <code>d</code>는 <code>main</code>이 끝날 때 정리됩니다. Kotlin의 <code>use { }</code>나 파이썬의 <code>with</code>가 하는 일을 언어가 모든 값에 대해 자동으로 해 주는 셈입니다.</p>
+            <p>마지막으로 <kbd class="key">Ctrl+F12</kbd>를 연습합니다. 파일 맨 위의 <code>struct Noisy {</code> 줄에서 커서를 <code>Noisy</code> 위에 두고 <kbd class="key">Ctrl+F12</kbd>를 누르면 구현으로 이동(Go to Implementation)이 실행되어, <code>Noisy</code>를 위한 <code>impl</code> 블록(<code>impl Drop for Noisy</code> 포함)으로 이동하거나 목록이 열립니다. 목록이 열리면 방향키와 Enter로 고릅니다. rust-analyzer 매뉴얼은 이 기능을 "타입의 impl 항목으로 이동"이라고 설명합니다.</p>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong> 같은 레슨의 "자주 나는 오류"를 먼저 확인하세요. 실험이 끝나면 <span class="file">scratch.rs</span>를 지우세요. 오류가 남은 파일이 있으면 같은 패키지의 다른 파일을 실행해도 에디터의 문제 패널에는 계속 보입니다.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Rust</th></tr></thead>
+            <tbody>
+              <tr><td>객체를 다른 변수에 대입</td><td>같은 객체를 가리키는 참조 복사. 둘 다 사용 가능</td><td>이름 하나를 더 붙임. 둘 다 사용 가능</td><td><b>이동</b>. 원래 변수는 사용 불가</td></tr>
+              <tr><td>실제로 복사하려면</td><td><code>toMutableList()</code>, <code>copy()</code></td><td><code>list(a)</code>, <code>copy.deepcopy(a)</code></td><td><code>a.clone()</code> (명시적)</td></tr>
+              <tr><td>함수 인자 전달</td><td>참조 값을 전달 (객체 공유)</td><td>객체 참조를 전달 (객체 공유)</td><td>소유권 이동, 또는 <code>&amp;</code>/<code>&amp;mut</code> 빌림</td></tr>
+              <tr><td>불변성</td><td><code>val</code>은 다시 대입만 막음 (얕은 불변)</td><td>불변 보장 없음</td><td><code>let</code>은 값 전체를 불변으로 묶음. 바꾸려면 <code>mut</code></td></tr>
+              <tr><td>메모리 정리</td><td>GC가 언젠가 회수. 자원은 <code>use { }</code></td><td>참조 카운트와 GC. 자원은 <code>with</code></td><td>소유자의 범위가 끝나는 줄에서 즉시 <code>drop</code></td></tr>
+              <tr><td>반복 중 컬렉션 수정</td><td>실행 중 <code>ConcurrentModificationException</code></td><td>list는 예외 없이 요소를 건너뛰거나 무한 반복할 수 있음 (dict는 <code>RuntimeError</code>)</td><td>컴파일 오류 <code>E0502</code></td></tr>
+              <tr><td>여러 곳에서 공유</td><td>스프링 빈을 여러 곳에 주입 (기본)</td><td>모듈 전역 객체, 의존성 주입</td><td>기본은 하나의 소유자. 공유는 <code>Rc</code>, <code>Arc</code>로 명시 (레슨 10)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Kotlin과 Python에서 "대입은 참조 복사"라는 점을 코드로 확인해 봅니다. 아래 두 조각은 이 코스에서 실행하지 않는 비교용 예시이며, Python 쪽은 직접 실행해 결과를 확인했습니다.</p>
+<pre class="code" data-lang="kotlin">val a = mutableListOf(1, 2, 3)
+val b = a          // 같은 리스트를 가리키는 참조가 하나 더 생김
+b.add(4)
+println(a)         // [1, 2, 3, 4]  a도 바뀌어 보입니다</pre>
+<pre class="code" data-lang="python">a = [1, 2, 3]
+b = a              # 같은 리스트에 이름을 하나 더 붙임
+b.append(4)
+print(a)           # [1, 2, 3, 4]  a도 바뀌어 보입니다</pre>
+        <p>Rust에서 <code>let b = a;</code>는 이동이라서 이런 "몰래 공유"가 생기지 않습니다. 두 곳이 같은 데이터를 바꾸는 상황을 만들려면 <code>Rc</code>, <code>Arc</code>, <code>Mutex</code> 같은 도구로 공유를 코드에 명시해야 합니다. 이 중 <code>Arc</code>와 <code>Mutex</code>는 레슨 10에서 다룹니다.</p>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정</strong>JVM에서는 인자로 넘긴 객체를 호출한 쪽도 계속 쓰는 것이 당연해서, <code>takes_ownership(s3)</code> 뒤에 <code>s3</code>가 막히면 "왜 이걸 못 쓰지?" 하는 느낌이 듭니다. 이때 "컴파일러가 틀렸다"고 생각하지 말고 "이 함수가 이 값을 가져가도 되는지"를 설계 질문으로 바꿔 보세요. 읽기만 하면 <code>&amp;</code>, 수정하면 <code>&amp;mut</code>, 정말 넘겨 주는 것이면 값 그대로 받습니다. 또 하나, Kotlin의 <code>val list = mutableListOf()</code>는 <code>list.add()</code>가 되지만 Rust의 <code>let v = Vec::new();</code>는 <code>v.push()</code>가 막힙니다. <code>val</code>은 "다시 대입 금지"이고 <code>let</code>은 "값 전체 수정 금지"입니다. 복제(<code>clone</code>)를 남발해 오류를 피하는 것은 컴파일은 되지만 비용이 숨은 코드가 됩니다. 먼저 참조로 고칠 수 있는지 보세요.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 소유권 오류를 문제 패널·호버·Quick Fix로 읽기</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>문제 패널 열기</td><td><kbd class="key">Ctrl+Shift+M</kbd></td><td>이 워크스페이스의 오류·경고 목록을 한눈에 볼 때</td></tr>
+                <tr><td>다음 문제로 이동</td><td><kbd class="key">F8</kbd></td><td>문제가 있는 모든 파일의 오류를 차례로 볼 때</td></tr>
+                <tr><td>현재 파일만 다음 문제로</td><td><kbd class="key">Alt+F8</kbd></td><td>지금 보는 파일의 오류만 돌 때</td></tr>
+                <tr><td>이전 문제로 이동</td><td><kbd class="key">Shift+F8</kbd></td><td>거꾸로 되짚을 때</td></tr>
+                <tr><td>빠른 수정(Quick Fix)</td><td><kbd class="key">Ctrl+.</kbd></td><td>밑줄 위에서 제안되는 수정을 볼 때</td></tr>
+                <tr><td>호버 열기(키보드)</td><td><kbd class="key">Ctrl+K Ctrl+I</kbd></td><td>마우스 없이 변수 타입이나 오류 메시지를 읽을 때</td></tr>
+                <tr><td>구현으로 이동</td><td><kbd class="key">Ctrl+F12</kbd></td><td>타입의 <code>impl</code> 블록을 찾을 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p>소유권 오류는 메시지가 길고 "여기서 이동, 여기서 다시 사용"처럼 위치가 여러 곳이라서, 터미널 출력만 보는 것보다 에디터에서 밑줄과 호버로 보는 쪽이 훨씬 빠릅니다. 흐름은 <b>문제 패널로 오류 개수 파악 → <kbd class="key">F8</kbd>로 하나씩 이동 → 호버로 이유 읽기 → <kbd class="key">Ctrl+.</kbd>로 제안 확인 → 직접 고치기</b>입니다. 제안은 편의일 뿐이고, 고치는 선택(복제할지, 참조로 바꿀지)은 내가 합니다.</p>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>저장 시 검사 명령 바꿔 보기: <code>rust-analyzer.check.command</code></strong>
+            <p>이 코스의 작업 영역 설정에는 저장할 때 rust-analyzer가 돌리는 검사를 <code>clippy</code>로 지정해 두었습니다(기본값은 <code>check</code>). 먼저 <span class="file">scratch.rs</span>를 <span class="file">fail/ptr_arg.rs.txt</span> 내용으로 교체하고 저장합니다. 이 코드는 컴파일은 되지만 clippy가 <code>&amp;String</code> 매개변수를 지적합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/fail/ptr_arg.rs.txt">fn length(s: &amp;String) -&gt; usize {
+    s.len()
+}
+
+fn main() {
+    let s = String::from("hello");
+    println!("{}", length(&amp;s));
+}</pre>
+<pre class="code" data-lang="powershell">cargo clippy -p lesson04 --bin scratch</pre>
+<pre class="output" data-src="lab/lesson04/expected/ptr_arg.err.txt">warning: writing `&amp;String` instead of `&amp;str` involves a new object where a slice will do
+ --&gt; lesson04\src\bin\scratch.rs:1:14
+  |
+1 | fn length(s: &amp;String) -&gt; usize {
+  |              ^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#ptr_arg
+  = note: `#[warn(clippy::ptr_arg)]` on by default
+help: change this to
+  |
+1 - fn length(s: &amp;String) -&gt; usize {
+1 + fn length(s: &amp;str) -&gt; usize {
+  |
+
+warning: `lesson04` (bin "scratch") generated 1 warning</pre>
+            <p><kbd class="key">Ctrl+Shift+M</kbd>으로 문제 패널을 열면 같은 경고가 보입니다. 이제 <kbd class="key">Ctrl+,</kbd>로 설정을 열고 <code>rust-analyzer.check.command</code>(화면 이름은 Rust-analyzer › Check: Command)를 검색해 <b>작업 영역</b> 탭에서 값을 <code>check</code>로 바꿉니다. <span class="file">.vscode/settings.json</span>에는 <code>"rust-analyzer.check.command": "check"</code>로 기록됩니다. 파일을 다시 저장하면 clippy 경고가 사라집니다(컴파일 오류는 그대로 남습니다). 확인한 뒤 값을 <code>clippy</code>로 되돌립니다. VS Code 공식 Rust 문서가 "기본값 <code>check</code> 대신 <code>clippy</code>로 바꾸면 저장할 때 clippy 경고가 에디터와 문제 보기에 표시된다"고 설명하는 바로 그 설정입니다. 책에서는 <code>&amp;String</code>을 쓰기도 하지만 clippy는 <code>&amp;str</code>이 더 낫다고 권합니다. 그래서 이 코스의 코드는 <code>&amp;str</code>을 씁니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <h3>문제 1. 컴파일 오류 세 개 고치기</h3>
+        <p><span class="file">lab/lesson04/fail/practice_fix_moves.rs.txt</span>를 <code>scratch.rs</code>에 복사하세요. <b>테스트 코드는 바꾸지 말고</b> 본문만 고쳐서 컴파일하고 테스트를 통과시킵니다. 컴파일러가 알려 주는 오류가 세 개이며 각각 소유권 규칙의 어느 줄을 어겼는지 설명할 수 있어야 합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/fail/practice_fix_moves.rs.txt">fn byte_len(s: String) -&gt; usize {
+    s.len()
+}
+
+fn append_step(log: &amp;mut String, step: &amp;str) {
+    log.push_str(" -&gt; ");
+    log.push_str(step);
+}
+
+fn main() {
+    let title = String::from("소유권 연습");
+    let n = byte_len(title);
+    println!("{title}의 길이는 {n}바이트");
+
+    let mut log = String::from("시작");
+    let first = &amp;log;
+    append_step(&amp;mut log, "진행");
+    println!("{first} / {log}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn byte_len_counts_bytes() {
+        let s = String::from("가나");
+        assert_eq!(byte_len(&amp;s), 6);
+        assert_eq!(s, "가나");
+    }
+
+    #[test]
+    fn append_step_adds_arrow() {
+        let mut log = String::from("시작");
+        append_step(&amp;mut log, "진행");
+        assert_eq!(log, "시작 -&gt; 진행");
+    }
+}</pre>
+<pre class="code" data-lang="powershell">cargo test -p lesson04 --bin scratch</pre>
+<pre class="output" data-src="lab/lesson04/expected/practice_fix_moves.err.txt">error[E0308]: mismatched types
+  --&gt; lesson04\src\bin\scratch.rs:28:29
+   |
+28 |         assert_eq!(byte_len(&amp;s), 6);
+   |                    -------- ^^ expected `String`, found `&amp;String`
+   |                    |
+   |                    arguments to this function are incorrect
+   |
+note: function defined here
+  --&gt; lesson04\src\bin\scratch.rs:1:4
+   |
+ 1 | fn byte_len(s: String) -&gt; usize {
+   |    ^^^^^^^^ ---------
+help: consider removing the borrow
+   |
+28 -         assert_eq!(byte_len(&amp;s), 6);
+28 +         assert_eq!(byte_len(s), 6);
+   |
+
+error[E0382]: borrow of moved value: `title`
+  --&gt; lesson04\src\bin\scratch.rs:13:16
+   |
+11 |     let title = String::from("소유권 연습");
+   |         ----- move occurs because `title` has type `String`, which does not implement the `Copy` trait
+12 |     let n = byte_len(title);
+   |                      ----- value moved here
+13 |     println!("{title}의 길이는 {n}바이트");
+   |                ^^^^^ value borrowed here after move
+   |
+note: consider changing this parameter type in function `byte_len` to borrow instead if owning the value isn't necessary
+  --&gt; lesson04\src\bin\scratch.rs:1:16
+   |
+ 1 | fn byte_len(s: String) -&gt; usize {
+   |    --------    ^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: consider cloning the value if the performance cost is acceptable
+   |
+12 |     let n = byte_len(title.clone());
+   |                           ++++++++
+
+error[E0502]: cannot borrow `log` as mutable because it is also borrowed as immutable
+  --&gt; lesson04\src\bin\scratch.rs:17:17
+   |
+16 |     let first = &amp;log;
+   |                 ---- immutable borrow occurs here
+17 |     append_step(&amp;mut log, "진행");
+   |                 ^^^^^^^^ mutable borrow occurs here
+18 |     println!("{first} / {log}");
+   |                ----- immutable borrow later used here
+
+Some errors have detailed explanations: E0308, E0382, E0502.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `lesson04` (bin "scratch" test) due to 3 previous errors</pre>
+        <p><b>완료 조건</b>: <code>cargo test -p lesson04 --bin scratch</code>가 통과하고, <code>cargo run -p lesson04 --bin scratch</code>가 두 줄을 출력합니다. 첫 줄은 <code>소유권 연습의 길이는 16바이트</code>이고, 둘째 줄은 고친 방법에 따라 <code>시작 / 시작 -&gt; 진행</code> 또는 <code>시작 / 시작</code>입니다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>세 오류는 각각 (1) 테스트가 <code>&amp;String</code>을 넘기는데 함수는 <code>String</code>을 받는 타입 불일치, (2) 함수가 <code>title</code>을 가져가 버려서 다음 줄의 <code>println!</code>이 쓰지 못하는 이동, (3) 읽기 참조 <code>first</code>가 살아 있는데 <code>&amp;mut log</code>를 만드는 빌림 충돌입니다. (1)과 (2)는 같은 곳, 즉 <code>byte_len</code>의 매개변수를 <code>&amp;str</code>로 바꾸고 호출을 <code>&amp;title</code>로 바꾸면 해결됩니다. (3)은 <code>first</code>를 읽기 참조 대신 <code>log.clone()</code>으로 복사하거나, <code>println!</code>을 <code>append_step</code> 호출보다 앞으로 옮깁니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/src/bin/practice_fix_moves.rs">fn byte_len(s: &amp;str) -&gt; usize {
+    s.len()
+}
+
+fn append_step(log: &amp;mut String, step: &amp;str) {
+    log.push_str(" -&gt; ");
+    log.push_str(step);
+}
+
+fn main() {
+    let title = String::from("소유권 연습");
+    let n = byte_len(&amp;title);
+    println!("{title}의 길이는 {n}바이트");
+
+    let mut log = String::from("시작");
+    let first = log.clone();
+    append_step(&amp;mut log, "진행");
+    println!("{first} / {log}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn byte_len_counts_bytes() {
+        let s = String::from("가나");
+        assert_eq!(byte_len(&amp;s), 6);
+        assert_eq!(s, "가나");
+    }
+
+    #[test]
+    fn append_step_adds_arrow() {
+        let mut log = String::from("시작");
+        append_step(&amp;mut log, "진행");
+        assert_eq!(log, "시작 -&gt; 진행");
+    }
+}</pre>
+<pre class="output">running 2 tests
+test tests::append_step_adds_arrow ... ok
+test tests::byte_len_counts_bytes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+<pre class="output" data-src="lab/lesson04/expected/practice_fix_moves.txt">소유권 연습의 길이는 16바이트
+시작 / 시작 -&gt; 진행</pre>
+          </div>
+        </details>
+        <h3>문제 2. 첫 문장 슬라이스</h3>
+        <p><span class="file">my_practice_first_sentence.rs</span>에 <code>fn first_sentence(text: &amp;str) -&gt; &amp;str</code>를 구현합니다. 첫 마침표(<code>.</code>)까지를 마침표를 포함해 돌려주고, 마침표가 없으면 전체를 돌려줍니다. 새 <code>String</code>을 만들지 말고 <b>슬라이스만</b> 돌려주세요. <b>완료 조건</b>: 아래 테스트 3개가 통과합니다(한국어 문장 포함).</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/src/bin/practice_first_sentence.rs" data-lines="14-32">#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cuts_at_first_period_including_it() {
+        assert_eq!(first_sentence("hello. world."), "hello.");
+    }
+
+    #[test]
+    fn without_period_returns_everything() {
+        assert_eq!(first_sentence("no period here"), "no period here");
+    }
+
+    #[test]
+    fn works_with_korean_text() {
+        assert_eq!(first_sentence("가나다. 라마바."), "가나다.");
+    }
+}</pre>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p><code>text.find('.')</code>는 마침표의 바이트 위치를 <code>Some(위치)</code>로, 없으면 <code>None</code>으로 돌려줍니다(<code>Option</code>은 레슨 05). 위치를 얻으면 <code>&amp;text[..=위치]</code>로 마침표까지 자릅니다. 마침표는 1바이트 글자이므로 한국어가 앞에 있어도 경계가 맞습니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson04/src/bin/practice_first_sentence.rs">fn first_sentence(text: &amp;str) -&gt; &amp;str {
+    match text.find('.') {
+        Some(end) =&gt; &amp;text[..=end],
+        None =&gt; text,
+    }
+}
+
+fn main() {
+    let memo = String::from("소유권을 배웠다. 이제 빌림을 배운다. 다음은 슬라이스다.");
+    let sentence = first_sentence(&amp;memo);
+    println!("첫 문장: {sentence}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cuts_at_first_period_including_it() {
+        assert_eq!(first_sentence("hello. world."), "hello.");
+    }
+
+    #[test]
+    fn without_period_returns_everything() {
+        assert_eq!(first_sentence("no period here"), "no period here");
+    }
+
+    #[test]
+    fn works_with_korean_text() {
+        assert_eq!(first_sentence("가나다. 라마바."), "가나다.");
+    }
+}</pre>
+<pre class="output">running 3 tests
+test tests::cuts_at_first_period_including_it ... ok
+test tests::without_period_returns_everything ... ok
+test tests::works_with_korean_text ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+<pre class="output" data-src="lab/lesson04/expected/practice_first_sentence.txt">첫 문장: 소유권을 배웠다.</pre>
+          </div>
+        </details>
+        <h3>문제 3 (권장). rustlings 이동 문제 풀이</h3>
+        <p>클론해 둔 <span class="file" data-local="rustlings/exercises/06_move_semantics/move_semantics1.rs">rustlings/exercises/06_move_semantics/move_semantics1.rs</span>부터 <code>move_semantics5.rs</code>까지 읽고, 각 파일의 <code>TODO</code> 주석이 요구하는 수정을 종이나 메모에 먼저 적어 보세요. 특히 <code>move_semantics4.rs</code>는 코드를 추가·삭제하지 않고 <b>줄 순서만 바꿔서</b> 오류를 고치는 문제인데, 4단계의 <code>E0502</code> 해결과 같은 원리입니다. rustlings를 실제로 설치하고 진행하는 방법은 레슨 12에서 클론한 안내문을 근거로 설명합니다. <b>완료 조건</b>: <code>move_semantics4.rs</code>가 왜 지금은 컴파일되지 않는지 두 문장으로 설명할 수 있습니다.</p>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="rust-04-move"><span><code>my_move_basics.rs</code>를 실행해 <code>String 값 하나의 크기: 24바이트</code> 줄을 직접 봤다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-04-error"><span><code>use_after_move</code>의 <code>E0382</code> 오류에서 "이동된 곳"과 "이동 뒤에 쓴 곳"을 메시지에서 각각 찾아 말할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-04-problems"><span><kbd class="key">Ctrl+Shift+M</kbd>, <kbd class="key">F8</kbd>, <kbd class="key">Ctrl+K Ctrl+I</kbd>, <kbd class="key">Ctrl+.</kbd>을 마우스 없이 사용했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-04-borrow-rules"><span><code>E0499</code>와 <code>E0502</code> 오류를 재현하고, 읽기 참조의 마지막 사용을 앞으로 옮겨 컴파일되게 고쳤다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-04-slices"><span><code>cargo test -p lesson04 --bin my_slices</code>에서 테스트 3개 통과를 봤다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-04-drop"><span><code>drop_order</code> 출력에서 <code>b</code>, <code>a</code>, <code>c</code>, <code>d</code>가 정리되는 시점을 코드와 맞춰 설명할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-04-setting"><span><code>rust-analyzer.check.command</code>를 <code>check</code>로 바꿔 clippy 경고가 사라지는 것을 보고 <code>clippy</code>로 되돌렸다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-04-practice"><span>연습 문제 1의 오류 세 개를 힌트 없이 먼저 시도했고 <code>cargo test</code>가 통과했다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <p>아래 오류는 <span class="file">lab/lesson04/fail</span> 폴더의 <code>.rs.txt</code> 파일 내용을 <span class="file">lab/lesson04/src/bin/scratch.rs</span>에 복사하고 <code>cargo check -p lesson04 --bin scratch</code>로 재현한 출력입니다.</p>
+        <h3>증상: 함수에 넘긴 값을 그 뒤에 또 썼다 (<code>use of moved value</code>)</h3>
+        <p><code>String</code>을 값으로 받는 함수에 넘기면 소유권이 함수로 갑니다. 컴파일러가 "이 매개변수가 소유권을 가져간다"고 짚고, <code>borrow instead</code>(대신 빌려라)를 권합니다. 읽기만 하는 함수라면 매개변수를 <code>&amp;str</code>로 받고, 호출하는 쪽도 <code>print_it(&amp;name)</code>처럼 <code>&amp;</code>를 붙여 빌려 줍니다. 한쪽만 고치면 <code>mismatched types</code> 오류가 이어집니다. 이 파일은 <span class="file">fail/move_into_fn.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/move_into_fn.err.txt">error[E0382]: use of moved value: `name`
+ --&gt; lesson04\src\bin\scratch.rs:8:14
+  |
+6 |     let name = String::from("Rust");
+  |         ---- move occurs because `name` has type `String`, which does not implement the `Copy` trait
+7 |     print_it(name);
+  |              ---- value moved here
+8 |     print_it(name);
+  |              ^^^^ value used here after move
+  |
+note: consider changing this parameter type in function `print_it` to borrow instead if owning the value isn't necessary
+ --&gt; lesson04\src\bin\scratch.rs:1:16
+  |
+1 | fn print_it(s: String) {
+  |    --------    ^^^^^^ this parameter takes ownership of the value
+  |    |
+  |    in this function
+help: consider cloning the value if the performance cost is acceptable
+  |
+7 |     print_it(name.clone());
+  |                  ++++++++
+
+For more information about this error, try `rustc --explain E0382`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error</pre>
+        <h3>증상: 반복하는 동안 같은 컬렉션에 <code>push</code>하면 <code>E0502</code></h3>
+        <p><code>for score in &amp;scores</code>가 <code>scores</code>를 읽기 참조로 빌린 채 반복하고 있어서 반복 안에서는 수정할 수 없습니다. Kotlin이라면 실행 중에 <code>ConcurrentModificationException</code>이 터질 상황이고, Rust는 컴파일에서 막습니다. 새 값을 모아 두었다가 반복이 끝난 뒤 추가하세요. 이 파일은 <span class="file">fail/push_while_iterating.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/push_while_iterating.err.txt">error[E0502]: cannot borrow `scores` as mutable because it is also borrowed as immutable
+ --&gt; lesson04\src\bin\scratch.rs:5:13
+  |
+3 |       for score in &amp;scores {
+  |       -            -------
+  |       |            |
+  |       |            immutable borrow occurs here
+  |  _____|            immutable borrow later used here
+  | |
+4 | |         if *score == 2 {
+5 | |             scores.push(99);
+  | |             ^^^^^^^^^^^^^^^ mutable borrow occurs here
+6 | |         }
+7 | |     }
+  | |_____- this for loop borrows `scores` immutably, preventing mutation within its body
+  |
+  = help: consider using an index-based loop instead, or collecting modifications into a separate collection
+
+For more information about this error, try `rustc --explain E0502`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error</pre>
+        <h3>증상: 슬라이스를 얻은 뒤 원본을 바꾸면 <code>E0502</code></h3>
+        <p>4단계와 같은 규칙입니다. <code>word</code>가 <code>s</code>의 일부를 읽기로 빌려 쓰는 중에 <code>s.clear()</code>(쓰기)를 불렀습니다. 슬라이스가 가리키는 글자가 지워지면 안 되기 때문입니다. <code>word</code>를 쓴 뒤에 <code>clear()</code>를 하세요. 이 파일은 <span class="file">fail/slice_then_clear.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/slice_then_clear.err.txt">error[E0502]: cannot borrow `s` as mutable because it is also borrowed as immutable
+  --&gt; lesson04\src\bin\scratch.rs:11:5
+   |
+10 |     let word = first_word(&amp;s);
+   |                           -- immutable borrow occurs here
+11 |     s.clear();
+   |     ^^^^^^^^^ mutable borrow occurs here
+12 |     println!("첫 단어: {word}");
+   |                         ---- immutable borrow later used here
+
+For more information about this error, try `rustc --explain E0502`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error</pre>
+        <h3>증상: 지역 변수의 참조를 반환하면 <code>missing lifetime specifier</code></h3>
+        <p><code>dangle</code> 함수가 안에서 만든 <code>String</code>의 참조를 돌려주려 하는데, 함수가 끝나면 그 값이 정리되므로 가리킬 대상이 없습니다. 컴파일러는 "빌려 줄 값이 없다"고 말하고 "소유한 값을 반환하라"고 권합니다. 수명(lifetime) 표기는 레슨 07에서 배웁니다. 지금은 <code>String</code>을 그대로 반환해 소유권을 호출자에게 넘기면 된다는 것만 기억하세요. 이 파일은 <span class="file">fail/dangling_ref.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/dangling_ref.err.txt">error[E0106]: missing lifetime specifier
+ --&gt; lesson04\src\bin\scratch.rs:1:16
+  |
+1 | fn dangle() -&gt; &amp;String {
+  |                ^ expected named lifetime parameter
+  |
+  = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+  |
+1 | fn dangle() -&gt; &amp;'static String {
+  |                 +++++++
+help: instead, you are more likely to want to return an owned value
+  |
+1 - fn dangle() -&gt; &amp;String {
+1 + fn dangle() -&gt; String {
+  |
+
+For more information about this error, try `rustc --explain E0106`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error</pre>
+        <h3>증상: 벡터 요소를 꺼내 변수에 넣으면 <code>cannot move out of index</code></h3>
+        <p>Kotlin의 <code>val first = names[0]</code>은 참조를 복사하지만, Rust에서 <code>names[0]</code>을 값으로 꺼내면 벡터 안의 <code>String</code>을 빼앗는 일이 되어 막힙니다. <code>&amp;names[0]</code>(빌림)이나 <code>names[0].clone()</code>(복제)을 쓰세요. 이 파일은 <span class="file">fail/vec_index_move.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/vec_index_move.err.txt">error[E0507]: cannot move out of index of `Vec&lt;String&gt;`
+ --&gt; lesson04\src\bin\scratch.rs:3:17
+  |
+3 |     let first = names[0];
+  |                 ^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
+  |
+help: consider borrowing here
+  |
+3 |     let first = &amp;names[0];
+  |                 +
+help: consider cloning the value if the performance cost is acceptable
+  |
+3 |     let first = names[0].clone();
+  |                         ++++++++
+
+For more information about this error, try `rustc --explain E0507`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error</pre>
+      </section>
+
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨에서는 Task 같은 도메인 데이터를 <code>struct</code>와 <code>enum</code>으로 모델링하고 <code>match</code>로 모든 경우를 처리합니다. 값이 없을 수 있는 경우는 <code>null</code> 대신 <code>Option</code>으로 표현합니다. VS Code에서는 정의로 이동, 참조 찾기, 이름 바꾸기로 여러 파일을 오가는 법을 씁니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="03-basics.html"><small>← 이전 레슨</small>03 · 변수·타입·제어 흐름·함수</a>
+          <a class="next" rel="next" href="05-structs-enums.html"><small>다음 레슨 →</small>05 · 구조체·열거형·패턴 매칭</a>
+        </nav>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Rust 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

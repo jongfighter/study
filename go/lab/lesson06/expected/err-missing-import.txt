@@ -1,0 +1,7 @@
+# golab/lesson06/mine/titles [golab/lesson06/mine/titles.test]
+lesson06\mine\titles\titles_test.go:9:34: undefined: testing
+lesson06\mine\titles\titles_test.go:19:23: undefined: testing
+lesson06\mine\titles\titles_test.go:36:26: undefined: testing
+lesson06\mine\titles\titles_test.go:54:28: undefined: testing
+FAIL	golab/lesson06/mine/titles [build failed]
+FAIL

@@ -1,0 +1,2 @@
+{"error":"요청 본문을 읽을 수 없습니다: Failed to deserialize the JSON body into the target type: titel: unknown field `titel`, expected `title` at line 1 column 8"}
+HTTP 400

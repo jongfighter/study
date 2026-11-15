@@ -1,0 +1,5 @@
+#[test]
+fn prints_while_testing() {
+    println!("디버깅용 출력입니다");
+    assert_eq!(1 + 1, 2);
+}

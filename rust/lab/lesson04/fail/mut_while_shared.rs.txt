@@ -1,0 +1,6 @@
+fn main() {
+    let mut log = String::from("시작");
+    let first = &log;
+    log.push_str(" -> 진행");
+    println!("{first}");
+}

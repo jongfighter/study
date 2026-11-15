@@ -1,0 +1,6 @@
+=== RUN   TestNormalize
+=== RUN   TestNormalize/공백만
+--- PASS: TestNormalize (0.00s)
+    --- PASS: TestNormalize/공백만 (0.00s)
+PASS
+ok  	golab/lesson06/mine/titles	0.244s

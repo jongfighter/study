@@ -1,0 +1,22 @@
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+func worker(id int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	fmt.Println("작업", id, "시작")
+	fmt.Println("작업", id, "끝")
+}
+
+func main() {
+	var wg sync.WaitGroup
+	for id := 1; id <= 3; id++ {
+		wg.Add(1)
+		go worker(id, &wg)
+	}
+	wg.Wait()
+	fmt.Println("모든 작업 완료")
+}

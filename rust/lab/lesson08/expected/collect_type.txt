@@ -1,0 +1,19 @@
+error[E0283]: type annotations needed
+    --> lesson08\examples\scratch.rs:3:9
+     |
+   3 |     let doubled = numbers.iter().map(|n| n * 2).collect();
+     |         ^^^^^^^                                 ------- type must be known at this point
+     |
+     = note: the type must implement `FromIterator<i32>`
+note: required by a bound in `collect`
+    --> ...\library\core\src\iter\traits\iterator.rs:2073:19
+     |
+2073 |     fn collect<B: FromIterator<Self::Item>>(self) -> B
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::collect`
+help: consider giving `doubled` an explicit type
+     |
+   3 |     let doubled: Vec<_> = numbers.iter().map(|n| n * 2).collect();
+     |                ++++++++
+
+For more information about this error, try `rustc --explain E0283`.
+error: could not compile `lesson08` (example "scratch") due to 1 previous error

@@ -1,0 +1,15 @@
+func (s *server) createTask(w http.ResponseWriter, r *http.Request) {
+	var req createTaskRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "요청 본문을 읽을 수 없습니다: "+err.Error())
+		return
+	}
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		writeError(w, http.StatusBadRequest, "title은 비어 있을 수 없습니다")
+	}
+
+	task := s.store.create(title)
+	w.Header().Set("Location", "/tasks/"+strconv.Itoa(task.ID))
+	writeJSON(w, http.StatusCreated, task)
+}

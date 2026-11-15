@@ -1,0 +1,7 @@
+0
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+main.main()
+	.../lesson04/mine/nilmap/main.go:8 +0x...
+exit status 2

@@ -1,0 +1,2 @@
+# golab/lesson02/mine
+lesson02\mine\main.go:5:2: "os" imported and not used

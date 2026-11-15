@@ -1,0 +1,6 @@
+use lesson09::Task;
+
+fn main() {
+    let task = Task::new(1, "운동").unwrap();
+    println!("{}", task.title);
+}

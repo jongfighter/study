@@ -1,0 +1,7 @@
+fn main() {
+    let price_a: i32 = 1200
+    let price_b: i32 = 3400
+    let price_c: i32 = 560
+    let total: i32 = price_a + price_b + price_c
+    println!("합계: {}", total)
+}

@@ -1,0 +1,10 @@
+use std::rc::Rc;
+use std::thread;
+
+fn main() {
+    let shared = Rc::new(5);
+    let handle = thread::spawn(move || {
+        println!("값 = {shared}");
+    });
+    handle.join().unwrap();
+}

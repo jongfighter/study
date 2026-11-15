@@ -1,0 +1,6 @@
+# .out
+no required module provides package .out; to add it:
+	go get .out
+FAIL	.out [setup failed]
+ok  	golab/lesson06/mine/titles	0.301s	coverage: 100.0% of statements
+FAIL

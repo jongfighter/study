@@ -1,0 +1,94 @@
+// 작업(task) 정의입니다. 명령 팔레트(Ctrl+Shift+P)에서 "Tasks: Run Task"를 고르면 아래 label 목록이 나옵니다.
+// Ctrl+Shift+B 는 "기본 빌드 작업"(아래에서 isDefault 로 지정한 go: vet all)을 바로 실행합니다.
+// type 을 process 로 둔 이유: 셸을 거치지 않고 go 를 직접 실행하므로, 기본 터미널이 bash든 PowerShell이든 똑같이 동작합니다.
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // lab 안의 모든 패키지 테스트를 실행합니다(go test ./...).
+      "label": "go: test all",
+      "type": "process",
+      "command": "go",
+      "args": ["test", "./..."],
+      "options": {
+        "cwd": "${workspaceFolder}/lab"
+      },
+      // 테스트 그룹의 기본 작업입니다(명령 팔레트의 "Tasks: Run Test Task"가 이 작업을 실행).
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      // 컴파일 오류 줄(파일:줄:열: 메시지)을 문제 패널(Ctrl+Shift+M)에 모아 보여 줍니다. 경로는 lab 기준입니다.
+      "problemMatcher": {
+        "owner": "go-lab-task",
+        "source": "go",
+        "fileLocation": ["relative", "${workspaceFolder}/lab"],
+        "pattern": {
+          "regexp": "^(?:vet(?:\\.exe)?: )?(?:\\.[\\\\/])?(\\S+?\\.go):(\\d+):(?:(\\d+):)? (.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "message": 4
+        }
+      }
+    },
+    {
+      // lab 안의 모든 패키지를 go vet 으로 점검합니다. 컴파일 오류와 의심스러운 코드를 찾아 줍니다.
+      "label": "go: vet all",
+      "type": "process",
+      "command": "go",
+      "args": ["vet", "./..."],
+      "options": {
+        "cwd": "${workspaceFolder}/lab"
+      },
+      // 빌드 그룹의 기본 작업입니다(Ctrl+Shift+B 로 실행).
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": {
+        "owner": "go-lab-task",
+        "source": "go",
+        "fileLocation": ["relative", "${workspaceFolder}/lab"],
+        "pattern": {
+          "regexp": "^(?:vet(?:\\.exe)?: )?(?:\\.[\\\\/])?(\\S+?\\.go):(\\d+):(?:(\\d+):)? (.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "message": 4
+        }
+      }
+    },
+    {
+      // Task API 서버를 실행합니다(레슨 10의 최종본). 서버는 계속 켜져 있으므로 끝내려면 터미널에서 Ctrl+C 를 누릅니다.
+      "label": "go: run task api",
+      "type": "process",
+      "command": "go",
+      "args": ["run", "./lesson10/cmd/taskapi"],
+      "options": {
+        "cwd": "${workspaceFolder}/lab",
+        // 환경변수 PORT 로 포트를 바꿀 수 있습니다(기본 8080).
+        "env": {
+          "PORT": "8080"
+        }
+      },
+      // 서버 출력이 다른 작업 결과와 섞이지 않도록 전용 패널을 씁니다.
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+ok  	golab/lesson06/mine/titles	0.249s
+ok  	golab/lesson06/mine/titles	0.309s	coverage: 66.7% of statements

@@ -1,0 +1,13 @@
+struct Task {
+    id: u32,
+    title: String,
+    done: bool,
+}
+
+fn main() {
+    let task = Task {
+        id: 1,
+        title: String::from("우유 사기"),
+    };
+    println!("{} {}", task.id, task.title);
+}

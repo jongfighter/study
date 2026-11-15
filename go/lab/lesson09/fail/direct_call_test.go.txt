@@ -1,0 +1,25 @@
+package handler
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"golab/lesson09/mine/internal/domain"
+)
+
+func TestDirectCall(t *testing.T) {
+	fake := fakeTasks{get: func(_ context.Context, id int) (domain.Task, error) {
+		return domain.Task{ID: id, Title: "x"}, nil
+	}}
+	h := New(fake)
+	req := httptest.NewRequest(http.MethodGet, "/tasks/1", nil)
+	rec := httptest.NewRecorder()
+
+	h.getTask(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body)
+	}
+}

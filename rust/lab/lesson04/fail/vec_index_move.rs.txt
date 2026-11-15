@@ -1,0 +1,5 @@
+fn main() {
+    let names = vec![String::from("가"), String::from("나")];
+    let first = names[0];
+    println!("{first} / {}", names.len());
+}

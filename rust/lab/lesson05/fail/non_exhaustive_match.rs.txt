@@ -1,0 +1,14 @@
+enum Light {
+    Red,
+    Yellow,
+    Green,
+}
+
+fn main() {
+    let light = Light::Yellow;
+    let action = match light {
+        Light::Red => "정지",
+        Light::Green => "출발",
+    };
+    println!("{action}");
+}

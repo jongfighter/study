@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="rust" data-lesson="12">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Task API를 확장하는 캡스톤 과제와 평가표, rustlings 계획을 정리합니다.">
+  <title>12 · 캡스톤과 다음 단계 — Rust 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Rust 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Rs</span>
+      <span>Rust 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 12 · 마무리</p>
+        <h1>캡스톤과 다음 단계</h1>
+        <p class="lead">레슨 11의 Task API를 복사해 내 프로젝트로 확장하고, 평가표로 점검하고, rustlings로 이어서 연습할 계획을 세웁니다. VS Code는 설정 JSON, 프로필, 스니펫, keybindings.json을 직접 편집해 내 환경으로 만들고 마우스 없이 5분 미션으로 마무리합니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 120분</li>
+          <li><b>난이도</b> ★★★☆☆</li>
+          <li><b>선행</b> <a href="11-axum-taskapi.html">레슨 11</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson12</span></li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li>레슨 11의 크레이트를 복사해 새 워크스페이스 멤버(<code>capstone</code>)로 만들고, 이름 바꾸기와 <code>members</code> 등록을 직접 해낼 수 있다.</li>
+          <li>목록 API에 <code>done</code> 필터와 <code>limit</code>·<code>offset</code>을 <code>Query</code> 추출기로 테스트 먼저 쓰는 방식으로 추가하고 <code>cargo test</code>로 증명할 수 있다.</li>
+          <li>저장소를 trait(<code>TaskRepository</code>)으로 추상화한 구조를 읽고, 파일 저장소 구현체를 직접 완성할 수 있다.</li>
+          <li>평가표의 여섯 항목으로 내 결과물을 점검하고, 부족한 곳을 다음 학습 과제로 정할 수 있다.</li>
+          <li>사용자·워크스페이스 설정의 우선순위를 JSON으로 확인하고, 프로필·스니펫·<code>keybindings.json</code>으로 내 편집 환경을 만들 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>이 레슨은 새 개념보다 "이미 배운 것을 스스로 확장하는" 레슨입니다. 아래 자료는 확장 과제와 다음 학습의 근거로 쓰입니다. 로컬 파일은 VS Code에서 <kbd class="key">Ctrl+P</kbd>로 파일명을 입력해 열 수 있습니다.</p>
+        <ul>
+          <li>rustlings: <a href="https://rustlings.rust-lang.org/setup/">설치와 초기화 (영문)</a>, <a href="https://rustlings.rust-lang.org/usage/">사용법 (영문)</a> — 로컬 파일: <span class="file" data-local="rustlings/README.md">rustlings/README.md</span>, 연습 순서가 적힌 <span class="file" data-local="rustlings/rustlings-macros/info.toml">rustlings/rustlings-macros/info.toml</span>, 폴더별 안내 <span class="file" data-local="rustlings/exercises/quizzes/quiz1.rs">rustlings/exercises/quizzes/quiz1.rs</span></li>
+          <li>Rust By Example: <a href="https://doc.rust-lang.org/rust-by-example/">전체 목차 (영문)</a> — 로컬 파일: <span class="file" data-local="rust-by-example/src/index.md">rust-by-example/src/index.md</span>, 에러 처리 <span class="file" data-local="rust-by-example/src/error.md">error.md</span></li>
+          <li>axum 예제(확장 과제의 힌트): <span class="file" data-local="axum/examples/todos/src/main.rs">todos</span>(페이지네이션), <span class="file" data-local="axum/examples/graceful-shutdown/src/main.rs">graceful-shutdown</span>(종료 처리), <span class="file" data-local="axum/examples/tracing-aka-logging/src/main.rs">tracing-aka-logging</span>(요청 로그), <span class="file" data-local="axum/examples/customize-path-rejection/src/main.rs">customize-path-rejection</span>(<code>Path</code> 에러를 JSON으로), <span class="file" data-local="axum/examples/validator/src/main.rs">validator</span>(입력 검증), <span class="file" data-local="axum/examples/sqlx-postgres/src/main.rs">sqlx-postgres</span>(DB 연결)</li>
+          <li>The Rust Book 뒤쪽 장: <span class="file" data-local="the-rust-book/src/ch15-00-smart-pointers.md">15장 스마트 포인터</span>, <span class="file" data-local="the-rust-book/src/ch19-00-patterns.md">19장 패턴</span>, <span class="file" data-local="the-rust-book/src/ch20-00-advanced-features.md">20장 고급 기능</span>, <span class="file" data-local="the-rust-book/src/ch21-00-final-project-a-web-server.md">21장 웹 서버 프로젝트</span></li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>캡스톤(capstone)</b>은 배운 것을 한 프로젝트에 모아 스스로 확장하는 마무리 과제입니다. 이 코스의 캡스톤은 레슨 11의 Task API를 출발점으로 삼습니다. 원본(<span class="file">lesson11</span>)은 레슨 설명과 1:1로 맞춰 둔 기준 코드이므로 건드리지 않고, 폴더를 복사한 <span class="file">capstone</span>에서 작업합니다. 확장 과제는 네 갈래입니다. (A) 목록에 <code>done</code> 필터와 <code>limit</code>·<code>offset</code>(쿼리 파라미터), (B) 저장소 추상화(<code>TaskRepository</code> trait), (C) 영속화(파일에 저장), (D) 운영 습관(요청 로그, 종료 처리, <code>Query</code> 에러의 JSON 통일).</p>
+        <p>이 레슨의 <span class="file">lab/lesson12</span>는 axum 없이 표준 라이브러리만으로 만든 "도구 상자" 크레이트입니다. 쿼리 문자열 해석과 필터·페이지 계산(<code>query.rs</code>), Task 한 줄 변환(<code>codec.rs</code>), 저장소 trait과 메모리 구현(<code>repo.rs</code>)이 들어 있고 모두 테스트가 통과합니다. 파일 저장소(<code>FileRepository</code>)만 <code>todo!()</code>로 비워 두었고 해당 테스트는 <code>#[ignore]</code>입니다. 미완성이어도 <code>cargo test</code>가 깨지지 않도록 한 것입니다.</p>
+        <p><b>rustlings</b>는 "고쳐야 컴파일되는 작은 연습 코드"를 한 문제씩 푸는 공식 연습 도구입니다. 클론해 둔 <span class="file">rustlings</span> 폴더는 도구의 <b>소스 저장소</b>이고, 직접 푸는 연습 폴더는 <code>rustlings init</code>이 별도로 만듭니다. 이 레슨은 설치와 진행 순서를 공식 문서와 클론한 파일로 확인해 정리만 하며, 전역 설치는 이 PC에서 실행하지 않았습니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>이 레슨은 "내 크레이트 만들기 → 읽고 실행하기 → 점검하기 → 다음 계획 세우기" 순서입니다. 코딩이 필요한 확장 과제 두 가지는 아래 "연습 문제"에서 직접 풉니다. 터미널은 <span class="file">lab</span> 폴더에서 엽니다. <code>cargo</code>를 못 찾는 터미널은 레슨 01의 안내를 따르세요.</p>
+        <ol class="steps">
+          <li>
+            <strong>출발점 점검: 레슨 11이 깨끗한지 확인 (이전 단계 의존 없음)</strong>
+            <p>터미널(<kbd class="key">Ctrl+`</kbd>)에서 <span class="file">lab</span> 폴더로 이동해 세 명령을 차례로 실행합니다. 앞의 두 명령은 문제가 없으면 아무것도 출력하지 않고(clippy는 검사 진행 로그만) 끝나고, 마지막 명령이 테스트 결과를 보여 줍니다.</p>
+<pre class="code" data-lang="bash">cd lab
+cargo fmt -p lesson11 -- --check
+cargo clippy -p lesson11 --all-targets -- -D warnings
+cargo test -p lesson11 --test api</pre>
+<pre class="output" data-src="lab/lesson11/expected/test.txt">     Running tests\api.rs (...)
+
+running 14 tests
+test unknown_task_returns_404_json ... ok
+test missing_content_type_returns_415 ... ok
+test put_is_not_allowed ... ok
+test health_returns_ok ... ok
+test create_sets_location_header ... ok
+test create_rejects_empty_title ... ok
+test invalid_id_returns_400_json ... ok
+test list_is_empty_array_then_ordered_by_id ... ok
+test patch_updates_only_the_sent_fields ... ok
+test delete_then_get_returns_404 ... ok
+test create_then_get_task ... ok
+test create_limits_title_to_100_characters ... ok
+test create_rejects_broken_json_and_unknown_fields ... ok
+test patch_checks_body_before_looking_up_the_task ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+            <p>이 14개 통과가 캡스톤의 출발선입니다. 확장하면서 이 테스트가 하나라도 깨지면 기존 기능을 망가뜨린 것입니다.</p>
+          </li>
+          <li>
+            <strong>캡스톤 폴더 만들기: 복사, 이름 바꾸기, 등록 (1단계 의존)</strong>
+            <p>탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson11</span>을 클릭하고 <kbd class="key">Ctrl+C</kbd>를 누른 뒤 <span class="file">lab</span> 폴더를 클릭해 <kbd class="key">Ctrl+V</kbd>를 누릅니다. <span class="file">lesson11 copy</span> 같은 이름의 폴더가 생기면 선택하고 <kbd class="key">F2</kbd>로 <code>capstone</code>으로 바꿉니다. 복사된 <span class="file">fail</span>과 <span class="file">expected</span> 폴더는 레슨 설명용이라 <span class="file">capstone</span> 안에서 삭제합니다(우클릭 → <b>삭제</b>).</p>
+            <p>이제 이름 <code>lesson11</code>을 <code>capstone</code>으로 한꺼번에 바꿉니다. <kbd class="key">Ctrl+Shift+H</kbd>로 전체 바꾸기를 열고 위 입력란에 <code>lesson11</code>, 아래 입력란에 <code>capstone</code>을 적습니다. 검색창 아래의 <b>세부 정보 전환</b>(<code>...</code>) 버튼을 눌러 나오는 <b>포함할 파일</b> 입력란에 <code>lab/capstone</code>을 적어 범위를 좁히세요. 이 범위 설정을 빼먹으면 원본 <span class="file">lesson11</span>까지 바뀌니 꼭 확인합니다. 결과 목록에서 <span class="file">Cargo.toml</span>, <span class="file">src/main.rs</span>, <span class="file">tests/api.rs</span>, <span class="file">requests.http</span>만 나오는지 보고 <b>모두 바꾸기</b>를 누릅니다.</p>
+            <p>마지막으로 워크스페이스에 등록합니다. <span class="file">lab/Cargo.toml</span>의 <code>members = ["lesson*"]</code> 줄을 <code>members = ["lesson*", "capstone"]</code>로 고치고 저장합니다. <code>capstone</code>은 <code>lesson</code>으로 시작하지 않아 글롭에 안 걸리기 때문입니다. 확인합니다.</p>
+<pre class="code" data-lang="bash">cargo test -p capstone --test api</pre>
+<pre class="output" data-src="lab/lesson12/expected/capstone_baseline.txt">     Running tests\api.rs (...)
+
+running 14 tests
+test missing_content_type_returns_415 ... ok
+test unknown_task_returns_404_json ... ok
+test health_returns_ok ... ok
+test put_is_not_allowed ... ok
+test invalid_id_returns_400_json ... ok
+test create_sets_location_header ... ok
+test create_rejects_empty_title ... ok
+test create_rejects_broken_json_and_unknown_fields ... ok
+test patch_updates_only_the_sent_fields ... ok
+test delete_then_get_returns_404 ... ok
+test list_is_empty_array_then_ordered_by_id ... ok
+test create_limits_title_to_100_characters ... ok
+test create_then_get_task ... ok
+test patch_checks_body_before_looking_up_the_task ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+            <p>복사본이 원본과 똑같이 14개를 통과하면 준비 완료입니다. 이 흐름(폴더 복사 → 전체 바꾸기 → 등록)은 임시 폴더에서 같은 순서로 재현해 확인했습니다.</p>
+          </li>
+          <li>
+            <strong>도구 상자 읽고 실행하기 (이전 단계와 독립)</strong>
+            <p><span class="file">lab/lesson12/src/query.rs</span>를 엽니다. <code>TaskQuery::parse</code>는 <code>done=true&amp;limit=2</code> 같은 쿼리 문자열을 구조체로 바꾸고, 잘못된 값은 <code>QueryError</code>로 돌려줍니다. 실제 axum 핸들러에서는 <code>Query&lt;T&gt;</code> 추출기가 이 일을 대신하지만, 손으로 해 보면 추출기가 하는 일이 보입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson12/src/query.rs" data-lines="32-52">impl TaskQuery {
+    /// `done=true&amp;limit=2&amp;offset=1&amp;q=책` 같은 쿼리 문자열을 해석합니다.
+    pub fn parse(query: &amp;str) -&gt; Result&lt;TaskQuery, QueryError&gt; {
+        let mut parsed = TaskQuery::default();
+        for pair in query.split('&amp;').filter(|pair| !pair.is_empty()) {
+            let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
+            let invalid = || QueryError::InvalidValue {
+                key: key.to_string(),
+                value: value.to_string(),
+            };
+            match key {
+                "done" =&gt; parsed.done = Some(value.parse().map_err(|_| invalid())?),
+                "q" =&gt; parsed.search = Some(value.to_string()),
+                "limit" =&gt; parsed.limit = Some(value.parse().map_err(|_| invalid())?),
+                "offset" =&gt; parsed.offset = value.parse().map_err(|_| invalid())?,
+                other =&gt; return Err(QueryError::UnknownKey(other.to_string())),
+            }
+        }
+        Ok(parsed)
+    }
+}</pre>
+            <p><code>run_query</code>는 필터와 검색을 먼저 적용하고, 남은 개수(<code>total</code>)를 센 뒤에 <code>offset</code>/<code>limit</code>으로 자릅니다. 순서가 중요합니다. <code>total</code>을 자른 뒤에 세면 "전체 몇 건"을 알 수 없습니다. 레슨 08에서 배운 <code>filter</code>·<code>skip</code>·<code>take</code>·<code>collect</code>가 그대로 쓰였습니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson12/src/query.rs" data-lines="60-80">/// 필터와 검색을 먼저 적용한 뒤, 남은 개수(total)를 세고 나서 offset/limit으로 자릅니다.
+pub fn run_query(tasks: &amp;[Task], query: &amp;TaskQuery) -&gt; Page&lt;Task&gt; {
+    let matched: Vec&lt;&amp;Task&gt; = tasks
+        .iter()
+        .filter(|task| query.done.is_none_or(|done| task.done == done))
+        .filter(|task| {
+            query
+                .search
+                .as_ref()
+                .is_none_or(|word| task.title.contains(word.as_str()))
+        })
+        .collect();
+    let total = matched.len();
+    let items = matched
+        .into_iter()
+        .skip(query.offset)
+        .take(query.limit.unwrap_or(usize::MAX))
+        .cloned()
+        .collect();
+    Page { items, total }
+}</pre>
+            <p><span class="file">src/repo.rs</span>에는 저장소 trait이 있습니다. Spring Data의 <code>Repository</code> 인터페이스에 해당합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson12/src/repo.rs" data-lines="5-10">pub trait TaskRepository {
+    fn list(&amp;self) -&gt; Vec&lt;Task&gt;;
+    fn insert(&amp;mut self, title: &amp;str) -&gt; Task;
+    fn find(&amp;self, id: u64) -&gt; Option&lt;Task&gt;;
+    fn remove(&amp;mut self, id: u64) -&gt; bool;
+}</pre>
+            <p><code>list</code> 같은 메서드 이름 위에 커서를 두고 <kbd class="key">Ctrl+F12</kbd>를 누르면 구현체 목록이 나옵니다(레슨 07). <code>InMemoryRepository</code>와 아직 비어 있는 <code>FileRepository</code>가 보입니다. 이제 전부 실행합니다.</p>
+<pre class="code" data-lang="bash">cargo test -p lesson12</pre>
+<pre class="output" data-src="lab/lesson12/expected/test.txt">     Running unittests src\lib.rs (...)
+
+running 7 tests
+test repo::tests::file_repository_follows_the_contract ... ignored, 과제 3: FileRepository를 구현한 뒤 ignore를 지우고 실행하세요
+test codec::tests::decode_rejects_broken_lines ... ok
+test query::tests::parse_reports_bad_input ... ok
+test query::tests::parse_reads_every_key ... ok
+test codec::tests::encode_then_decode_round_trips ... ok
+test query::tests::run_query_filters_then_pages ... ok
+test repo::tests::in_memory_repository_follows_the_contract ... ok
+
+test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests lesson12
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+            <p><code>6 passed</code>와 <code>1 ignored</code>입니다. 무시된 테스트가 바로 파일 저장소 과제(연습 문제 2)의 테스트입니다. 무시된 테스트만 돌려 보면 지금은 이렇게 실패합니다. <code>todo!()</code>가 만드는 패닉 메시지에 무엇을 해야 하는지 적어 두었습니다.</p>
+<pre class="code" data-lang="bash">cargo test -p lesson12 --lib -- --ignored</pre>
+<pre class="output" data-src="lab/lesson12/expected/file_repo_todo.txt">     Running unittests src\lib.rs (...)
+
+running 1 test
+test repo::tests::file_repository_follows_the_contract ... FAILED
+
+failures:
+
+---- repo::tests::file_repository_follows_the_contract stdout ----
+
+thread 'repo::tests::file_repository_follows_the_contract' (...) panicked at lesson12\src\repo.rs:66:9:
+not yet implemented: 과제 3: 새 id를 정하고 encode_task한 줄을 파일 끝에 덧붙입니다
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    repo::tests::file_repository_follows_the_contract
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p lesson12 --lib`</pre>
+          </li>
+          <li>
+            <strong>평가표로 내 결과물 점검하기 (2단계, 연습 문제 뒤에 반복)</strong>
+            <p>연습 문제를 푼 뒤 아래 표로 <span class="file">capstone</span>을 점검합니다. "통과"는 모든 확장 과제의 최소 기준이고, "우수"는 여유가 있을 때의 목표입니다. 확인 방법의 명령은 모두 이 레슨에서 실제로 실행해 본 것들입니다.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>평가 항목</th><th>통과 기준</th><th>확인 방법</th><th>우수 기준</th></tr></thead>
+                <tbody>
+                  <tr><td>1. 동작</td><td>엔드포인트 6개가 <span class="file">requests.http</span>의 기대 상태 코드대로 동작</td><td><kbd class="key">Ctrl+Alt+R</kbd>로 요청을 차례로 보내 확인</td><td>새 쿼리(<code>done</code>·<code>limit</code>·<code>offset</code>)도 요청 파일에 추가</td></tr>
+                  <tr><td>2. 테스트</td><td><code>cargo test -p capstone</code> 전부 통과</td><td>터미널 또는 작업 <b>cargo: test all</b></td><td>새 기능마다 테스트 1개 이상, 실패 경로(경계값) 포함</td></tr>
+                  <tr><td>3. 정적 검사</td><td><code>cargo fmt -p capstone -- --check</code>가 조용하고 <code>cargo clippy -p capstone --all-targets -- -D warnings</code> 통과</td><td>작업 <b>cargo: clippy all</b></td><td><code>unwrap</code>을 서버 코드에서 최소화(<code>expect</code>에 이유)</td></tr>
+                  <tr><td>4. 설계</td><td>모듈 분리, 비공개 필드, 에러 enum, <code>.await</code> 너머로 락을 쥐지 않음</td><td>코드 읽기(레슨 09, 10, 11 기준)</td><td>저장소를 trait 뒤로 숨겨 구현 교체 가능</td></tr>
+                  <tr><td>5. 사용성</td><td>서버가 <code>PORT</code>로 포트 변경 가능하고 시작 메시지를 출력</td><td><code>PORT=4000</code>(bash), <code>$env:PORT</code>(PowerShell)로 실행</td><td>README에 실행·테스트 명령 3줄</td></tr>
+                  <tr><td>6. 설명 가능성</td><td>선택한 설계를 Spring·FastAPI와 비교해 3문장으로 설명</td><td>내 말로 말해 보기</td><td>다른 선택지(예: <code>Mutex</code> 대신 채널)와 비교</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </li>
+          <li>
+            <strong>rustlings로 이어가기: 설치 순서와 진행 계획 세우기 (이전 단계와 독립)</strong>
+            <p>공식 문서(setup, usage 페이지)가 안내하는 순서입니다. 이 PC에는 설치하지 않았으니 내 PC에서 직접 실행합니다. <code>cargo install</code>은 도구를 사용자 폴더(<span class="file">.cargo\bin</span>)에 컴파일해 설치하므로 몇 분 걸릴 수 있습니다. 먼저 <b>연습 폴더 위치</b>를 정합니다. <code>rustlings init</code>은 현재 위치 아래에 <span class="file">rustlings</span>라는 폴더를 새로 만들기 때문에, 이미 <span class="file">D:\study\rust\rustlings</span>(클론한 소스 저장소)가 있는 이 코스 폴더 안에서는 실행하지 마세요. 코스 폴더 밖에 새 폴더를 만들어 그 안에서 실행합니다.</p>
+<pre class="code" data-lang="powershell">cd D:\study
+mkdir rust-practice
+cd rust-practice
+cargo install rustlings
+rustlings init
+cd rustlings
+rustlings</pre>
+<pre class="code" data-lang="bash">cd /d/study
+mkdir rust-practice
+cd rust-practice
+cargo install rustlings
+rustlings init
+cd rustlings
+rustlings</pre>
+            <p>두 블록은 같은 순서입니다. 다른 점은 첫 줄의 경로 표기뿐입니다(PowerShell은 <code>D:\study</code>, MSYS2 bash는 <code>/d/study</code>). <code>rustlings init</code>이 끝나면 <span class="file">D:\study\rust-practice\rustlings</span> 폴더가 생깁니다. VS Code로 이 폴더를 새로 엽니다(<kbd class="key">Ctrl+K Ctrl+O</kbd>). 이 코스 폴더의 <span class="file">.vscode/settings.json</span>은 <span class="file">lab</span>만 읽도록 되어 있으므로, 연습 폴더는 따로 열어야 rust-analyzer가 연습 코드를 분석합니다. 마지막 <code>rustlings</code> 명령이 문서에서 말하는 감시 모드(watch mode)입니다. 정해진 순서대로 연습을 보여 주고, 파일을 저장할 때마다 현재 연습을 다시 검사합니다. 문서에 따르면 감시 모드에서 <code>h</code>를 입력하면 힌트가, <code>l</code>을 입력하면 연습 목록이 나옵니다.</p>
+            <p>연습 순서는 클론한 <span class="file">rustlings/rustlings-macros/info.toml</span>에 적혀 있습니다. 이 클론 기준으로 연습이 95개이고, 이 코스의 레슨과 아래처럼 겹칩니다. 퀴즈는 <code>quiz1</code>이 <code>if3</code> 뒤, <code>quiz2</code>가 <code>hashmaps3</code> 뒤, <code>quiz3</code>이 <code>traits5</code> 뒤에 있습니다.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>이 코스의 레슨</th><th>rustlings 폴더(<code>exercises/</code> 아래)</th><th>연습 이름</th></tr></thead>
+                <tbody>
+                  <tr><td>02·03 (cargo, 기본 문법)</td><td><code>00_intro</code>, <code>01_variables</code>, <code>02_functions</code>, <code>03_if</code>, <code>04_primitive_types</code></td><td><code>intro1</code>~, <code>variables1</code>~<code>6</code>, <code>functions1</code>~<code>5</code>, <code>if1</code>~<code>3</code>, <b>quiz1</b>, <code>primitive_types1</code>~<code>6</code></td></tr>
+                  <tr><td>04 (소유권)</td><td><code>05_vecs</code>, <code>06_move_semantics</code></td><td><code>vecs1</code>~<code>2</code>, <code>move_semantics1</code>~<code>5</code></td></tr>
+                  <tr><td>05 (구조체·열거형)</td><td><code>07_structs</code>, <code>08_enums</code>, <code>12_options</code></td><td><code>structs1</code>~<code>3</code>, <code>enums1</code>~<code>3</code>, <code>options1</code>~<code>3</code></td></tr>
+                  <tr><td>06 (컬렉션·에러)</td><td><code>09_strings</code>, <code>11_hashmaps</code>, <code>13_error_handling</code></td><td><code>strings1</code>~<code>4</code>, <code>hashmaps1</code>~<code>3</code>, <b>quiz2</b>, <code>errors1</code>~<code>6</code></td></tr>
+                  <tr><td>07 (trait·제네릭)</td><td><code>14_generics</code>, <code>15_traits</code>, <code>16_lifetimes</code></td><td><code>generics1</code>~<code>2</code>, <code>traits1</code>~<code>5</code>, <b>quiz3</b>, <code>lifetimes1</code>~<code>3</code></td></tr>
+                  <tr><td>08 (이터레이터)</td><td><code>18_iterators</code></td><td><code>iterators1</code>~<code>5</code></td></tr>
+                  <tr><td>09 (모듈·테스트)</td><td><code>10_modules</code>, <code>17_tests</code></td><td><code>modules1</code>~<code>3</code>, <code>tests1</code>~<code>3</code></td></tr>
+                  <tr><td>10 (동시성)</td><td><code>19_smart_pointers</code>, <code>20_threads</code>, <code>24_async</code></td><td><code>smart_pointers1</code>~<code>4</code>, <code>threads1</code>~<code>3</code>, <code>async1</code></td></tr>
+                  <tr><td>이 코스 밖(다음 단계)</td><td><code>21_macros</code>, <code>22_clippy</code>, <code>23_conversions</code></td><td><code>macros1</code>~<code>4</code>, <code>clippy1</code>~<code>3</code>, <code>conversions1</code>~<code>5</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>추천 진행 방식은 <b>레슨을 마친 뒤 해당 폴더 연습을 푸는 것</b>입니다. 문서에서 말하듯 rustlings는 Rust Book을 읽는 일과 병행하라고 만든 도구라, 이 코스의 레슨이 곧 그 책의 요약 역할을 합니다. 막히면 감시 모드에서 힌트(<code>h</code>)를 보기 전에 클론한 <span class="file" data-local="rustlings/exercises/15_traits/traits1.rs">rustlings/exercises/15_traits/README.md</span>처럼 폴더별 README를 먼저 읽어 보세요. 클론 폴더의 <span class="file">rustlings/solutions</span>에는 정답이 들어 있으니 풀기 전에는 열지 않는 것을 권합니다.</p>
+          </li>
+          <li>
+            <strong>VS Code 종합 미션: 마우스 없이 5분 (모든 단계 의존)</strong>
+            <p>마우스에서 손을 떼고 타이머를 5분으로 맞춘 뒤 아래 순서대로 합니다. 각 줄이 이 코스에서 배운 단축키 한 가지씩입니다. 막히면 치트시트(<a href="vscode-cheatsheet.html">VS Code 단축키·설정 치트시트</a>)를 보되, 마우스는 쓰지 않습니다.</p>
+            <ol>
+              <li><kbd class="key">Ctrl+P</kbd>로 <code>handlers.rs</code>를 입력해 <span class="file">lab/lesson11/src/handlers.rs</span>를 엽니다(레슨 00).</li>
+              <li><kbd class="key">Ctrl+Shift+O</kbd>로 <code>validate_title</code>을 찾아 이동합니다(레슨 05).</li>
+              <li>파일 안의 <code>ApiError</code> 위에 커서를 두고 <kbd class="key">F12</kbd>로 정의로 갔다가 <kbd class="key">Alt+←</kbd>로 돌아옵니다(레슨 05).</li>
+              <li><kbd class="key">Shift+F12</kbd>로 <code>ApiError</code>를 쓰는 모든 곳을 봅니다(레슨 05).</li>
+              <li><kbd class="key">Ctrl+Shift+B</kbd>로 <b>cargo: check all</b>을 실행하고 <code>Finished</code>를 확인합니다(레슨 11).</li>
+              <li><kbd class="key">Ctrl+Shift+F</kbd>로 검색 보기를 열고 검색창에 <code>todo!</code>를 입력합니다. 이 폴더에는 클론한 <span class="file">rustlings</span>, <span class="file">axum</span> 등이 같이 있어서 범위를 정하지 않으면 그 결과(수십 건)가 섞입니다. 검색창 아래의 <b>세부 정보 전환</b>(<code>...</code>) 버튼을 눌러 나오는 <b>포함할 파일</b> 입력란에 <code>lab/lesson12</code>를 적으면, 결과가 <span class="file">repo.rs</span> 한 파일의 4건(파일 저장소의 <code>todo!()</code> 네 곳)으로 줄어듭니다. 연습 문제 2를 풀어 이미 구현했다면 0건입니다(레슨 11).</li>
+              <li><kbd class="key">Ctrl+Shift+P</kbd>로 <code>Tasks: Run Test Task</code>를 실행해 전체 테스트를 돌립니다(레슨 11).</li>
+              <li><kbd class="key">F9</kbd>로 중단점을 걸고 <kbd class="key">Ctrl+Shift+D</kbd>로 실행 및 디버그 보기를 연 뒤 <kbd class="key">F5</kbd>로 <b>Rust: Task API 디버그</b>를 시작했다가 <kbd class="key">Shift+F5</kbd>로 끝냅니다(레슨 10, 11). 서버를 켜 둔 터미널이 있다면 먼저 끝냅니다.</li>
+            </ol>
+            <p>5분 안에 여덟 가지를 모두 해냈다면 성공입니다. 못한 항목의 단축키만 골라 다시 연습하세요. 아래 "설정 체험하기"에서 배우는 <kbd class="key">Ctrl+K Ctrl+S</kbd>(단축키 편집기)로 내가 자주 쓰는 동작에 키를 직접 붙일 수도 있습니다. 다만 이 코스에서는 연습용 임시 프로필 안에서만 실습하고, 평소 단축키 설정은 직접 고치지 않습니다.</p>
+          </li>
+          <li>
+            <strong>정리하기 (모든 단계 의존)</strong>
+            <p>이 레슨의 임시 파일이 다른 레슨의 검사까지 깨뜨리지 않도록 정리합니다. 확장 과제용 <span class="file">lab/capstone</span>은 의도적으로 남기는 폴더입니다. 그러니 <code>cargo test -p capstone --test api</code>가 계속 통과하는 상태로 두세요(연습 중 미완성이라면 통과하는 지점까지 되돌립니다). 2단계의 이름 바꾸기에서 같이 복사된 <span class="file">fail</span>, <span class="file">expected</span> 폴더는 이미 삭제했어야 합니다. 이 폴더들의 <span class="file">.rs.txt</span>와 <span class="file">.txt</span> 파일은 컴파일 대상이 아니라 검사에 영향은 없지만, 헷갈리지 않도록 지웁니다. 다른 레슨에서 남겨 둔 <span class="file">src/bin/mine.rs</span>, <span class="file">examples</span> 폴더가 있다면 같이 지우세요. <code>.bak</code>이나 <code>my_</code> 이름의 임시 파일을 만들었다면 그것도 지웁니다. rustlings 연습 폴더(<span class="file">D:\study\rust-practice</span>)는 코스 폴더 밖이라 영향이 없습니다. 연습용 임시 프로필은 "VS Code 기능" 절의 마지막 항목대로 삭제합니다.</p>
+<p>정리가 끝났는지 <b>증거</b>로 확인합니다. 에디터를 클릭해 포커스를 두고 <kbd class="key">Ctrl+Shift+B</kbd>를 눌러 기본 빌드 작업 <b>cargo: check all</b>을 실행합니다. 터미널 패널 마지막에 <code>Finished</code>가 나오고 <code>error</code>가 없어야 합니다. 이어서 <kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열어 <code>Tasks: Run Test Task</code>를 실행하면 기본 테스트 작업 <b>cargo: test all</b>이 돌고, 모든 <code>test result:</code> 줄이 <code>ok</code>이어야 합니다(<code>test result: FAILED</code>가 한 줄이라도 있으면 남은 임시 파일이 없는지 다시 찾아봅니다). 이 두 작업은 <span class="file">lab</span>의 모든 레슨 크레이트를 한꺼번에 검사하므로, 임시 파일이 하나라도 깨진 채 남아 있으면 다른 레슨의 검사까지 실패합니다. 명령 팔레트에서 <code>Tasks: Run Task</code>를 실행했을 때 목록에 <b>cargo: check all</b>과 <b>cargo: test all</b> 그리고 <b>cargo: clippy all</b>과 <b>cargo: run task api</b>가 그대로 보이면 작업 설정(<span class="file">.vscode/tasks.json</span>)도 건드리지 않은 것입니다.</p>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong>이 페이지의 "자주 나는 오류"를 먼저 확인하세요. 확장 과제를 막 시작했을 때는 먼저 원본 <span class="file">lesson11</span>에서 같은 테스트가 통과하는지 확인하면 문제가 내 변경 때문인지 판단하기 쉽습니다.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>확장 주제</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Rust / axum</th></tr></thead>
+            <tbody>
+              <tr><td>페이지네이션</td><td><code>Pageable</code>, <code>PageRequest.of(page, size)</code></td><td>쿼리 파라미터 <code>skip</code>·<code>limit</code>을 함수 인자로</td><td><code>Query&lt;ListParams&gt;</code>의 <code>limit</code>·<code>offset</code></td></tr>
+              <tr><td>저장소 추상화</td><td><code>interface TaskRepository</code> + 구현체 빈</td><td>추상 클래스나 <code>Protocol</code></td><td><code>trait TaskRepository</code> + 구현체</td></tr>
+              <tr><td>영속화</td><td>Spring Data JPA, JDBC</td><td>SQLAlchemy 등</td><td>파일, 또는 <code>sqlx</code> 같은 크레이트(axum 예제 <code>sqlx-postgres</code> 참고)</td></tr>
+              <tr><td>요청 로그</td><td>SLF4J + 로깅 필터</td><td>uvicorn 접근 로그, <code>logging</code></td><td><code>tracing</code> + <code>tower_http::trace::TraceLayer</code> (예제 <code>tracing-aka-logging</code>)</td></tr>
+              <tr><td>우아한 종료</td><td><code>server.shutdown=graceful</code> 설정</td><td>uvicorn의 종료 훅(lifespan)</td><td><code>with_graceful_shutdown</code> (예제 <code>graceful-shutdown</code>)</td></tr>
+              <tr><td>입력 검증</td><td>Bean Validation(<code>@Valid</code>)</td><td>pydantic 필드 제약</td><td>직접 작성하거나 <code>validator</code> 크레이트(예제 <code>validator</code>)</td></tr>
+              <tr><td>프로젝트 구조</td><td>Controller → Service → Repository 계층, 컴포넌트 스캔</td><td>routers / services 폴더 관례</td><td>프레임워크 규칙 없음: 모듈과 가시성으로 직접 설계</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>위 표는 확장 과제에서 만날 개념을 짝지은 안내이며, 실행해 확인한 것은 Rust 쪽의 <code>done</code> 필터와 <code>limit</code>·<code>offset</code>(과제 A)과 파일 저장소(과제 C)뿐입니다. 나머지 크레이트와 설정은 이 코스에서 설치하거나 실행하지 않았고, axum 예제의 파일 위치만 클론한 폴더에서 확인했습니다.</p>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ① — 정답 구조가 정해져 있지 않습니다</strong>Spring에는 계층과 컴포넌트 스캔이라는 정해진 틀이 있지만 axum에는 없습니다. 같은 Task API를 한 파일로 만들 수도, 계층으로 나눌 수도 있습니다. 평가표의 "설계" 항목은 정해진 답이 아니라 "왜 이렇게 나눴는지 설명할 수 있는가"를 묻습니다.</div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ② — 예제를 그대로 복사하면 버전이 안 맞을 수 있습니다</strong>클론한 axum 예제는 개발 중인 main 브랜치입니다. 이 코스의 <code>Cargo.lock</code>은 0.8.9로 고정되어 있으니, 예제의 아이디어를 가져오되 시그니처는 <a href="https://docs.rs/axum/0.8.9/axum/">0.8.9 문서</a>로 확인하세요(예: <code>axum::serve</code>의 반환 타입).</div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ③ — "돌아간다"가 끝이 아닙니다</strong>Rust에서는 컴파일이 통과해도 <code>fmt</code>, <code>clippy</code>, <code>test</code> 세 가지를 모두 통과해야 완성으로 칩니다. Gradle의 <code>check</code> 작업(테스트와 린트를 한 번에)이 하는 일을 이 세 명령이 나눠 합니다.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 설정 JSON, 프로필, 스니펫, keybindings.json</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>명령 팔레트</td><td><kbd class="key">Ctrl+Shift+P</kbd></td><td><code>Preferences: Open User Settings (JSON)</code>, <code>Profiles: Switch Profile</code>, <code>Snippets: Configure Snippets</code> 같은 명령을 실행할 때</td></tr>
+                <tr><td>설정 열기</td><td><kbd class="key">Ctrl+,</kbd></td><td>설정 UI에서 값을 바꾸고 JSON과 비교할 때</td></tr>
+                <tr><td>단축키 편집기</td><td><kbd class="key">Ctrl+K Ctrl+S</kbd></td><td>키 충돌 확인, 단축키 추가·변경, <code>keybindings.json</code> 열기</td></tr>
+                <tr><td>전체 바꾸기</td><td><kbd class="key">Ctrl+Shift+H</kbd></td><td>여러 파일의 이름을 한꺼번에 바꿀 때(2단계)</td></tr>
+                <tr><td>자동완성·스니펫 제안</td><td><kbd class="key">Ctrl+Space</kbd></td><td>만든 스니펫이 목록에 나타나는지 확인할 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>이 레슨의 JSON 편집(설정, 스니펫, 단축키)은 모두 <b>연습용 임시 프로필 안에서만</b> 합니다. 내 평소 사용자 설정 파일(<code>settings.json</code>, <code>keybindings.json</code>, 사용자 스니펫)은 터미널 프로필 같은 개인 설정이 들어 있어서 이 코스에서는 직접 고치지 않습니다. 이 코스의 <span class="file">.vscode/settings.json</span>(워크스페이스 설정)도 건드리지 않습니다. 설정 화면에서 설정 이름 옆의 <b>Apply Setting to all Profiles</b>(모든 프로필에 적용) 동작은 쓰지 마세요. 공식 문서에 따르면 그 설정은 모든 프로필에 반영되어 기본 프로필까지 바뀝니다.</p>
+        </div>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>연습용 임시 프로필 만들기</strong>
+<div class="callout warn"><strong>먼저 연습용 임시 프로필을 만듭니다 (내 평소 설정을 지키기 위해)</strong>이 코스는 사용자 전역 <code>settings.json</code>, <code>keybindings.json</code>, 사용자 스니펫을 직접 고치게 하지 않습니다. 설정 실험은 모두 <b>연습용 프로필</b> 안에서 하고, 끝나면 그 프로필을 삭제합니다. VS Code 공식 문서는 프로필 안에서 바꾼 설정과 확장이 현재 활성 프로필에 저장된다고 설명하므로, 연습용 프로필에서 바꾼 값은 기본 프로필(내 평소 설정)에 기록되지 않습니다.</div>
+            <ol>
+              <li>왼쪽 아래 <b>관리(Manage)</b> 톱니 아이콘을 누르고 <b>Profiles</b>를 고릅니다. 메뉴의 <b>File</b> → <b>Preferences</b> → <b>Profiles</b>도 같은 곳입니다. 프로필 편집기가 열립니다.</li>
+              <li><b>New Profile</b> 버튼을 누르고 이름에 <code>연습용</code>을 적습니다. 복사할 원본은 기본 프로필(Default)로 고르고, 아래 <b>Contents</b>의 설정·키보드 단축키·스니펫·작업·확장 항목을 <b>모두 체크한 채</b> 둡니다. <b>Create</b>를 누릅니다.
+                <ul>
+                  <li>빈 프로필(Empty Profile)로 만들지 마세요. 공식 문서에 따르면 빈 프로필에는 설정·확장·스니펫이 하나도 없어서 rust-analyzer 같은 확장이 빠지고, 이 코스의 실험이 동작하지 않습니다.</li>
+                  <li>체크를 풀지 마세요. 공식 문서에 따르면 체크하지 않은 항목은 기본 프로필의 것을 그대로 쓰기 때문에, 그 항목을 이 프로필에서 고치면 기본 프로필이 바뀝니다.</li>
+                </ul>
+              </li>
+              <li>확인합니다. 관리 아이콘에 프로필 이름의 앞 두 글자가 배지로 보이고, 아이콘에 마우스를 올리면 프로필 이름이 나옵니다. 공식 문서는 기본 프로필을 쓰는 중에는 프로필 이름이 표시되지 않는다고 설명하므로, 이름이 보이면 연습용 프로필을 쓰는 중입니다. 프로필을 만들거나 고르면 현재 폴더에 연결되어 다음에 이 폴더를 열 때도 그 프로필이 쓰이므로, 실험이 끝나면 반드시 아래 순서로 삭제합니다.</li>
+            </ol>
+          </li>
+          <li>
+            <strong>프로필의 설정 JSON 열고 우선순위 확인하기 (연습용 프로필 안에서)</strong>
+            <p><kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열어 <code>Preferences: Open User Settings (JSON)</code>을 실행합니다. 프로필 안에서는 이 명령이 현재 프로필(연습용)의 설정 파일을 엽니다(VS Code 소스의 명령 설명: 현재 사용자 프로필의 설정 JSON). 기본 프로필에서 복사한 내용이 이미 들어 있을 수 있으니 기존 줄은 지우지 말고, 가장 바깥 중괄호 안에 아래 줄을 추가하고 저장합니다. 이 코스의 포맷터(rustfmt)가 한 줄을 기본 100칸으로 맞추므로, 100칸 위치에 세로 안내선이 생깁니다.</p>
+<pre class="code" data-lang="json">"editor.rulers": [100]</pre>
+            <p>JSON에서 항목 사이에는 쉼표가 필요하니, 앞뒤에 다른 항목이 있다면 쉼표를 맞춰야 합니다. <kbd class="key">Ctrl+Space</kbd>를 누르면 설정 이름과 값이 자동완성되고 오타에는 물결선이 생깁니다. <code>.rs</code> 파일을 열면 100칸 위치에 안내선이 보입니다.</p>
+            <p>이제 우선순위를 확인합니다. VS Code 공식 문서에 따르면 뒤의 범위가 앞의 범위를 덮어씁니다(기본값 → 사용자 → 워크스페이스 → 언어별 사용자 → 언어별 워크스페이스 순). 이 코스의 워크스페이스 설정에는 <code>[rust]</code> 언어별 설정으로 저장 시 포맷이 켜져 있습니다. 연습용 프로필의 설정 JSON(위에서 연 파일)에 아래를 추가해 끄려고 해 보세요.</p>
+<pre class="code" data-lang="json">"[rust]": {
+  "editor.formatOnSave": false
+}</pre>
+            <p>저장한 뒤 <span class="file">lab/lesson09/src/main.rs</span>처럼 아무 <code>.rs</code> 파일에서 들여쓰기를 일부러 망가뜨리고 저장해 보세요(확인 후 <kbd class="key">Ctrl+Z</kbd>로 되돌립니다). 워크스페이스의 <code>[rust]</code>가 더 높은 우선순위라서 여전히 포맷되어야 합니다. 설정 화면(<kbd class="key">Ctrl+,</kbd>)에서 <code>@modified</code>를 검색하면 값이 바뀐 항목만 모아 볼 수 있고, 위쪽 <b>User</b>·<b>Workspace</b> 탭을 오가며 같은 설정이 범위별로 어떻게 다른지 비교할 수 있습니다. 여기서 <b>User</b> 탭은 현재 프로필(연습용)의 설정이라 이 실험은 평소 설정에 영향을 주지 않습니다. 이 항목의 두 줄은 되돌릴 필요가 없고 마지막 항목에서 프로필째 삭제합니다.</p>
+          </li>
+          <li>
+            <strong>스니펫 만들기 (연습용 프로필 안에서)</strong>
+            <p><kbd class="key">Ctrl+Shift+P</kbd>로 <code>Snippets: Configure Snippets</code>를 실행하고 목록에서 언어 <code>rust</code>를 고르면 현재 프로필의 <span class="file">rust.json</span>이 열립니다(프로필의 콘텐츠에 스니펫이 포함됩니다). 내용(주석만 있는 기본 틀)을 아래로 채웁니다. 테스트 함수와 oneshot 요청 도우미 호출의 뼈대입니다. <code>tfn</code>은 rust-analyzer가 이미 쓰는 이름일 수 있어 <code>mytest</code>와 <code>myreq</code>라는 접두어를 썼습니다.</p>
+<pre class="code" data-lang="json">{
+  "Rust 테스트 함수": {
+    "prefix": "mytest",
+    "body": ["#[tokio::test]", "async fn ${1:이름}() {", "\tlet app = ${2:crate_name}::app();", "\t$0", "}"],
+    "description": "axum 통합 테스트 함수 뼈대"
+  },
+  "oneshot 요청": {
+    "prefix": "myreq",
+    "body": ["let (status, body) = send(&amp;app, Method::${1:GET}, \"${2:/tasks}\", ${3:None}).await;", "assert_eq!(status, StatusCode::${4:OK});"],
+    "description": "send 도우미로 요청 보내고 상태 확인"
+  }
+}</pre>
+            <p><span class="file">tests/api.rs</span>에서 새 줄에 <code>mytest</code>를 입력하면 제안 목록에 스니펫이 나타납니다(안 보이면 <kbd class="key">Ctrl+Space</kbd>). 고르면 뼈대가 삽입되고, 커서는 <code>${1:이름}</code> 자리에서 시작해 <kbd class="key">Tab</kbd> 키를 누를 때마다 <code>$2</code>, <code>$0</code> 순서로 옮겨 갑니다. 이 JSON 문법(<code>prefix</code>, <code>body</code>, <code>${1:...}</code> 자리표시자)은 공식 스니펫 문서의 설명을 따랐고, 위 JSON이 문법적으로 올바른지는 파서로 검사했습니다. 프로젝트 안에서만 쓰는 스니펫은 <code>Snippets: Configure Snippets</code>의 <b>New Snippets file for ...</b> 항목으로 <span class="file">.vscode</span> 폴더에 <code>.code-snippets</code> 파일로 만들 수 있지만, 이 코스의 <span class="file">.vscode</span> 폴더에는 만들지 않습니다.</p>
+          </li>
+          <li>
+            <strong>keybindings.json에 내 단축키 추가하기 (연습용 프로필 안에서)</strong>
+            <p><kbd class="key">Ctrl+K Ctrl+S</kbd>로 단축키 편집기를 엽니다. 편집기 오른쪽 위의 <b>Open Keyboard Shortcuts (JSON)</b> 버튼(또는 명령 팔레트의 <code>Preferences: Open Keyboard Shortcuts (JSON)</code>)으로 현재 프로필의 <span class="file">keybindings.json</span>을 엽니다. 기본 프로필에서 복사한 항목이 이미 있다면 지우지 말고 배열 안에 항목만 추가하고, 비어 있으면 아래를 그대로 넣습니다. 커서 위치의 테스트를 실행하는 명령 <code>testing.runAtCursor</code>(레슨 09의 <kbd class="key">Ctrl+; C</kbd>와 같은 명령)에 <code>Rust</code> 파일에서만 동작하는 키를 하나 더 붙입니다.</p>
+<pre class="code" data-lang="json">[
+  {
+    "key": "ctrl+alt+t",
+    "command": "testing.runAtCursor",
+    "when": "editorTextFocus &amp;&amp; editorLangId == rust"
+  }
+]</pre>
+            <p><code>when</code>은 "언제 이 키를 쓸지" 조건이고, <code>editorLangId == rust</code>는 Rust 파일에서만이라는 뜻입니다. 저장하면 VS Code가 바로 반영하고 재시작은 필요 없습니다(문서에서 확인). 새 키가 다른 단축키와 겹치는지는 단축키 편집기 검색창에서 <code>ctrl+alt+t</code>를 검색해 확인하세요. 겹친다면 다른 키로 바꿉니다. 이 키는 레슨 09에서 <code>rust-analyzer.testExplorer</code>를 켜서 테스트 보기가 동작할 때 쓸 수 있고, 이 PC에서는 직접 눌러 확인하지 못했습니다. 이 파일도 연습용 프로필의 것이라 되돌릴 필요 없이 프로필째 삭제합니다.</p>
+          </li>
+          <li>
+            <strong>연습용 임시 프로필 삭제하기 (실험이 끝나면 즉시)</strong>
+<ol>
+              <li><kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열고 <code>Profiles: Switch Profile...</code>을 실행해 목록에서 기본 프로필(<b>Default</b>)로 돌아옵니다. 프로필을 고르면 현재 폴더가 그 프로필에 연결되므로, 삭제하기 전에 기본 프로필로 먼저 돌아와야 폴더가 기본 프로필에 다시 연결됩니다.</li>
+              <li>확인합니다. 관리 아이콘의 두 글자 배지가 사라지고, 마우스를 올려도 프로필 이름이 나오지 않아야 합니다(기본 프로필).</li>
+              <li><kbd class="key">Ctrl+Shift+P</kbd>로 <code>Profiles: Delete Profile...</code>을 실행하고 드롭다운에서 <code>연습용</code>만 골라 삭제합니다. 프로필 편집기(관리 아이콘 → <b>Profiles</b>)에서 <code>연습용</code> 프로필의 더 보기 메뉴에 있는 <b>Delete Profile</b>을 써도 됩니다.</li>
+              <li>확인합니다. 프로필 편집기 목록에 <code>연습용</code>이 없어야 합니다. <kbd class="key">Ctrl+,</kbd>로 설정을 열어 방금 실험한 설정 이름을 검색하면 기본값(바뀌지 않은 상태)이어야 하고, 평소 쓰던 터미널 프로필 같은 개인 설정은 그대로 있어야 합니다.</li>
+            </ol>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <p>두 문제 모두 정답이 <span class="file">lab/lesson12</span> 안에 있습니다. 먼저 직접 풀고 열어 보세요.</p>
+        <h3>문제 1. 캡스톤 확장 A — 목록에 done 필터와 limit·offset 추가</h3>
+        <p>따라하기 2단계에서 만든 <span class="file">capstone</span>의 <code>GET /tasks</code>에 쿼리 파라미터 세 개를 추가하세요. <code>done</code>(<code>true</code>면 완료한 Task만, <code>false</code>면 미완료만), <code>limit</code>(최대 개수), <code>offset</code>(건너뛸 개수)입니다. 모두 생략할 수 있고, 생략하면 <code>done</code>은 거르지 않고 <code>offset</code>은 0, <code>limit</code>은 제한 없음으로 동작합니다. 레슨 11에는 쿼리 파라미터가 없으므로 <code>Query</code> 추출기를 새로 가져오는 일부터 시작합니다. <b>테스트를 먼저 쓰고</b> 실패하는 것을 본 뒤 구현하세요.</p>
+        <p><b>완료 조건:</b> 네 개의 Task(<code>하나, 둘, 셋, 넷</code>)를 만든 뒤 <code>/tasks?limit=2&amp;offset=1</code>이 <code>둘, 셋</code>을, <code>/tasks?offset=3</code>이 하나를 돌려주고, <code>/tasks?done=true</code>가 완료한 Task만 돌려주고, <code>cargo test -p capstone --test api</code>가 기존 14개와 새 테스트를 포함해 모두 통과한다. 잘못된 값(<code>/tasks?limit=abc</code>)은 axum의 기본 거절 응답(JSON이 아닌 텍스트 400)이 나가는 것도 확인합니다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p><span class="file">capstone/src/handlers.rs</span>에 쿼리를 담을 구조체 <code>ListParams</code>를 만들고(<code>Deserialize</code>를 붙입니다) <code>done: Option&lt;bool&gt;</code>, <code>limit: Option&lt;usize&gt;</code>, <code>offset: usize</code> 필드를 두세요. 쿼리에 없을 때 <code>offset</code>이 0이 되려면 필드에 <code>#[serde(default)]</code>가 필요합니다. 핸들러에서는 레슨 08의 <code>skip</code>과 <code>take</code>를 쓰면 되고, <code>limit</code>이 없을 때는 <code>unwrap_or(usize::MAX)</code>가 편합니다. 테스트에서 첫 단계는 <code>for title in [...]</code>로 네 번 <code>POST</code>하는 것입니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+            <p><span class="file">handlers.rs</span>를 세 곳 고칩니다. 먼저 맨 위의 <code>use axum::extract::{Path, State};</code>를 <code>use axum::extract::{Path, Query, State};</code>로 바꾸고, <code>use axum::http::{StatusCode, header};</code> 줄 아래에 <code>use serde::Deserialize;</code>를 추가합니다. 그리고 <code>list_tasks</code> 함수를 통째로 아래 코드(<code>ListParams</code> 구조체 포함)로 바꿉니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson12/solutions/capstone_list.rs.txt">#[derive(Debug, Deserialize)]
+pub struct ListParams {
+    done: Option&lt;bool&gt;,
+    limit: Option&lt;usize&gt;,
+    #[serde(default)]
+    offset: usize,
+}
+
+pub async fn list_tasks(
+    State(store): State&lt;TaskStore&gt;,
+    Query(params): Query&lt;ListParams&gt;,
+) -&gt; Json&lt;Vec&lt;Task&gt;&gt; {
+    let tasks = store
+        .list()
+        .into_iter()
+        .filter(|task| params.done.is_none_or(|done| task.done == done))
+        .skip(params.offset)
+        .take(params.limit.unwrap_or(usize::MAX))
+        .collect();
+    Json(tasks)
+}</pre>
+            <p><span class="file">tests/api.rs</span> 맨 아래에 추가하는 테스트입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson12/solutions/capstone_test.rs.txt">#[tokio::test]
+async fn list_can_filter_by_done() {
+    let app = capstone::app();
+    send(&amp;app, Method::POST, "/tasks", Some(r#"{"title": "첫째"}"#)).await;
+    send(&amp;app, Method::POST, "/tasks", Some(r#"{"title": "둘째"}"#)).await;
+    send(&amp;app, Method::PATCH, "/tasks/2", Some(r#"{"done": true}"#)).await;
+
+    let (_, all) = send(&amp;app, Method::GET, "/tasks", None).await;
+    assert_eq!(all.as_array().unwrap().len(), 2);
+
+    let (_, done) = send(&amp;app, Method::GET, "/tasks?done=true", None).await;
+    assert_eq!(done.as_array().unwrap().len(), 1);
+    assert_eq!(done[0]["title"], "둘째");
+
+    let (_, open) = send(&amp;app, Method::GET, "/tasks?done=false", None).await;
+    assert_eq!(open[0]["title"], "첫째");
+}
+
+#[tokio::test]
+async fn list_supports_limit_and_offset() {
+    let app = capstone::app();
+    for title in ["하나", "둘", "셋", "넷"] {
+        let body = format!(r#"{{"title": "{title}"}}"#);
+        send(&amp;app, Method::POST, "/tasks", Some(&amp;body)).await;
+    }
+
+    let (status, page) = send(&amp;app, Method::GET, "/tasks?limit=2&amp;offset=1", None).await;
+    assert_eq!(status, StatusCode::OK);
+    let titles: Vec&lt;&amp;str&gt; = page
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|task| task["title"].as_str().unwrap())
+        .collect();
+    assert_eq!(titles, vec!["둘", "셋"]);
+
+    let (_, rest) = send(&amp;app, Method::GET, "/tasks?offset=3", None).await;
+    assert_eq!(rest.as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn list_rejects_invalid_query_with_axum_default_response() {
+    let app = capstone::app();
+    let (status, body) = send(&amp;app, Method::GET, "/tasks?limit=abc", None).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body.is_string());
+}</pre>
+<pre class="output" data-src="lab/lesson12/expected/capstone_extended.txt">     Running tests\api.rs (...)
+
+running 17 tests
+test health_returns_ok ... ok
+test missing_content_type_returns_415 ... ok
+test invalid_id_returns_400_json ... ok
+test put_is_not_allowed ... ok
+test list_rejects_invalid_query_with_axum_default_response ... ok
+test create_sets_location_header ... ok
+test create_rejects_empty_title ... ok
+test create_rejects_broken_json_and_unknown_fields ... ok
+test create_limits_title_to_100_characters ... ok
+test create_then_get_task ... ok
+test list_can_filter_by_done ... ok
+test patch_updates_only_the_sent_fields ... ok
+test delete_then_get_returns_404 ... ok
+test patch_checks_body_before_looking_up_the_task ... ok
+test list_supports_limit_and_offset ... ok
+test list_is_empty_array_then_ordered_by_id ... ok
+test unknown_task_returns_404_json ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+            <p>위 세 곳과 테스트를 임시 <span class="file">capstone</span> 폴더에 그대로 적용해 <code>cargo fmt -- --check</code>, <code>clippy -D warnings</code>, 위 테스트(17개)가 모두 통과하는 것을 확인했습니다. 마지막 테스트가 보여 주듯 <code>Query</code>의 변환 실패는 <code>Path</code>와 달리 직접 감싸지 않았으므로 axum의 기본 거절 응답(텍스트 400)이 나갑니다. 이 응답을 레슨 11의 에러처럼 <code>{"error":"..."}</code> JSON으로 통일하는 일은 과제 D의 후보입니다. 서버에서는 <span class="file">requests.http</span>에 <code>GET {{host}}/tasks?done=true&amp;limit=2&amp;offset=1</code> 요청을 한 줄 더하면 직접 볼 수 있습니다.</p>
+          </div>
+        </details>
+        <h3>문제 2. 캡스톤 확장 C — 파일에 저장하는 저장소</h3>
+        <p><span class="file">lab/lesson12/src/repo.rs</span>의 <code>FileRepository</code>를 구현해 <code>TaskRepository</code>의 네 메서드가 동작하게 하세요. Task 한 건은 <span class="file">codec.rs</span>의 <code>encode_task</code>로 한 줄로 만들고 <code>decode_task</code>로 되돌립니다. 마지막에 같은 파일의 <code>#[ignore]</code> 줄을 지웁니다.</p>
+        <p><b>완료 조건:</b> <code>cargo test -p lesson12</code>가 <code>7 passed; 0 failed; 0 ignored</code>를 보여 준다. 파일을 다시 열어도(<code>FileRepository::open</code>을 한 번 더 호출해도) 저장된 Task가 남아 있다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>가장 쉬운 방법은 "전체를 읽어 <code>Vec&lt;Task&gt;</code>로 바꾸고, 고친 뒤, 전체를 다시 쓰는" 것입니다. 읽기는 <code>fs::read_to_string</code>과 <code>lines()</code>, 쓰기는 <code>fs::write</code>를 쓰고, 파일이 아직 없으면 빈 목록으로 취급하세요. 새 id는 현재 가장 큰 id에 1을 더합니다. 성능은 지금 신경 쓰지 않아도 됩니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+            <p><span class="file">repo.rs</span>에서 <code>/// 과제 3</code> 주석부터 <code>impl TaskRepository for FileRepository</code> 블록 끝까지를 아래로 교체합니다. 맨 위 <code>use</code> 두 줄은 모듈 안 어디에 있어도 됩니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson12/solutions/file_repo.rs.txt">use std::fs;
+
+use crate::codec::{decode_task, encode_task};
+
+/// 과제 3 정답 예시: 줄 단위 텍스트 파일에 저장하는 저장소입니다.
+/// id는 현재 파일에서 가장 큰 id + 1이라, 마지막 Task를 지운 뒤에는 id가 다시 쓰일 수 있습니다.
+pub struct FileRepository {
+    path: PathBuf,
+}
+
+impl FileRepository {
+    pub fn open(path: impl Into&lt;PathBuf&gt;) -&gt; Self {
+        FileRepository { path: path.into() }
+    }
+
+    pub fn path(&amp;self) -&gt; &amp;Path {
+        &amp;self.path
+    }
+
+    fn read_all(&amp;self) -&gt; Vec&lt;Task&gt; {
+        match fs::read_to_string(&amp;self.path) {
+            Ok(text) =&gt; text
+                .lines()
+                .filter_map(|line| decode_task(line).ok())
+                .collect(),
+            Err(_) =&gt; Vec::new(),
+        }
+    }
+
+    fn write_all(&amp;self, tasks: &amp;[Task]) {
+        let mut text = String::new();
+        for task in tasks {
+            text.push_str(&amp;encode_task(task));
+            text.push('\n');
+        }
+        fs::write(&amp;self.path, text).expect("파일에 쓸 수 없습니다");
+    }
+}
+
+impl TaskRepository for FileRepository {
+    fn list(&amp;self) -&gt; Vec&lt;Task&gt; {
+        self.read_all()
+    }
+
+    fn insert(&amp;mut self, title: &amp;str) -&gt; Task {
+        let mut tasks = self.read_all();
+        let id = tasks.iter().map(|task| task.id).max().unwrap_or(0) + 1;
+        let task = Task {
+            id,
+            title: title.to_string(),
+            done: false,
+        };
+        tasks.push(task.clone());
+        self.write_all(&amp;tasks);
+        task
+    }
+
+    fn find(&amp;self, id: u64) -&gt; Option&lt;Task&gt; {
+        self.read_all().into_iter().find(|task| task.id == id)
+    }
+
+    fn remove(&amp;mut self, id: u64) -&gt; bool {
+        let mut tasks = self.read_all();
+        let before = tasks.len();
+        tasks.retain(|task| task.id != id);
+        self.write_all(&amp;tasks);
+        tasks.len() &lt; before
+    }
+}</pre>
+            <p>이 정답을 임시 복사본에 적용해 실행한 결과입니다. 테스트가 ignore 없이 통과합니다.</p>
+<pre class="output" data-src="lab/lesson12/expected/file_repo_done.txt">     Running unittests src\lib.rs (...)
+
+running 7 tests
+test codec::tests::decode_rejects_broken_lines ... ok
+test query::tests::run_query_filters_then_pages ... ok
+test codec::tests::encode_then_decode_round_trips ... ok
+test query::tests::parse_reports_bad_input ... ok
+test repo::tests::in_memory_repository_follows_the_contract ... ok
+test query::tests::parse_reads_every_key ... ok
+test repo::tests::file_repository_follows_the_contract ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests lesson12
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+          </div>
+        </details>
+        <h3>더 해 보기 (선택)</h3>
+        <p>(B) <span class="file">capstone</span>의 <code>TaskStore</code>를 <code>TaskRepository</code>와 같은 trait 뒤로 숨겨 보세요. (D) 위 axum 예제를 읽고 요청 로그, 종료 처리, <code>Query</code> 에러의 JSON 통일 중 하나를 골라 붙여 보세요. 이 선택 과제는 정답을 따로 싣지 않았고, 평가표 4번(설계)과 6번(설명 가능성)으로 스스로 채점합니다.</p>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="rust-12-capstone"><span><code>cargo test -p lesson11 --test api</code>의 14개 통과를 확인한 뒤 <span class="file">capstone</span> 폴더를 만들고 <code>cargo test -p capstone --test api</code>에서도 14개 통과를 보았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-12-limit"><span><code>done</code> 필터와 <code>limit</code>·<code>offset</code>을 테스트 먼저 쓰는 방식으로 추가했고 <code>cargo test -p capstone --test api</code>가 새 테스트까지 모두 통과한다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-12-filerepo"><span><code>FileRepository</code>를 구현하고 <code>cargo test -p lesson12</code>에서 <code>7 passed</code>를 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-12-rubric"><span>평가표 여섯 항목으로 <span class="file">capstone</span>을 점검해 통과/우수/미달을 적어 보았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-12-rustlings"><span>rustlings 연습 폴더를 이 코스 폴더 밖(예: <span class="file">D:\study\rust-practice</span>)에 두기로 정했고, 레슨별 연습 목록 표에서 다음에 풀 폴더를 골랐다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-12-json"><span>연습용 임시 프로필의 설정 JSON에서 <code>[rust]</code> 설정을 껐는데도 워크스페이스 값이 이기는 것을 확인했고, 스니펫·<code>keybindings.json</code> 실험까지 마친 뒤 프로필을 삭제해 관리 아이콘에 프로필 이름이 없는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-12-mission"><span>마우스 없이 5분 미션의 여덟 가지를 모두 해냈다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-12-clean"><span>임시 파일을 정리한 뒤 <b>cargo: check all</b>의 <code>Finished</code>와 <b>cargo: test all</b>의 <code>test result:</code> 전부 <code>ok</code>를 보았다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <p>캡스톤 폴더를 만들 때와 미완성 과제를 실행할 때 실제로 나오는 메시지입니다. 모두 임시 복사본에서 같은 실수를 일부러 해서 얻었습니다.</p>
+        <h3>증상: <code>package ID specification `capstone` did not match any packages</code></h3>
+        <p>원인: 폴더 이름과 패키지 이름은 바꿨지만 <span class="file">lab/Cargo.toml</span>의 <code>members</code>에 <code>"capstone"</code>을 추가하지 않았습니다. 폴더 이름이 <code>lesson</code>으로 시작하지 않으면 글롭(<code>"lesson*"</code>)에 걸리지 않습니다. 해결: <code>members = ["lesson*", "capstone"]</code>로 고칩니다.</p>
+<pre class="code" data-lang="bash">cargo test -p capstone --test api</pre>
+<pre class="output" data-src="lab/lesson12/expected/capstone_err_members.txt">error: package ID specification `capstone` did not match any packages</pre>
+        <h3>증상: <code>two packages named `lesson11` in this workspace</code></h3>
+        <p>원인: <span class="file">capstone/Cargo.toml</span>의 <code>name</code>이 아직 <code>"lesson11"</code>입니다. 한 워크스페이스에는 같은 이름의 패키지가 둘 있을 수 없습니다. 해결: <code>name = "capstone"</code>으로 바꾸고, <span class="file">src/main.rs</span>와 <span class="file">tests/api.rs</span>의 <code>lesson11::</code>도 <code>capstone::</code>으로 바꿉니다(<kbd class="key">Ctrl+Shift+H</kbd>가 한꺼번에 해 줍니다). 경로 부분은 <code>...</code>로 줄였습니다.</p>
+<pre class="code" data-lang="bash">cargo test -p capstone --test api</pre>
+<pre class="output" data-src="lab/lesson12/expected/capstone_err_name.txt">error: two packages named `lesson11` in this workspace:
+- ...\lab\lesson11\Cargo.toml
+- ...\lab\capstone\Cargo.toml</pre>
+        <h3>증상: <code>not yet implemented: 과제 3: ...</code> 패닉</h3>
+        <p>원인: <code>todo!()</code>로 비워 둔 함수를 실행했습니다. 오류가 아니라 "여기를 채워라"는 표시입니다. 해결: 메시지가 가리키는 함수(<code>repo.rs</code>)를 구현합니다. <code>todo!()</code>는 어떤 반환 타입에도 들어가서 컴파일은 되기 때문에, 미완성 코드를 일부러 남길 때 씁니다.</p>
+<pre class="code" data-lang="bash">cargo test -p lesson12 --lib -- --ignored</pre>
+<pre class="output" data-src="lab/lesson12/expected/file_repo_todo.txt">     Running unittests src\lib.rs (...)
+
+running 1 test
+test repo::tests::file_repository_follows_the_contract ... FAILED
+
+failures:
+
+---- repo::tests::file_repository_follows_the_contract stdout ----
+
+thread 'repo::tests::file_repository_follows_the_contract' (...) panicked at lesson12\src\repo.rs:66:9:
+not yet implemented: 과제 3: 새 id를 정하고 encode_task한 줄을 파일 끝에 덧붙입니다
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    repo::tests::file_repository_follows_the_contract
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p lesson12 --lib`</pre>
+        <h3>증상: Ctrl+Shift+H로 바꿨더니 원본 lesson11도 바뀌었다</h3>
+        <p>원인: 검색 범위(<b>포함할 파일</b>)를 <code>lab/capstone</code>으로 좁히지 않았습니다. 해결: 바꾸기 결과 목록에서 <b>모두 바꾸기</b>를 누르기 전에 파일 경로가 <span class="file">capstone</span> 아래뿐인지 확인합니다. 이미 바뀌었다면 편집기에서 <kbd class="key">Ctrl+Z</kbd>를 누르거나, 원본을 같은 방법으로 <code>capstone</code>→<code>lesson11</code>로 되돌린 뒤 <code>cargo test -p lesson11 --test api</code>로 14개 통과를 확인하세요. 이 증상에는 컴파일러 메시지가 없어 출력을 싣지 않았습니다.</p>
+      </section>
+
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>이 코스를 마쳤습니다. 다음에 배울 주제를 우선순위 순서로 제안합니다. 모든 항목은 클론해 둔 자료나 공식 문서에서 이어집니다.</p>
+        <ul>
+          <li><b>스마트 포인터와 패턴</b>: <span class="file" data-local="the-rust-book/src/ch15-00-smart-pointers.md">the-rust-book/src/ch15-00-smart-pointers.md</span>, <span class="file" data-local="the-rust-book/src/ch19-00-patterns.md">ch19-00-patterns.md</span>. rustlings <code>19_smart_pointers</code>와 같이 봅니다.</li>
+          <li><b>에러 처리 확장</b>: <span class="file" data-local="rust-by-example/src/error.md">rust-by-example/src/error.md</span>와 rustlings <code>13_error_handling</code>. 여러 에러 타입을 묶는 방법을 다룹니다.</li>
+          <li><b>웹 서버 직접 만들기</b>: <span class="file" data-local="the-rust-book/src/ch21-00-final-project-a-web-server.md">the-rust-book/src/ch21-00-final-project-a-web-server.md</span>는 스레드 풀 서버를 밑바닥부터 만듭니다. axum이 하는 일을 이해하는 데 좋습니다.</li>
+          <li><b>백엔드 실전 요소</b>: axum 예제 <span class="file" data-local="axum/examples/sqlx-postgres/src/main.rs">sqlx-postgres</span>(DB), <span class="file" data-local="axum/examples/validator/src/main.rs">validator</span>(검증), <span class="file" data-local="axum/examples/tracing-aka-logging/src/main.rs">tracing-aka-logging</span>(로그), <span class="file" data-local="axum/examples/graceful-shutdown/src/main.rs">graceful-shutdown</span>(종료). 예제는 개발 중인 main 브랜치이므로 시그니처는 <a href="https://docs.rs/axum/0.8.9/axum/">0.8.9 문서</a>로 확인합니다.</li>
+          <li><b>비동기 더 깊이</b>: <a href="https://tokio.rs/tokio/tutorial">tokio 튜토리얼</a>과 <span class="file" data-local="the-rust-book/src/ch17-00-async-await.md">the-rust-book/src/ch17-00-async-await.md</span> 뒷부분(스트림, trait).</li>
+          <li><b>고급 기능</b>: <span class="file" data-local="the-rust-book/src/ch20-00-advanced-features.md">the-rust-book/src/ch20-00-advanced-features.md</span>(unsafe, 매크로, 고급 trait)와 rustlings <code>21_macros</code>, <code>22_clippy</code>, <code>23_conversions</code>.</li>
+        </ul>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="11-axum-taskapi.html"><small>← 이전 레슨</small>11 · axum으로 만드는 Task API</a>
+          <a class="next" rel="next" href="../index.html"><small>코스 홈 →</small>코스 홈으로 돌아가기</a>
+        </nav>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Rust 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -1,0 +1,17 @@
+error[E0499]: cannot borrow `count` as mutable more than once at a time
+ --> lesson08\examples\scratch.rs:4:22
+  |
+3 |     let mut first = || count += 1;
+  |                     -- ----- first borrow occurs due to use of `count` in closure
+  |                     |
+  |                     first mutable borrow occurs here
+4 |     let mut second = || count += 10;
+  |                      ^^ ----- second borrow occurs due to use of `count` in closure
+  |                      |
+  |                      second mutable borrow occurs here
+5 |
+6 |     first();
+  |     ----- first borrow later used here
+
+For more information about this error, try `rustc --explain E0499`.
+error: could not compile `lesson08` (example "scratch") due to 1 previous error

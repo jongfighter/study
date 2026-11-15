@@ -1,0 +1,17 @@
+fn longest<'a>(first: &'a str, second: &'a str) -> &'a str {
+    if first.len() >= second.len() {
+        first
+    } else {
+        second
+    }
+}
+
+fn main() {
+    let title_a = String::from("trait와 제네릭");
+    let result;
+    {
+        let title_b = String::from("라이프타임");
+        result = longest(title_a.as_str(), title_b.as_str());
+    }
+    println!("더 긴 제목: {result}");
+}

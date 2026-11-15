@@ -1,0 +1,3 @@
+# golab/lesson05/mine/interfaces
+lesson05\mine\interfaces\main.go:67:3: cannot use ConsoleNotifier{} (value of struct type ConsoleNotifier) as Notifier value in array or slice literal: ConsoleNotifier does not implement Notifier (method Notify has pointer receiver)
+lesson05\mine\interfaces\main.go:73:13: cannot use ConsoleNotifier{} (value of struct type ConsoleNotifier) as Notifier value in struct literal: ConsoleNotifier does not implement Notifier (method Notify has pointer receiver)

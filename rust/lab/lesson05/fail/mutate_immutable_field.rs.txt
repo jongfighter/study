@@ -1,0 +1,13 @@
+struct Task {
+    title: String,
+    done: bool,
+}
+
+fn main() {
+    let task = Task {
+        title: String::from("보고서 쓰기"),
+        done: false,
+    };
+    task.done = true;
+    println!("{} / {}", task.title, task.done);
+}

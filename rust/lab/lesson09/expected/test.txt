@@ -1,0 +1,42 @@
+     Running unittests src\lib.rs (...)
+
+running 10 tests
+test task::tests::slow_example ... ignored, 예시: 평소에는 건너뛰고 필요할 때 --ignored로 실행합니다
+test task::tests::empty_title_is_rejected ... ok
+test task::tests::new_normalizes_title ... ok
+test text::tests::truncate_cuts_by_chars_not_bytes ... ok
+test text::tests::word_count_ignores_extra_spaces ... ok
+test text::tests::normalize_collapses_whitespace ... ok
+test text::tests::slugify_keeps_ascii_words ... ok
+test task::tests::toggle_flips_done_back_and_forth ... ok
+test task::tests::too_long_title_reports_lengths ... ok
+test text::tests::truncate_rejects_zero - should panic ... ok
+
+test result: ok. 9 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\main.rs (...)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\task_flow.rs (...)
+
+running 3 tests
+test rename_keeps_state_and_validates_the_new_title ... ok
+test invalid_titles_return_errors ... ok
+test task_lifecycle_uses_only_public_api ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests lesson09
+
+running 4 tests
+test lesson09\src\text.rs - text::slugify (line 17) ... ok
+test lesson09\src\text.rs - text::truncate (line 41) ... ok
+test lesson09\src\text.rs - text::normalize_title (line 3) ... ok
+test lesson09\src\text.rs - text::word_count (line 59) ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+all doctests ran in 0.28s; merged doctests compilation took 0.22s

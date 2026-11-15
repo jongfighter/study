@@ -1,0 +1,7 @@
+goos: windows
+goarch: amd64
+pkg: golab/lesson06/mine/titles
+cpu: ...
+BenchmarkNormalize-16    	15307527	        75.13 ns/op
+PASS
+ok  	golab/lesson06/mine/titles	1.408s

@@ -1,0 +1,17 @@
+trait Notifier {
+    fn name(&self) -> String;
+    fn send(&self, to: &str, message: &str) -> String;
+}
+
+struct EmailNotifier;
+
+impl Notifier for EmailNotifier {
+    fn name(&self) -> String {
+        String::from("email")
+    }
+}
+
+fn main() {
+    let notifier = EmailNotifier;
+    println!("{}", notifier.name());
+}

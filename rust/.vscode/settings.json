@@ -1,0 +1,48 @@
+// 워크스페이스 설정입니다. 이 폴더(D:\study\rust)를 열었을 때만 적용되고, 내 PC 전체 설정(사용자 설정)보다 우선합니다.
+// 설정 화면(Ctrl+,)의 Workspace 탭에서 값을 바꾸면 이 파일에 그대로 기록됩니다.
+{
+  // 새로 만드는 파일의 줄바꿈을 Windows 기본(CRLF)이 아닌 LF로 통일합니다(코스 제공 파일과 같은 형식).
+  "files.eol": "\n",
+
+  // 코드 줄 옆에 흐리게 보이는 추론 정보(인레이 힌트: 변수 타입, 매개변수 이름 등)의 표시 방식입니다.
+  // on, off, onUnlessPressed, offUnlessPressed 중에서 고릅니다. off로 바꿔 보면 차이를 알 수 있습니다.
+  "editor.inlayHints.enabled": "on",
+
+  // Rust 파일(.rs)에는 중단점을 걸 수 있도록 기본으로 꺼져 있는 이 옵션을 켭니다(VS Code Rust 공식 문서 안내).
+  "debug.allowBreakpointsEverywhere": true,
+
+  // Rust 파일(.rs)에만 적용되는 설정 묶음입니다.
+  "[rust]": {
+    // 저장(Ctrl+S)할 때마다 rustfmt 표준 형식으로 자동 정렬합니다.
+    "editor.formatOnSave": true,
+    // 서식 정리를 rust-analyzer 확장(내부에서 rustfmt 실행)에 맡깁니다.
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+
+  // rust-analyzer가 읽을 Cargo 프로젝트를 lab 하나로 고정합니다.
+  // 지정하지 않으면 폴더 안의 Cargo.toml을 전부 찾아 읽습니다. 이 폴더에는 클론한 axum 등이 있어 매우 느려집니다.
+  "rust-analyzer.linkedProjects": ["lab/Cargo.toml"],
+
+  // 클론한 자료 폴더는 rust-analyzer가 분석하지 않도록 제외합니다(경로는 이 폴더 기준, 와일드카드 불가).
+  "rust-analyzer.files.exclude": ["axum", "rustlings", "the-rust-book", "rust-by-example"],
+
+  // 저장할 때 실행하는 점검 명령을 기본값 check 대신 clippy(더 엄격한 린터)로 바꿉니다.
+  "rust-analyzer.check.command": "clippy",
+
+  // 디버그 버튼(Debug)이 사용할 디버거 확장입니다. Windows(MSVC 도구 체인)에서는 Microsoft C/C++ 확장을 씁니다.
+  "rust-analyzer.debug.engine": "ms-vscode.cpptools",
+
+  // 파일 변경 감시에서 빌드 산출물과 클론한 자료 폴더를 뺍니다. 감시 대상이 많으면 VS Code가 CPU를 많이 씁니다.
+  "files.watcherExclude": {
+    "**/target/**": true,
+    "axum/**": true,
+    "rustlings/**": true,
+    "the-rust-book/**": true,
+    "rust-by-example/**": true
+  },
+
+  // 전체 검색(Ctrl+Shift+F)에서 빌드 산출물 폴더(target)를 뺍니다.
+  "search.exclude": {
+    "**/target": true
+  }
+}

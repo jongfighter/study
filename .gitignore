@@ -1,0 +1,23 @@
+# 클론한 외부 학습 자료는 각자 원본 저장소가 있으므로 이 저장소에 올리지 않습니다.
+# 다시 받는 방법은 README.md를 보세요.
+/go/tour-of-go/
+/go/go-by-example/
+/go/learn-go-with-tests/
+/go/100-go-mistakes/
+/rust/the-rust-book/
+/rust/rust-by-example/
+/rust/rustlings/
+/rust/axum/
+
+# 별도 저장소로 관리하는 학습 폴더
+/typescript-nextjs-learning/
+
+# 레슨 실습 중 학습자가 만드는 임시 폴더
+/rust/playground/
+
+# 도구 산출물
+/.playwright-mcp/
+target/
+*.exe
+*.pdb
+*.bak

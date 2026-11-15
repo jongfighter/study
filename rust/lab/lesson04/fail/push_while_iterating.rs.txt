@@ -1,0 +1,9 @@
+fn main() {
+    let mut scores = vec![1, 2, 3];
+    for score in &scores {
+        if *score == 2 {
+            scores.push(99);
+        }
+    }
+    println!("{scores:?}");
+}

@@ -1,0 +1,5 @@
+fn main() {
+    let scores = Vec::new();
+    scores.push(85);
+    println!("{scores:?}");
+}

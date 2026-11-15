@@ -1,0 +1,35 @@
+// 워크스페이스 설정입니다. 이 폴더(D:\study\go)를 열었을 때만 적용되고, 내 PC 전체 설정(사용자 설정)보다 우선합니다.
+// 설정 화면(Ctrl+,)의 Workspace 탭에서 값을 바꾸면 이 파일에 그대로 기록됩니다.
+{
+  // 새로 만드는 파일의 줄바꿈을 Windows 기본(CRLF)이 아닌 LF로 통일합니다(코스 제공 파일과 같은 형식).
+  "files.eol": "\n",
+
+  // 코드 줄 옆에 흐리게 보이는 추론 정보(인레이 힌트)의 표시 방식입니다.
+  // on, off, onUnlessPressed, offUnlessPressed 중에서 고릅니다. off로 바꿔 보면 차이를 알 수 있습니다.
+  "editor.inlayHints.enabled": "on",
+
+  // Go 파일(.go)에만 적용되는 설정 묶음입니다.
+  "[go]": {
+    // 저장(Ctrl+S)할 때마다 gofmt과 같은 표준 형식으로 자동 정렬합니다.
+    "editor.formatOnSave": true,
+    // 서식 정리를 Go 공식 확장(golang.go)에 맡깁니다.
+    "editor.defaultFormatter": "golang.go",
+    // 저장할 때 쓰지 않는 import를 지우고 빠진 import를 채웁니다.
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+    // Go 코드는 들여쓰기에 탭 문자를 씁니다(gofmt 표준).
+    "editor.insertSpaces": false
+  },
+
+  // gopls(Go 언어 서버) 설정입니다.
+  "gopls": {
+    // 기본으로 꺼져 있는 인레이 힌트 중 입문에 도움이 되는 것만 켭니다(gopls의 실험적 설정).
+    // 변수 타입, 호출 인자의 매개변수 이름, range 변수 타입이 코드 옆에 표시됩니다.
+    "ui.inlayhint.hints": {
+      "assignVariableTypes": true,
+      "parameterNames": true,
+      "rangeVariableTypes": true
+    }
+  }
+}

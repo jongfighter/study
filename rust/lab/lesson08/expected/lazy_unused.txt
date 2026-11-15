@@ -1,0 +1,32 @@
+warning: `Iterator::map` call that discard the iterator's values
+ --> lesson08\examples\scratch.rs:3:20
+  |
+3 |     numbers.iter().map(|n| println!("값: {n}"));
+  |                    ^^^^-----------------------^
+  |                    |   |
+  |                    |   this function returns `()`, which is likely not what you wanted
+  |                    |   called `Iterator::map` with callable that returns `()`
+  |                    after this call to map, the resulting iterator is `impl Iterator<Item = ()>`, which means the only information carried by the iterator is the number of items
+  |
+  = note: `Iterator::map`, like many of the methods on `Iterator`, gets executed lazily, meaning that its effects won't be visible until it is iterated
+  = note: `#[warn(map_unit_fn)]` (part of `#[warn(unused)]`) on by default
+help: you might have meant to use `Iterator::for_each`
+  |
+3 -     numbers.iter().map(|n| println!("값: {n}"));
+3 +     numbers.iter().for_each(|n| println!("값: {n}"));
+  |
+
+warning: unused `Map` that must be used
+ --> lesson08\examples\scratch.rs:3:5
+  |
+3 |     numbers.iter().map(|n| println!("값: {n}"));
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: iterators are lazy and do nothing unless consumed
+  = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+  |
+3 |     let _ = numbers.iter().map(|n| println!("값: {n}"));
+  |     +++++++
+
+warning: `lesson08` (example "scratch") generated 2 warnings

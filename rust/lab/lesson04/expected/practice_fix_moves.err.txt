@@ -1,0 +1,54 @@
+error[E0308]: mismatched types
+  --> lesson04\src\bin\scratch.rs:28:29
+   |
+28 |         assert_eq!(byte_len(&s), 6);
+   |                    -------- ^^ expected `String`, found `&String`
+   |                    |
+   |                    arguments to this function are incorrect
+   |
+note: function defined here
+  --> lesson04\src\bin\scratch.rs:1:4
+   |
+ 1 | fn byte_len(s: String) -> usize {
+   |    ^^^^^^^^ ---------
+help: consider removing the borrow
+   |
+28 -         assert_eq!(byte_len(&s), 6);
+28 +         assert_eq!(byte_len(s), 6);
+   |
+
+error[E0382]: borrow of moved value: `title`
+  --> lesson04\src\bin\scratch.rs:13:16
+   |
+11 |     let title = String::from("소유권 연습");
+   |         ----- move occurs because `title` has type `String`, which does not implement the `Copy` trait
+12 |     let n = byte_len(title);
+   |                      ----- value moved here
+13 |     println!("{title}의 길이는 {n}바이트");
+   |                ^^^^^ value borrowed here after move
+   |
+note: consider changing this parameter type in function `byte_len` to borrow instead if owning the value isn't necessary
+  --> lesson04\src\bin\scratch.rs:1:16
+   |
+ 1 | fn byte_len(s: String) -> usize {
+   |    --------    ^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: consider cloning the value if the performance cost is acceptable
+   |
+12 |     let n = byte_len(title.clone());
+   |                           ++++++++
+
+error[E0502]: cannot borrow `log` as mutable because it is also borrowed as immutable
+  --> lesson04\src\bin\scratch.rs:17:17
+   |
+16 |     let first = &log;
+   |                 ---- immutable borrow occurs here
+17 |     append_step(&mut log, "진행");
+   |                 ^^^^^^^^ mutable borrow occurs here
+18 |     println!("{first} / {log}");
+   |                ----- immutable borrow later used here
+
+Some errors have detailed explanations: E0308, E0382, E0502.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `lesson04` (bin "scratch" test) due to 3 previous errors

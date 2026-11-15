@@ -1,0 +1,61 @@
+# Task API 최종본 요청 모음 (VS Code REST Client 확장: humao.rest-client)
+# 요청 안에 커서를 두고 Ctrl+Alt+R 을 누르거나, 요청 위의 Send Request 링크를 클릭합니다.
+# 서버 실행: lab 폴더에서 go run ./lesson10/cmd/taskapi  (PORT 환경변수로 포트 변경)
+
+@host = http://localhost:8080
+
+### 서버 상태 확인 (응답 헤더의 X-Request-Id를 서버 로그와 비교해 보세요)
+GET {{host}}/health
+
+### 할 일 목록
+GET {{host}}/tasks
+
+### 할 일 만들기 (응답의 id를 아래 요청들이 사용합니다)
+# @name created
+POST {{host}}/tasks
+Content-Type: application/json
+
+{
+  "title": "slog 로그 확인하기"
+}
+
+### 방금 만든 할 일 한 개 조회
+GET {{host}}/tasks/{{created.response.body.$.id}}
+
+### 완료로 표시
+PATCH {{host}}/tasks/{{created.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "done": true
+}
+
+### 삭제
+DELETE {{host}}/tasks/{{created.response.body.$.id}}
+
+### 오류 확인: 제목이 공백뿐인 요청 (서버 로그에 level=WARN 으로 남습니다)
+POST {{host}}/tasks
+Content-Type: application/json
+
+{
+  "title": "   "
+}
+
+### 오류 확인: 제목이 너무 긴 요청 (101자)
+POST {{host}}/tasks
+Content-Type: application/json
+
+{
+  "title": "가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다"
+}
+
+### 오류 확인: 없는 id
+GET {{host}}/tasks/9999
+
+### 오류 확인: 알 수 없는 필드
+POST {{host}}/tasks
+Content-Type: application/json
+
+{
+  "titel": "오타가 난 필드 이름"
+}

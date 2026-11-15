@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="rust" data-lesson="08">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="클로저의 Fn 계열과 지연 평가되는 이터레이터를 직접 입력하며 익힙니다.">
+  <title>08 · 클로저와 이터레이터 — Rust 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Rust 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Rs</span>
+      <span>Rust 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 08 · 함수형 도구</p>
+        <h1>클로저와 이터레이터</h1>
+        <p class="lead">Kotlin의 람다와 컬렉션 연산에 익숙하다면 절반은 아는 내용입니다. 나머지 절반인 "클로저가 변수를 어떻게 붙잡는가(Fn·FnMut·FnOnce)"와 "이터레이터는 왜 소비해야 움직이는가"를 컴파일러 오류와 함께 정리합니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 120분</li>
+          <li><b>난이도</b> ★★★☆☆</li>
+          <li><b>선행</b> <a href="07-traits-generics.html">레슨 07</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson08</span></li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li>클로저가 주변 변수를 빌리거나(참조) 가져가는(move) 방식을 구분하고, <code>Fn</code>·<code>FnMut</code>·<code>FnOnce</code> 중 어느 것이 되는지 말할 수 있다.</li>
+          <li><code>map</code>, <code>filter</code>, <code>fold</code>, <code>collect</code>를 이어 붙여 Task 목록을 집계·변환할 수 있다.</li>
+          <li>이터레이터가 지연 평가(lazy evaluation)라서 <code>collect</code> 같은 소비 단계가 있어야 실행된다는 것을 출력으로 증명할 수 있다.</li>
+          <li><code>Iterator</code> trait을 직접 구현해 표준 어댑터를 공짜로 얻을 수 있다.</li>
+          <li>인레이 힌트로 이터레이터 체인의 타입과 클로저 캡처 방식을 읽고, 코드 접기로 긴 파일의 구조를 볼 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>한국어 해설을 먼저 읽고 원문으로 확인하세요. 로컬 파일은 VS Code에서 <kbd class="key">Ctrl+P</kbd>로 파일명을 입력해 열 수 있습니다.</p>
+        <ul>
+          <li><a href="https://doc.rust-lang.org/book/ch13-00-functional-features.html">The Rust Book 13장 · 함수형 기능 (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch13-01-closures.md">the-rust-book/src/ch13-01-closures.md</span>, <span class="file" data-local="the-rust-book/src/ch13-02-iterators.md">ch13-02-iterators.md</span>, <span class="file" data-local="the-rust-book/src/ch13-04-performance.md">ch13-04-performance.md</span></li>
+          <li><a href="https://doc.rust-lang.org/rust-by-example/fn/closures.html">Rust By Example · 클로저 (영문)</a> — 로컬 파일: <span class="file" data-local="rust-by-example/src/fn/closures.md">rust-by-example/src/fn/closures.md</span>, <span class="file" data-local="rust-by-example/src/trait/iter.md">trait/iter.md</span>, <span class="file" data-local="rust-by-example/src/fn/hof.md">fn/hof.md</span></li>
+          <li>연습 문제 모음 rustlings: <span class="file" data-local="rustlings/exercises/18_iterators/iterators1.rs">18_iterators/iterators1.rs</span> 부터 <code>iterators5.rs</code>까지</li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>클로저(closure)</b>는 <code>|a, b| a + b</code>처럼 쓰는 이름 없는 함수이고, 주변 변수를 붙잡을 수 있습니다. Kotlin의 람다 <code>{ a, b -&gt; a + b }</code>와 같은 위치에서 쓰입니다. 차이는 "어떻게 붙잡는가"를 컴파일러가 엄격하게 추적한다는 점입니다. 값을 읽기만 하면 불변 참조로, 고치면 가변 참조로, 값을 밖으로 내보내면 소유권을 통째로 가져갑니다(<code>move</code>).</p>
+        <p>이 붙잡는 방식이 곧 클로저의 종류가 됩니다. <b><code>Fn</code></b>은 붙잡은 값을 읽기만 해서 여러 번, 동시에 불러도 안전합니다. <b><code>FnMut</code></b>는 붙잡은 값을 고치므로 부르려면 가변 접근이 필요합니다. <b><code>FnOnce</code></b>는 붙잡은 값을 소비해서 한 번만 부를 수 있습니다. 함수가 클로저를 인자로 받을 때 <code>F: Fn(i32) -&gt; i32</code>처럼 어느 수준이 필요한지 적습니다. <code>Fn</code>이 가장 까다롭고(가장 적게 허용), <code>FnOnce</code>가 가장 느슨합니다.</p>
+        <p><b>이터레이터(iterator)</b>는 <code>next()</code>를 부를 때마다 <code>Some(값)</code> 또는 <code>None</code>을 돌려주는 값입니다. <code>map</code>·<code>filter</code> 같은 <b>어댑터(adapter)</b>는 새 이터레이터를 만들 뿐 아무 일도 하지 않고, <code>collect</code>·<code>sum</code>·<code>fold</code> 같은 <b>소비자(consumer)</b>가 호출될 때 비로소 한 원소씩 끝까지 흘려 보냅니다. 이것이 <b>지연 평가(lazy evaluation)</b>입니다. Kotlin에서 리스트에 <code>map</code>을 쓰면 곧바로 새 리스트가 만들어지지만(즉시 평가), <code>asSequence()</code>를 붙인 <code>Sequence</code>는 Rust 이터레이터처럼 지연됩니다.</p>
+        <p>컬렉션에서 이터레이터를 얻는 방법은 세 가지입니다. <code>iter()</code>는 원소를 빌려 주고(<code>&amp;T</code>), <code>iter_mut()</code>은 고칠 수 있게 빌려 주고(<code>&amp;mut T</code>), <code>into_iter()</code>는 컬렉션을 소비하며 원소를 넘겨줍니다(<code>T</code>). <code>collect</code>는 결과를 어떤 그릇에 담을지를 변수 타입이나 <code>::&lt;&gt;</code>로 정해 주어야 합니다. 이렇게 만든 이터레이터 체인은 컴파일러가 직접 쓴 반복문 수준으로 최적화해 주므로 추상화 때문에 느려지지 않는다는 것이 Rust의 설계 목표입니다(책 13.4절에서 비교합니다).</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>완성본은 <span class="file">lab/lesson08/src/main.rs</span>에 있습니다. 완성본을 건드리지 않고 직접 입력하려고 새 파일 <span class="file">lab/lesson08/src/bin/mine.rs</span>에 씁니다. 단계마다 코드를 이어 붙이고 <code>main</code>에 호출을 한 줄씩 추가합니다.</p>
+        <div class="callout tip"><strong>중간 경고는 정상입니다</strong>아직 쓰지 않은 구조체와 함수에는 <code>never used</code> 경고가 나옵니다. 오류(<code>error</code>)만 고치면 됩니다.</div>
+        <ol class="steps">
+          <li>
+            <strong>연습 파일 만들기 (이전 단계 의존 없음)</strong>
+            <p>탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab</span> → <span class="file">lesson08</span> → <span class="file">src</span>를 펼치고, <span class="file">src</span>를 우클릭해 <b>새 폴더(New Folder)</b> <code>bin</code>을 만듭니다. <span class="file">bin</span>을 우클릭해 <b>새 파일(New File)</b> <code>mine.rs</code>를 만듭니다. 터미널(<kbd class="key">Ctrl+`</kbd>)에서 <span class="file">lab</span> 폴더로 이동합니다. 이미 <span class="file">lab</span> 안이라면 건너뜁니다.</p>
+<pre class="code" data-lang="bash">cd lab</pre>
+          </li>
+          <li>
+            <strong>클로저 기본과 변수 붙잡기 (<span class="file">mine.rs</span>, 1단계 의존)</strong>
+            <p>이 레슨 내내 쓸 <code>Task</code> 구조체와 샘플 데이터, 그리고 첫 번째 데모를 입력합니다. <code>use</code> 줄은 4단계에서 쓰이므로 지금은 "사용되지 않음" 경고가 날 수 있습니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/src/main.rs" data-lines="1-43">use std::collections::HashMap;
+
+#[derive(Debug, Clone)]
+struct Task {
+    id: u32,
+    title: String,
+    done: bool,
+    minutes: u32,
+}
+
+impl Task {
+    fn new(id: u32, title: &amp;str, done: bool, minutes: u32) -&gt; Self {
+        Task {
+            id,
+            title: title.to_string(),
+            done,
+            minutes,
+        }
+    }
+}
+
+fn sample_tasks() -&gt; Vec&lt;Task&gt; {
+    vec![
+        Task::new(1, "장보기", true, 30),
+        Task::new(2, "보고서 작성", false, 90),
+        Task::new(3, "운동", false, 45),
+        Task::new(4, "코드 리뷰", false, 20),
+        Task::new(5, "책 읽기", true, 60),
+    ]
+}
+
+// ── 1. 클로저: 주변 변수를 붙잡는 이름 없는 함수 ──────────────────
+
+fn demo_closures() {
+    let add = |a: i32, b: i32| a + b;
+    println!("add(2, 3) = {}", add(2, 3));
+
+    let limit = 40;
+    let is_long = |task: &amp;Task| task.minutes &gt; limit;
+    for task in sample_tasks() {
+        println!("{} → 오래 걸림? {}", task.title, is_long(&amp;task));
+    }
+}</pre>
+            <p>파일 맨 아래에 <code>fn main() { demo_closures(); }</code>를 입력하고 저장(<kbd class="key">Ctrl+S</kbd>)한 뒤 실행합니다.</p>
+<pre class="code" data-lang="bash">cargo run -p lesson08 --bin mine</pre>
+<pre class="output" data-src="lab/lesson08/expected/run.txt" data-lines="1-6">add(2, 3) = 5
+장보기 → 오래 걸림? false
+보고서 작성 → 오래 걸림? true
+운동 → 오래 걸림? true
+코드 리뷰 → 오래 걸림? false
+책 읽기 → 오래 걸림? true</pre>
+            <p><code>is_long</code>은 바깥 변수 <code>limit</code>을 읽기만 합니다. <code>|task: &amp;Task|</code>처럼 매개변수 타입을 적었지만 반환 타입은 컴파일러가 추론합니다. 클로저는 처음 호출될 때 타입이 정해지므로, 같은 클로저에 다른 타입을 넣으면 오류가 납니다.</p>
+          </li>
+          <li>
+            <strong><code>Fn</code>·<code>FnMut</code>·<code>FnOnce</code>와 캡처 힌트 (<span class="file">mine.rs</span>, 2단계 의존)</strong>
+            <p>세 종류를 받는 함수와, 클로저를 반환하는 함수를 입력합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/src/main.rs" data-lines="45-82">// ── 2. Fn / FnMut / FnOnce ─────────────────────────────────────
+
+fn apply_twice&lt;F: Fn(i32) -&gt; i32&gt;(f: F, x: i32) -&gt; i32 {
+    f(f(x))
+}
+
+fn call_three_times&lt;F: FnMut()&gt;(mut f: F) {
+    f();
+    f();
+    f();
+}
+
+fn run_once&lt;F: FnOnce() -&gt; String&gt;(f: F) -&gt; String {
+    f()
+}
+
+fn make_adder(n: i32) -&gt; impl Fn(i32) -&gt; i32 {
+    move |x| x + n
+}
+
+type Op = Box&lt;dyn Fn(i32) -&gt; i32&gt;;
+
+fn demo_fn_traits() {
+    let bonus = 10;
+    println!("apply_twice = {}", apply_twice(|n| n + bonus, 1));
+
+    let mut count = 0;
+    call_three_times(|| count += 1);
+    println!("count = {count}");
+
+    let owner = String::from("소유권을 가져가는 클로저");
+    println!("{}", run_once(move || owner));
+
+    let ops: Vec&lt;(&amp;str, Op)&gt; = vec![("+5", Box::new(make_adder(5))), ("×2", Box::new(|x| x * 2))];
+    for (label, op) in &amp;ops {
+        println!("{label} 적용: {}", op(7));
+    }
+}</pre>
+            <p><code>main</code>에 <code>demo_fn_traits();</code>를 추가하고 실행합니다. 새로 붙는 5줄입니다.</p>
+<pre class="output" data-src="lab/lesson08/expected/run.txt" data-lines="7-11">apply_twice = 21
+count = 3
+소유권을 가져가는 클로저
++5 적용: 12
+×2 적용: 14</pre>
+            <p>VS Code는 캡처 방식을 인레이 힌트로 보여 줄 수 있습니다. 이 힌트를 켜는 설정은 아래 "오늘의 VS Code 기능" 절의 <b>설정 체험하기</b>에서 연습용 임시 프로필 안에 켭니다(사용자 설정 파일을 직접 고치지 않기 위해서입니다). 켜면 <code>demo_fn_traits</code>의 클로저 앞에 회색 글씨로 <code>move(&amp;bonus)</code>, <code>move(&amp;mut count)</code>, <code>move(owner)</code> 같은 표시가 붙습니다. 규칙은 간단합니다.</p>
+            <ul>
+              <li><code>&amp;이름</code>: 불변 참조로 빌림 → <code>Fn</code> 가능</li>
+              <li><code>&amp;mut 이름</code>: 가변 참조로 빌림 → <code>FnMut</code></li>
+              <li><code>&amp;</code> 없이 이름만: 값을 통째로 가져감(소유권 이동) → 값을 밖으로 내보내면 <code>FnOnce</code></li>
+            </ul>
+            <p>같은 설정 체험에서 <b>Closure Return Type Hints</b>(<code>rust-analyzer.inlayHints.closureReturnTypeHints.enable</code>)도 켜 봅니다. 값을 <code>always</code>로 바꾸면 클로저가 돌려주는 타입이 보입니다.</p>
+          </li>
+          <li>
+            <strong>컴파일러가 막는 순간 — 클로저 종류가 안 맞을 때 (이전 단계와 독립)</strong>
+            <p>실험용 파일을 만듭니다. 탐색기에서 <span class="file">lesson08</span> 폴더에 <code>examples</code> 폴더를, 그 안에 <span class="file">scratch.rs</span>를 만듭니다. 실험이 끝나면 폴더째 지웁니다.</p>
+            <p><b>오류 1. <code>FnOnce</code> 클로저를 두 번 부를 때.</b> 아래 코드를 <span class="file">scratch.rs</span>에 붙여 넣고 검사합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/fail/fnonce_twice.rs.txt">fn main() {
+    let owner = String::from("소유권을 가져가는 클로저");
+    let take_owner = move || owner;
+
+    println!("{}", take_owner());
+    println!("{}", take_owner());
+}</pre>
+<pre class="code" data-lang="bash">cargo check -p lesson08 --example scratch</pre>
+<pre class="output" data-src="lab/lesson08/expected/fnonce_twice.txt">error[E0382]: use of moved value: `take_owner`
+ --&gt; lesson08\examples\scratch.rs:6:20
+  |
+5 |     println!("{}", take_owner());
+  |                    ------------ `take_owner` moved due to this call
+6 |     println!("{}", take_owner());
+  |                    ^^^^^^^^^^ value used here after move
+  |
+note: closure cannot be invoked more than once because it moves the variable `owner` out of its environment
+ --&gt; lesson08\examples\scratch.rs:3:30
+  |
+3 |     let take_owner = move || owner;
+  |                              ^^^^^
+note: this value implements `FnOnce`, which causes it to be moved when called
+ --&gt; lesson08\examples\scratch.rs:5:20
+  |
+5 |     println!("{}", take_owner());
+  |                    ^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0382`.
+error: could not compile `lesson08` (example "scratch") due to 1 previous error</pre>
+            <p>두 번째 <code>note</code>가 열쇠입니다. 클로저가 <code>owner</code>를 밖으로 옮기기 때문에 한 번 부르면 클로저 자체가 소비됩니다. 여러 번 불러야 한다면 값을 옮기지 말고 복사본을 돌려주도록(<code>owner.clone()</code>) 바꿉니다.</p>
+            <p><b>오류 2. <code>FnMut</code> 클로저를 <code>Fn</code> 자리에 넘길 때.</b> <span class="file">scratch.rs</span>를 교체하고 같은 명령을 실행합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/fail/fnmut_as_fn.rs.txt">fn apply_twice&lt;F: Fn(i32) -&gt; i32&gt;(f: F, x: i32) -&gt; i32 {
+    f(f(x))
+}
+
+fn main() {
+    let mut calls = 0;
+    let result = apply_twice(
+        |n| {
+            calls += 1;
+            n + 1
+        },
+        1,
+    );
+    println!("{result}, 호출 횟수 {calls}");
+}</pre>
+<pre class="output" data-src="lab/lesson08/expected/fnmut_as_fn.txt">error[E0594]: cannot assign to `calls`, as it is a captured variable in a `Fn` closure
+ --&gt; lesson08\examples\scratch.rs:9:13
+  |
+1 | fn apply_twice&lt;F: Fn(i32) -&gt; i32&gt;(f: F, x: i32) -&gt; i32 {
+  |                                      - change this to accept `FnMut` instead of `Fn`
+...
+6 |     let mut calls = 0;
+  |         --------- `calls` declared here, outside the closure
+7 |     let result = apply_twice(
+  |                  ----------- expects `Fn` instead of `FnMut`
+8 |         |n| {
+  |         --- in this closure
+9 |             calls += 1;
+  |             ^^^^^^^^^^ cannot assign
+
+For more information about this error, try `rustc --explain E0594`.
+error: could not compile `lesson08` (example "scratch") due to 1 previous error</pre>
+            <p><code>apply_twice</code>가 <code>Fn</code>을 요구하는데 클로저가 <code>calls</code>를 고칩니다. 출력의 <code>change this to accept FnMut instead of Fn</code> 표시가 처방입니다. 함수가 받는 쪽의 요구를 <code>F: FnMut(i32) -&gt; i32</code>로 낮추고 매개변수를 <code>mut f: F</code>로 바꿉니다. 여기까지만 고치면 이번에는 <code>f(f(x))</code>에서 <code>E0499</code>(같은 클로저를 한 식 안에서 두 번 가변으로 빌림)가 납니다. 본문을 <code>let once = f(x);</code>와 <code>f(once)</code> 두 줄로 나누면 통과합니다.</p>
+          </li>
+          <li>
+            <strong>이터레이터 어댑터와 소비자, 타입 힌트 읽기 (<span class="file">mine.rs</span>, 2단계 의존)</strong>
+            <p>3단계까지 쓰던 <span class="file">mine.rs</span>로 돌아옵니다. Task 목록에 여러 어댑터를 이어 붙입니다. 체인을 줄마다 나눠 쓰고 저장하면 rustfmt가 이 모양으로 정리합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/src/main.rs" data-lines="84-122">// ── 3. 이터레이터: 어댑터를 이어 붙이고 마지막에 소비한다 ──────────
+
+fn demo_iterators() {
+    let tasks = sample_tasks();
+
+    let open_titles: Vec&lt;String&gt; = tasks
+        .iter()
+        .filter(|task| !task.done)
+        .map(|task| task.title.clone())
+        .collect();
+    println!("남은 일: {open_titles:?}");
+
+    let total: u32 = tasks.iter().map(|task| task.minutes).sum();
+    let remaining = tasks
+        .iter()
+        .filter(|task| !task.done)
+        .fold(0, |acc, task| acc + task.minutes);
+    println!("전체 {total}분, 남은 시간 {remaining}분");
+
+    if let Some(task) = tasks.iter().max_by_key(|task| task.minutes) {
+        println!("가장 오래 걸리는 일: {}", task.title);
+    }
+    println!(
+        "모두 양수? {} / 끝난 일 있음? {} / 90분 이상 위치: {:?}",
+        tasks.iter().all(|task| task.minutes &gt; 0),
+        tasks.iter().any(|task| task.done),
+        tasks.iter().position(|task| task.minutes &gt;= 90),
+    );
+
+    for (index, task) in tasks.iter().enumerate().skip(1).take(2) {
+        println!("{index}번째: {}", task.title);
+    }
+
+    let (done, todo): (Vec&lt;&amp;Task&gt;, Vec&lt;&amp;Task&gt;) = tasks.iter().partition(|task| task.done);
+    println!("끝남 {}개 / 남음 {}개", done.len(), todo.len());
+
+    let by_id: HashMap&lt;u32, &amp;Task&gt; = tasks.iter().map(|task| (task.id, task)).collect();
+    println!("3번 일: {}", by_id[&amp;3].title);
+}</pre>
+            <p><code>main</code>에 <code>demo_iterators();</code>를 추가하고 실행합니다. 새로 붙는 8줄입니다.</p>
+<pre class="output" data-src="lab/lesson08/expected/run.txt" data-lines="12-19">남은 일: ["보고서 작성", "운동", "코드 리뷰"]
+전체 245분, 남은 시간 155분
+가장 오래 걸리는 일: 보고서 작성
+모두 양수? true / 끝난 일 있음? true / 90분 이상 위치: Some(1)
+1번째: 보고서 작성
+2번째: 운동
+끝남 2개 / 남음 3개
+3번 일: 운동</pre>
+            <p>체인 줄마다 회색 글씨가 붙어 있을 것입니다. <code>open_titles</code>를 만드는 체인에서 <code>.iter()</code> 줄 끝에는 <code>Iter&lt;'_, Task&gt;</code>가, <code>.filter(...)</code> 줄 끝에는 <code>Filter&lt;...&gt;</code>가, <code>.map(...)</code> 줄 끝에는 <code>Map&lt;...&gt;</code>가 보입니다. 어댑터가 이전 이터레이터를 겹겹이 감싸는 구조를 눈으로 확인하는 것입니다. 힌트가 길어 잘리면 <code>…</code>로 표시되니, 전체가 궁금하면 그 줄의 점(<code>.</code>) 앞뒤에 커서를 두고 <kbd class="key">Ctrl+K Ctrl+I</kbd>로 호버를 엽니다. 변수 <code>open_titles</code>에 커서를 두고 호버하면 최종 타입 <code>Vec&lt;String&gt;</code>가 보입니다.</p>
+            <p>코드에서 눈여겨볼 곳입니다. <code>filter</code>의 클로저는 <code>&amp;&amp;Task</code>를 받지만 <code>task.done</code>처럼 필드를 바로 쓸 수 있습니다(자동 역참조). <code>partition</code>은 결과 타입을 <code>(Vec&lt;&amp;Task&gt;, Vec&lt;&amp;Task&gt;)</code>로 적어 주어야 합니다. <code>by_id[&amp;3]</code>은 키가 없으면 패닉이 나므로 실제 서비스 코드에서는 <code>get</code>을 씁니다.</p>
+          </li>
+          <li>
+            <strong>지연 평가를 눈으로 확인하기 (<span class="file">mine.rs</span>, 5단계 의존)</strong>
+            <p><code>inspect</code>는 원소가 지나갈 때마다 부수 효과(여기서는 출력)를 냅니다. 소비자가 없으면 아무것도 지나가지 않는다는 것을 확인할 수 있습니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/src/main.rs" data-lines="124-142">fn demo_lazy() {
+    let numbers = [1, 2, 3, 4, 5, 6];
+
+    let pipeline = numbers
+        .iter()
+        .inspect(|n| println!("검사: {n}"))
+        .map(|n| n * 10);
+    println!("파이프라인을 만들었지만 아직 실행 전입니다");
+    let first: Vec&lt;i32&gt; = pipeline.take(1).collect();
+    println!("첫 결과: {first:?}");
+
+    let first_even_square = numbers
+        .iter()
+        .inspect(|n| println!("검사: {n}"))
+        .filter(|n| **n % 2 == 0)
+        .map(|n| n * n)
+        .next();
+    println!("첫 짝수의 제곱: {first_even_square:?}");
+}</pre>
+            <p><code>main</code>에 <code>demo_lazy();</code>를 추가하고 실행합니다. 새로 붙는 6줄입니다.</p>
+<pre class="output" data-src="lab/lesson08/expected/run.txt" data-lines="20-25">파이프라인을 만들었지만 아직 실행 전입니다
+검사: 1
+첫 결과: [10]
+검사: 1
+검사: 2
+첫 짝수의 제곱: Some(4)</pre>
+            <p>읽는 법입니다. 파이프라인을 만든 직후에는 <code>검사:</code> 줄이 하나도 없습니다. <code>take(1).collect()</code>를 부른 뒤에야 첫 원소 하나만 지나갑니다(<code>검사: 1</code>). 두 번째 체인은 <code>next()</code>로 첫 짝수의 제곱만 구하는데, 1과 2까지만 검사하고 멈추므로 3부터는 출력되지 않습니다. 필요한 만큼만 일하는 것이 지연 평가의 이점입니다.</p>
+            <p>소비하지 않으면 어떻게 될까요? 실험용 <span class="file">scratch.rs</span>를 다시 만들어(4단계 끝에 폴더를 지웠다면 폴더부터) 아래 코드를 검사해 보세요. 오류가 아니라 <b>경고</b>가 둘 나옵니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/fail/lazy_unused.rs.txt">fn main() {
+    let numbers = [1, 2, 3];
+    numbers.iter().map(|n| println!("값: {n}"));
+    println!("끝");
+}</pre>
+<pre class="output" data-src="lab/lesson08/expected/lazy_unused.txt">warning: `Iterator::map` call that discard the iterator's values
+ --&gt; lesson08\examples\scratch.rs:3:20
+  |
+3 |     numbers.iter().map(|n| println!("값: {n}"));
+  |                    ^^^^-----------------------^
+  |                    |   |
+  |                    |   this function returns `()`, which is likely not what you wanted
+  |                    |   called `Iterator::map` with callable that returns `()`
+  |                    after this call to map, the resulting iterator is `impl Iterator&lt;Item = ()&gt;`, which means the only information carried by the iterator is the number of items
+  |
+  = note: `Iterator::map`, like many of the methods on `Iterator`, gets executed lazily, meaning that its effects won't be visible until it is iterated
+  = note: `#[warn(map_unit_fn)]` (part of `#[warn(unused)]`) on by default
+help: you might have meant to use `Iterator::for_each`
+  |
+3 -     numbers.iter().map(|n| println!("값: {n}"));
+3 +     numbers.iter().for_each(|n| println!("값: {n}"));
+  |
+
+warning: unused `Map` that must be used
+ --&gt; lesson08\examples\scratch.rs:3:5
+  |
+3 |     numbers.iter().map(|n| println!("값: {n}"));
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: iterators are lazy and do nothing unless consumed
+  = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+  |
+3 |     let _ = numbers.iter().map(|n| println!("값: {n}"));
+  |     +++++++
+
+warning: `lesson08` (example "scratch") generated 2 warnings</pre>
+            <p><code>map</code>만 쓰고 소비하지 않으면 클로저가 한 번도 실행되지 않습니다. "<code>iterators are lazy and do nothing unless consumed</code>"가 이 레슨의 한 줄 요약입니다. 부수 효과가 목적이라면 <code>for</code> 루프나 <code>for_each</code>를 쓰세요.</p>
+          </li>
+          <li>
+            <strong><code>Iterator</code> 직접 구현, 결과 모으기, 코드 접기 (<span class="file">mine.rs</span>, 6단계 의존)</strong>
+            <p>레슨 07에서 배운 trait 구현을 표준 trait에 적용합니다. <code>next</code> 하나만 만들면 <code>filter</code>, <code>sum</code>, <code>zip</code> 등 모든 어댑터를 공짜로 씁니다. <code>parse_minutes</code>는 <code>Result</code>를 담은 이터레이터를 <code>Result&lt;Vec&lt;_&gt;, _&gt;</code>로 모으는데, 하나라도 실패하면 첫 오류를 돌려줍니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/src/main.rs" data-lines="144-177">// ── 4. Iterator trait를 직접 구현하기 ───────────────────────────
+
+struct Countdown {
+    remaining: u32,
+}
+
+impl Iterator for Countdown {
+    type Item = u32;
+
+    fn next(&amp;mut self) -&gt; Option&lt;u32&gt; {
+        if self.remaining == 0 {
+            None
+        } else {
+            let current = self.remaining;
+            self.remaining -= 1;
+            Some(current)
+        }
+    }
+}
+
+fn parse_minutes(inputs: &amp;[&amp;str]) -&gt; Result&lt;Vec&lt;u32&gt;, std::num::ParseIntError&gt; {
+    inputs.iter().map(|text| text.parse::&lt;u32&gt;()).collect()
+}
+
+fn demo_custom_iterator() {
+    let odd: Vec&lt;u32&gt; = Countdown { remaining: 5 }.filter(|n| n % 2 == 1).collect();
+    println!("5부터 거꾸로 센 홀수: {odd:?}");
+
+    let sum: u32 = Countdown { remaining: 4 }.sum();
+    println!("4+3+2+1 = {sum}");
+
+    println!("{:?}", parse_minutes(&amp;["30", "45"]));
+    println!("{:?}", parse_minutes(&amp;["30", "abc", "45"]));
+}</pre>
+            <p><code>main</code>에 <code>demo_custom_iterator();</code>를 추가하고 실행합니다. 새로 붙는 4줄입니다.</p>
+<pre class="output" data-src="lab/lesson08/expected/run.txt" data-lines="26-29">5부터 거꾸로 센 홀수: [5, 3, 1]
+4+3+2+1 = 10
+Ok([30, 45])
+Err(ParseIntError { kind: InvalidDigit })</pre>
+            <p>파일이 길어졌으니 <b>코드 접기</b>로 구조만 봅니다. <span class="file">mine.rs</span>에서 <kbd class="key">Ctrl+K Ctrl+0</kbd>을 누르면 모든 함수 본문이 접혀 함수 이름만 줄지어 보입니다. 이 단축키는 <code>Ctrl+K</code>를 눌렀다 떼고 이어서 <code>Ctrl+0</code>(숫자 영)을 누르는 연속 입력(chord)입니다. 특정 함수만 펼치려면 커서를 그 줄에 두고 <kbd class="key">Ctrl+Shift+]</kbd>를, 다시 접으려면 <kbd class="key">Ctrl+Shift+[</kbd>를 누릅니다. 모두 펼치기는 <kbd class="key">Ctrl+K Ctrl+J</kbd>입니다.</p>
+          </li>
+          <li>
+            <strong>전체 확인 (모든 단계 의존)</strong>
+            <p>완성본 전체 실행과 연습 문제 정답을 확인하는 테스트입니다. 전체 출력은 33줄이고, 마지막 4줄이 연습 문제 정답의 출력입니다.</p>
+<pre class="code" data-lang="bash">cargo run -p lesson08 --bin lesson08</pre>
+<pre class="output" data-src="lab/lesson08/expected/run.txt">add(2, 3) = 5
+장보기 → 오래 걸림? false
+보고서 작성 → 오래 걸림? true
+운동 → 오래 걸림? true
+코드 리뷰 → 오래 걸림? false
+책 읽기 → 오래 걸림? true
+apply_twice = 21
+count = 3
+소유권을 가져가는 클로저
++5 적용: 12
+×2 적용: 14
+남은 일: ["보고서 작성", "운동", "코드 리뷰"]
+전체 245분, 남은 시간 155분
+가장 오래 걸리는 일: 보고서 작성
+모두 양수? true / 끝난 일 있음? true / 90분 이상 위치: Some(1)
+1번째: 보고서 작성
+2번째: 운동
+끝남 2개 / 남음 3개
+3번 일: 운동
+파이프라인을 만들었지만 아직 실행 전입니다
+검사: 1
+첫 결과: [10]
+검사: 1
+검사: 2
+첫 짝수의 제곱: Some(4)
+5부터 거꾸로 센 홀수: [5, 3, 1]
+4+3+2+1 = 10
+Ok([30, 45])
+Err(ParseIntError { kind: InvalidDigit })
+피보나치 앞 10개: [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+짝수 항 5개의 합: 188
+짧은 순서: ["코드 리뷰", "운동", "보고서 작성"]
+카운터: 1 2 3</pre>
+<pre class="code" data-lang="bash">cargo test -p lesson08</pre>
+<pre class="output" data-src="lab/lesson08/expected/test.txt">running 6 tests
+test tests::countdown_counts_down_to_one ... ok
+test tests::fibonacci_starts_with_zero_and_one ... ok
+test tests::fibonacci_even_sum_of_first_five ... ok
+test tests::counter_remembers_its_state ... ok
+test tests::open_titles_are_sorted_by_minutes ... ok
+test tests::parse_minutes_collects_result ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+            <p>위는 테스트 목록 부분만 발췌한 출력입니다. 테스트 이름의 출력 순서는 실행마다 다를 수 있습니다. <span class="file">mine.rs</span>를 남겨 두면 실행 파일이 둘이라 <code>cargo run -p lesson08</code>만으로는 고를 수 없어서 위처럼 <code>--bin lesson08</code>을 붙였습니다. <span class="file">mine.rs</span>를 지웠다면 <code>--bin</code> 없이도 됩니다.</p>
+          </li>
+          <li>
+            <strong>정리하기 (모든 단계 의존)</strong>
+            <p>이 레슨에서 만든 임시 파일이 다른 레슨의 검사까지 깨뜨리지 않도록 정리합니다. 탐색기에서 <span class="file">lab/lesson08/src/bin</span> 폴더(안에 <span class="file">mine.rs</span>만 있습니다)와 <span class="file">lab/lesson08/examples</span> 폴더를 우클릭해 <b>삭제</b>합니다. 남아 있으면 <span class="file">mine.rs</span>의 미완성 코드와 <span class="file">scratch.rs</span>의 일부러 낸 오류가 워크스페이스 전체 검사에 걸립니다. 연습용 임시 프로필을 만들었다면 "VS Code 기능" 절의 마지막 항목대로 삭제합니다.</p>
+<p>정리가 끝났는지 <b>증거</b>로 확인합니다. 에디터를 클릭해 포커스를 두고 <kbd class="key">Ctrl+Shift+B</kbd>를 눌러 기본 빌드 작업 <b>cargo: check all</b>을 실행합니다. 터미널 패널 마지막에 <code>Finished</code>가 나오고 <code>error</code>가 없어야 합니다. 이어서 <kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열어 <code>Tasks: Run Test Task</code>를 실행하면 기본 테스트 작업 <b>cargo: test all</b>이 돌고, 모든 <code>test result:</code> 줄이 <code>ok</code>이어야 합니다(<code>test result: FAILED</code>가 한 줄이라도 있으면 남은 임시 파일이 없는지 다시 찾아봅니다). 이 두 작업은 <span class="file">lab</span>의 모든 레슨 크레이트를 한꺼번에 검사하므로, 임시 파일이 하나라도 깨진 채 남아 있으면 다른 레슨의 검사까지 실패합니다. 명령 팔레트에서 <code>Tasks: Run Task</code>를 실행했을 때 목록에 <b>cargo: check all</b>과 <b>cargo: test all</b> 그리고 <b>cargo: clippy all</b>과 <b>cargo: run task api</b>가 그대로 보이면 작업 설정(<span class="file">.vscode/tasks.json</span>)도 건드리지 않은 것입니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Rust</th></tr></thead>
+            <tbody>
+              <tr><td>익명 함수</td><td><code>{ a, b -&gt; a + b }</code></td><td><code>lambda a, b: a + b</code></td><td><code>|a, b| a + b</code></td></tr>
+              <tr><td>변수 붙잡기</td><td>읽기·쓰기 모두 자유(내부적으로 참조 상자로 감쌈)</td><td>읽기 자유, 고치려면 중첩 함수에서 <code>nonlocal</code> 선언 필요</td><td>컴파일러가 빌림/이동을 추적, 종류가 <code>Fn</code>/<code>FnMut</code>/<code>FnOnce</code>로 갈림</td></tr>
+              <tr><td>함수를 받는 인자 타입</td><td><code>(Int) -&gt; Int</code> 하나뿐</td><td><code>Callable[[int], int]</code></td><td><code>F: Fn(i32) -&gt; i32</code> 등 세 단계 중 선택</td></tr>
+              <tr><td>걸러서 변환</td><td><code>tasks.filter { !it.done }.map { it.title }</code></td><td><code>[t.title for t in tasks if not t.done]</code></td><td><code>tasks.iter().filter(|t| !t.done).map(|t| t.title.clone()).collect()</code></td></tr>
+              <tr><td>지연 평가</td><td><code>asSequence()</code>를 붙여야 지연, 기본은 즉시</td><td>제너레이터 식은 지연, 리스트 컴프리헨션은 즉시</td><td>이터레이터는 기본이 지연</td></tr>
+              <tr><td>합계·최댓값</td><td><code>sumOf</code>, <code>maxByOrNull</code></td><td><code>sum(...)</code>, <code>max(..., key=...)</code></td><td><code>sum()</code>, <code>max_by_key</code></td></tr>
+              <tr><td>둘로 나누기</td><td><code>partition</code></td><td>컴프리헨션 두 번</td><td><code>partition</code> (결과 타입 명시 필요)</td></tr>
+              <tr><td>스프링 서비스 계층에서</td><td>스트림·컬렉션 연산으로 DTO 변환</td><td>컴프리헨션으로 응답 모델 변환</td><td>이터레이터 체인으로 응답 구조체 변환 (레슨 11)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <pre class="code" data-lang="kotlin">val openTitles = tasks.filter { !it.done }.map { it.title }
+val remaining = tasks.filter { !it.done }.sumOf { it.minutes }</pre>
+        <pre class="code" data-lang="python">open_titles = [t.title for t in tasks if not t.done]
+remaining = sum(t.minutes for t in tasks if not t.done)</pre>
+        <p>위 Kotlin·Python 코드는 이 레슨의 <code>open_titles</code>, <code>remaining</code>과 같은 일을 하는 비교용 코드이며 실행해 확인한 것은 아닙니다. Rust 쪽은 <span class="file">lab/lesson08/src/main.rs</span>에서 실제로 실행됩니다.</p>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ① — Kotlin 리스트 연산은 즉시, Rust 이터레이터는 지연</strong>Kotlin에서 <code>list.map { println(it) }</code>는 바로 실행되지만 Rust의 <code>iter().map(|x| println!(...))</code>는 소비하지 않으면 아무 일도 하지 않습니다(컴파일러가 경고합니다). 반대로 Kotlin <code>Sequence</code>를 알고 있다면 같은 감각으로 쓰면 됩니다.</div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ② — "람다 안에서 변수를 고친다"는 자유롭지 않습니다</strong>Kotlin에서는 바깥 <code>var</code>를 람다가 고치는 것이 흔합니다. Rust에서는 그 클로저가 <code>FnMut</code>가 되어, <code>Fn</code>을 요구하는 곳에 못 넘기고, 같은 변수를 고치는 클로저를 두 개 동시에 만들 수도 없습니다(오류 E0499, 아래 참고). 상태를 공유해야 하면 레슨 10의 <code>Arc&lt;Mutex&lt;T&gt;&gt;</code>가 답입니다.</div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ③ — <code>len()</code>은 글자 수가 아닙니다</strong>문자열 길이를 비교하는 필터를 만들 때 <code>title.len()</code>은 바이트 수입니다. 한글은 글자당 3바이트이므로 글자 수는 <code>title.chars().count()</code>로 셉니다. 이 레슨의 데이터에서 <code>minutes</code>를 쓴 것도 그 때문입니다.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 인레이 힌트로 타입 읽고, 코드 접기로 구조 보기</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>모든 영역 접기</td><td><kbd class="key">Ctrl+K Ctrl+0</kbd></td><td>긴 파일에서 함수 이름만 훑어볼 때</td></tr>
+                <tr><td>모든 영역 펼치기</td><td><kbd class="key">Ctrl+K Ctrl+J</kbd></td><td>접은 것을 한꺼번에 되돌릴 때</td></tr>
+                <tr><td>현재 영역 접기</td><td><kbd class="key">Ctrl+Shift+[</kbd></td><td>지금 보고 있는 함수만 접을 때</td></tr>
+                <tr><td>현재 영역 펼치기</td><td><kbd class="key">Ctrl+Shift+]</kbd></td><td>접힌 함수 하나만 열 때</td></tr>
+                <tr><td>호버 보기</td><td><kbd class="key">Ctrl+K Ctrl+I</kbd></td><td>이터레이터 체인 중간의 타입을 확인할 때</td></tr>
+                <tr><td>설정 열기</td><td><kbd class="key">Ctrl+,</kbd></td><td>인레이 힌트 종류를 켜고 끌 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>접기 단축키는 <b>영역(region)</b> 단위로 동작합니다. Rust에서는 함수·<code>impl</code> 블록·<code>match</code> 팔 등이 영역이 됩니다.</p>
+        </div>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>연습용 임시 프로필 만들기</strong>
+<div class="callout warn"><strong>먼저 연습용 임시 프로필을 만듭니다 (내 평소 설정을 지키기 위해)</strong>이 코스는 사용자 전역 <code>settings.json</code>, <code>keybindings.json</code>, 사용자 스니펫을 직접 고치게 하지 않습니다. 설정 실험은 모두 <b>연습용 프로필</b> 안에서 하고, 끝나면 그 프로필을 삭제합니다. VS Code 공식 문서는 프로필 안에서 바꾼 설정과 확장이 현재 활성 프로필에 저장된다고 설명하므로, 연습용 프로필에서 바꾼 값은 기본 프로필(내 평소 설정)에 기록되지 않습니다.</div>
+            <ol>
+              <li>왼쪽 아래 <b>관리(Manage)</b> 톱니 아이콘을 누르고 <b>Profiles</b>를 고릅니다. 메뉴의 <b>File</b> → <b>Preferences</b> → <b>Profiles</b>도 같은 곳입니다. 프로필 편집기가 열립니다.</li>
+              <li><b>New Profile</b> 버튼을 누르고 이름에 <code>연습용</code>을 적습니다. 복사할 원본은 기본 프로필(Default)로 고르고, 아래 <b>Contents</b>의 설정·키보드 단축키·스니펫·작업·확장 항목을 <b>모두 체크한 채</b> 둡니다. <b>Create</b>를 누릅니다.
+                <ul>
+                  <li>빈 프로필(Empty Profile)로 만들지 마세요. 공식 문서에 따르면 빈 프로필에는 설정·확장·스니펫이 하나도 없어서 rust-analyzer 같은 확장이 빠지고, 이 코스의 실험이 동작하지 않습니다.</li>
+                  <li>체크를 풀지 마세요. 공식 문서에 따르면 체크하지 않은 항목은 기본 프로필의 것을 그대로 쓰기 때문에, 그 항목을 이 프로필에서 고치면 기본 프로필이 바뀝니다.</li>
+                </ul>
+              </li>
+              <li>확인합니다. 관리 아이콘에 프로필 이름의 앞 두 글자가 배지로 보이고, 아이콘에 마우스를 올리면 프로필 이름이 나옵니다. 공식 문서는 기본 프로필을 쓰는 중에는 프로필 이름이 표시되지 않는다고 설명하므로, 이름이 보이면 연습용 프로필을 쓰는 중입니다. 프로필을 만들거나 고르면 현재 폴더에 연결되어 다음에 이 폴더를 열 때도 그 프로필이 쓰이므로, 실험이 끝나면 반드시 아래 순서로 삭제합니다.</li>
+            </ol>
+          </li>
+          <li>
+            <strong>힌트 종류를 켜고, 프로필의 설정 JSON에 기록되는 모습 보기 (연습용 프로필 안에서)</strong>
+            <p>(관리 아이콘에 프로필 이름이 보이는 상태에서) <kbd class="key">Ctrl+,</kbd>를 눌러 설정에서 <code>inlayHints</code>를 검색합니다. 이 레슨에서 켜 볼 값은 두 가지이고, 켠 뒤 완성본 <span class="file">lab/lesson08/src/main.rs</span>의 <code>demo_fn_traits</code>를 봅니다.</p>
+            <ul>
+              <li><code>rust-analyzer.inlayHints.closureCaptureHints.enable</code>: 클로저가 변수를 어떻게 붙잡는지 보여 줍니다(기본 꺼짐).</li>
+              <li><code>rust-analyzer.inlayHints.closureReturnTypeHints.enable</code>: 클로저 반환 타입을 보여 줍니다(기본 <code>never</code>, <code>always</code>와 <code>with_block</code> 선택 가능).</li>
+            </ul>
+            <p>이미 켜져 있어서 바꿀 필요가 없는 값도 읽어 둡니다. <code>rust-analyzer.inlayHints.chainingHints.enable</code>은 메서드 체인 줄마다 타입을 보여 주며 기본이 켜짐입니다(5단계에서 본 힌트). <code>editor.inlayHints.enabled</code>는 모든 인레이 힌트를 한꺼번에 제어하는 편집기 공통 설정이며 <code>on</code>, <code>off</code>, <code>onUnlessPressed</code>(평소에는 보이고 Ctrl 키와 Alt 키를 함께 누르는 동안 숨김), <code>offUnlessPressed</code> 중에서 고릅니다. 이 코스의 <span class="file">.vscode/settings.json</span>에는 이 값이 이미 <code>"on"</code>으로 들어 있습니다. 워크스페이스 설정이 프로필(사용자) 설정보다 우선하므로 프로필에서 이 값을 바꿔도 이 폴더에서는 적용되지 않습니다. 그래서 이 값은 바꾸는 실험에서 제외했습니다.</p>
+            <p>값을 바꾼 뒤 설정 화면 오른쪽 위의 <b>설정 열기(JSON)</b> 아이콘을 누르면 현재 프로필(연습용)의 설정 파일이 열립니다. 기본값에서 바뀐 항목만 한 줄씩 기록되어 있는 것을 확인하세요. 그 파일에서 <kbd class="key">Ctrl+Space</kbd>로 설정 이름이 자동완성되고 오타에 물결선이 생기는 것도 볼 수 있습니다. 이 파일은 기본 프로필의 <code>settings.json</code>이 아니라서 마음껏 실험해도 됩니다.</p>
+          </li>
+          <li>
+            <strong>연습용 임시 프로필 삭제하기 (실험이 끝나면 즉시)</strong>
+<ol>
+              <li><kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열고 <code>Profiles: Switch Profile...</code>을 실행해 목록에서 기본 프로필(<b>Default</b>)로 돌아옵니다. 프로필을 고르면 현재 폴더가 그 프로필에 연결되므로, 삭제하기 전에 기본 프로필로 먼저 돌아와야 폴더가 기본 프로필에 다시 연결됩니다.</li>
+              <li>확인합니다. 관리 아이콘의 두 글자 배지가 사라지고, 마우스를 올려도 프로필 이름이 나오지 않아야 합니다(기본 프로필).</li>
+              <li><kbd class="key">Ctrl+Shift+P</kbd>로 <code>Profiles: Delete Profile...</code>을 실행하고 드롭다운에서 <code>연습용</code>만 골라 삭제합니다. 프로필 편집기(관리 아이콘 → <b>Profiles</b>)에서 <code>연습용</code> 프로필의 더 보기 메뉴에 있는 <b>Delete Profile</b>을 써도 됩니다.</li>
+              <li>확인합니다. 프로필 편집기 목록에 <code>연습용</code>이 없어야 합니다. <kbd class="key">Ctrl+,</kbd>로 설정을 열어 방금 실험한 설정 이름을 검색하면 기본값(바뀌지 않은 상태)이어야 하고, 평소 쓰던 터미널 프로필 같은 개인 설정은 그대로 있어야 합니다.</li>
+            </ol>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <p>정답은 <span class="file">lab/lesson08/src/main.rs</span> 아래쪽과 <code>cargo test -p lesson08</code>에 있습니다. 먼저 <span class="file">mine.rs</span>에서 직접 풀고 나서 열어 보세요.</p>
+        <h3>문제 1. 피보나치 이터레이터</h3>
+        <p><code>Iterator&lt;Item = u64&gt;</code>를 구현하는 <code>Fibonacci</code>를 만드세요. 값은 0, 1, 1, 2, 3, 5, ...로 끝없이 이어집니다. 이것으로 앞 10개를 모으고, 짝수 항만 골라 앞 5개를 더해 보세요.</p>
+        <p><b>완료 조건:</b> 출력이 <code>[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]</code>와 <code>188</code>이다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>구조체에 "현재 값"과 "다음 값" 두 개를 두고, <code>next</code>에서 현재 값을 꺼낸 뒤 둘을 한 칸씩 밀어 주세요. 끝이 없으므로 <code>next</code>는 항상 <code>Some</code>을 돌려주고, 쓰는 쪽에서 <code>take(10)</code>으로 끊습니다. 아주 많이 이어 가면 <code>u64</code>가 넘쳐 디버그 빌드에서 패닉이 납니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/src/main.rs" data-lines="181-204">struct Fibonacci {
+    current: u64,
+    next: u64,
+}
+
+impl Fibonacci {
+    fn new() -&gt; Self {
+        Fibonacci {
+            current: 0,
+            next: 1,
+        }
+    }
+}
+
+impl Iterator for Fibonacci {
+    type Item = u64;
+
+    fn next(&amp;mut self) -&gt; Option&lt;u64&gt; {
+        let value = self.current;
+        self.current = self.next;
+        self.next += value;
+        Some(value)
+    }
+}</pre>
+<pre class="output" data-src="lab/lesson08/expected/run.txt" data-lines="30-31">피보나치 앞 10개: [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+짝수 항 5개의 합: 188</pre>
+          </div>
+        </details>
+        <h3>문제 2. 짧은 일부터 정렬하고, 상태를 가진 클로저 만들기</h3>
+        <p>(1) <code>fn open_titles_by_minutes(tasks: &amp;[Task]) -&gt; Vec&lt;String&gt;</code>은 끝나지 않은 Task만 모아 <code>minutes</code>가 짧은 순으로 제목을 돌려줍니다. (2) <code>fn make_counter() -&gt; impl FnMut() -&gt; u32</code>는 부를 때마다 1, 2, 3을 돌려주는 클로저를 만듭니다.</p>
+        <p><b>완료 조건:</b> 출력이 <code>짧은 순서: ["코드 리뷰", "운동", "보고서 작성"]</code>와 <code>카운터: 1 2 3</code>이다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>(1)은 <code>filter</code>로 거른 참조를 <code>Vec&lt;&amp;Task&gt;</code>에 모은 뒤 <code>sort_by_key</code>로 정렬하고, 마지막에 <code>map</code>으로 제목만 복사해 <code>collect</code>합니다. 정렬은 이터레이터 어댑터가 아니라 <code>Vec</code>의 메서드입니다. (2)는 클로저 바깥에 <code>let mut count = 0;</code>을 두고 <code>move</code> 클로저로 가져가 값을 올려 돌려줍니다. 반환 타입에 <code>FnMut</code>를 쓰는 이유는 클로저가 상태를 고치기 때문입니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/src/main.rs" data-lines="206-218">fn open_titles_by_minutes(tasks: &amp;[Task]) -&gt; Vec&lt;String&gt; {
+    let mut open: Vec&lt;&amp;Task&gt; = tasks.iter().filter(|task| !task.done).collect();
+    open.sort_by_key(|task| task.minutes);
+    open.iter().map(|task| task.title.clone()).collect()
+}
+
+fn make_counter() -&gt; impl FnMut() -&gt; u32 {
+    let mut count = 0;
+    move || {
+        count += 1;
+        count
+    }
+}</pre>
+<pre class="output" data-src="lab/lesson08/expected/run.txt" data-lines="32-33">짧은 순서: ["코드 리뷰", "운동", "보고서 작성"]
+카운터: 1 2 3</pre>
+            <p>검증 명령입니다.</p>
+<pre class="code" data-lang="bash">cargo test -p lesson08</pre>
+          </div>
+        </details>
+        <h3>더 연습하기 (rustlings)</h3>
+        <p>클론해 둔 <span class="file" data-local="rustlings/exercises/18_iterators/iterators1.rs">rustlings/exercises/18_iterators</span>의 <code>iterators1</code>부터 <code>iterators5</code>가 같은 주제입니다. 진행 방법은 레슨 12에서 정리합니다.</p>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="rust-08-run"><span><code>cargo run -p lesson08 --bin mine</code>으로 직접 입력한 코드의 출력 33줄 중 단계별 출력을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-08-capture"><span>연습용 임시 프로필에서 클로저 캡처 힌트를 켜 <code>&amp;</code>, <code>&amp;mut</code>, 이름만 있는 경우가 각각 어느 클로저에 붙는지 찾았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-08-errors"><span>E0382(<code>FnOnce</code> 두 번 호출)와 E0594(<code>FnMut</code>를 <code>Fn</code> 자리에 전달)를 <span class="file">scratch.rs</span>로 재현하고 고쳤다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-08-lazy"><span><code>inspect</code> 출력으로 이터레이터가 소비하기 전에는 실행되지 않음을 직접 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-08-fold"><span><kbd class="key">Ctrl+K Ctrl+0</kbd>과 <kbd class="key">Ctrl+K Ctrl+J</kbd>를 마우스 없이 눌러 접기·펼치기를 했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-08-settings"><span>설정 JSON에 기록된 줄을 연습용 프로필 파일에서 확인한 뒤, 프로필을 삭제하고 관리 아이콘에 프로필 이름이 없는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-08-clean"><span><span class="file">src/bin</span>과 <span class="file">examples</span> 폴더를 지운 뒤 <kbd class="key">Ctrl+Shift+B</kbd>의 <b>cargo: check all</b>이 <code>Finished</code>로 끝나고, <b>cargo: test all</b>의 <code>test result:</code>가 모두 <code>ok</code>인 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-08-practice"><span>연습 문제를 힌트 없이 먼저 시도했고 <code>cargo test -p lesson08</code>의 6개 통과를 보았다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <p>따라하기에서 만난 E0382, E0594와 소비하지 않는 이터레이터 경고 외에 자주 보는 오류입니다. 모든 메시지는 <span class="file">scratch.rs</span>에 코드를 넣고 실제로 컴파일해 얻었습니다.</p>
+        <h3>증상: <code>type annotations needed</code> (E0283)</h3>
+        <p>원인: <code>collect()</code>는 결과를 어떤 컬렉션에 담을지 모릅니다. 해결: <code>let doubled: Vec&lt;i32&gt; = ...</code>처럼 변수 타입을 적거나 <code>.collect::&lt;Vec&lt;_&gt;&gt;()</code>처럼 적습니다. 메시지의 <code>help</code>가 <code>Vec&lt;_&gt;</code> 형태를 제안합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/fail/collect_type.rs.txt">fn main() {
+    let numbers = [1, 2, 3];
+    let doubled = numbers.iter().map(|n| n * 2).collect();
+    println!("{}", numbers.len());
+    let _ = doubled;
+}</pre>
+<pre class="code" data-lang="bash">cargo check -p lesson08 --example scratch</pre>
+<pre class="output" data-src="lab/lesson08/expected/collect_type.txt">error[E0283]: type annotations needed
+    --&gt; lesson08\examples\scratch.rs:3:9
+     |
+   3 |     let doubled = numbers.iter().map(|n| n * 2).collect();
+     |         ^^^^^^^                                 ------- type must be known at this point
+     |
+     = note: the type must implement `FromIterator&lt;i32&gt;`
+note: required by a bound in `collect`
+    --&gt; ...\library\core\src\iter\traits\iterator.rs:2073:19
+     |
+2073 |     fn collect&lt;B: FromIterator&lt;Self::Item&gt;&gt;(self) -&gt; B
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::collect`
+help: consider giving `doubled` an explicit type
+     |
+   3 |     let doubled: Vec&lt;_&gt; = numbers.iter().map(|n| n * 2).collect();
+     |                ++++++++
+
+For more information about this error, try `rustc --explain E0283`.
+error: could not compile `lesson08` (example "scratch") due to 1 previous error</pre>
+        <h3>증상: <code>cannot borrow `count` as mutable more than once at a time</code> (E0499)</h3>
+        <p>원인: 같은 변수를 고치는 클로저 두 개가 동시에 살아 있습니다. 첫 번째 클로저가 가변 참조를 쥔 채 두 번째가 또 쥐려 합니다. 해결: 클로저를 쓰고 난 뒤에 다음 클로저를 만들거나(첫 클로저의 마지막 사용 이후), 하나의 클로저로 합칩니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/fail/two_mut_closures.rs.txt">fn main() {
+    let mut count = 0;
+    let mut first = || count += 1;
+    let mut second = || count += 10;
+
+    first();
+    second();
+    println!("{count}");
+}</pre>
+<pre class="code" data-lang="bash">cargo check -p lesson08 --example scratch</pre>
+<pre class="output" data-src="lab/lesson08/expected/two_mut_closures.txt">error[E0499]: cannot borrow `count` as mutable more than once at a time
+ --&gt; lesson08\examples\scratch.rs:4:22
+  |
+3 |     let mut first = || count += 1;
+  |                     -- ----- first borrow occurs due to use of `count` in closure
+  |                     |
+  |                     first mutable borrow occurs here
+4 |     let mut second = || count += 10;
+  |                      ^^ ----- second borrow occurs due to use of `count` in closure
+  |                      |
+  |                      second mutable borrow occurs here
+5 |
+6 |     first();
+  |     ----- first borrow later used here
+
+For more information about this error, try `rustc --explain E0499`.
+error: could not compile `lesson08` (example "scratch") due to 1 previous error</pre>
+        <h3>증상: <code>closure may outlive the current function, but it borrows `n`</code> (E0373)</h3>
+        <p>원인: 함수가 클로저를 반환하는데, 클로저가 지역 변수 <code>n</code>을 빌려 갑니다. 함수가 끝나면 <code>n</code>이 사라지므로 위험합니다. 해결: <code>move |x| x + n</code>처럼 <code>move</code>를 붙여 값을 클로저 안으로 옮깁니다. 레슨 10에서 스레드에 클로저를 넘길 때도 같은 오류가 납니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson08/fail/return_closure_borrow.rs.txt">fn make_adder(n: i32) -&gt; impl Fn(i32) -&gt; i32 {
+    |x| x + n
+}
+
+fn main() {
+    let add5 = make_adder(5);
+    println!("{}", add5(1));
+}</pre>
+<pre class="code" data-lang="bash">cargo check -p lesson08 --example scratch</pre>
+<pre class="output" data-src="lab/lesson08/expected/return_closure_borrow.txt">error[E0373]: closure may outlive the current function, but it borrows `n`, which is owned by the current function
+ --&gt; lesson08\examples\scratch.rs:2:5
+  |
+2 |     |x| x + n
+  |     ^^^     - `n` is borrowed here
+  |     |
+  |     may outlive borrowed value `n`
+  |
+note: closure is returned here
+ --&gt; lesson08\examples\scratch.rs:2:5
+  |
+2 |     |x| x + n
+  |     ^^^^^^^^^
+help: to force the closure to take ownership of `n` (and any other referenced variables), use the `move` keyword
+  |
+2 |     move |x| x + n
+  |     ++++
+
+For more information about this error, try `rustc --explain E0373`.
+error: could not compile `lesson08` (example "scratch") due to 1 previous error</pre>
+        <h3>증상: <code>cargo run -p lesson08</code>이 실행할 파일을 고를 수 없다고 한다</h3>
+        <p>원인: <span class="file">src/bin/mine.rs</span>가 있으면 실행 파일이 둘이 됩니다. 해결: <code>cargo run -p lesson08 --bin lesson08</code>처럼 지정하거나 연습이 끝난 <span class="file">mine.rs</span>를 지웁니다. 실제 메시지는 이렇습니다.</p>
+<pre class="code" data-lang="bash">cargo run -p lesson08</pre>
+<pre class="output" data-src="lab/lesson08/expected/run_ambiguous.txt">error: `cargo run` could not determine which binary to run. Use the `--bin` option to specify a binary, or the `default-run` manifest key.
+available binaries: lesson08, mine</pre>
+      </section>
+
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨에서는 코드를 여러 파일과 크레이트로 나누고(<code>mod</code>, <code>pub</code>, <code>use</code>), <code>cargo test</code>로 단위·통합·문서 테스트를 작성합니다. VS Code의 테스트 패널과 테스트 디버깅도 처음 써 봅니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="07-traits-generics.html"><small>← 이전 레슨</small>07 · trait·제네릭·라이프타임</a>
+          <a class="next" rel="next" href="09-modules-testing.html"><small>다음 레슨 →</small>09 · 모듈·크레이트·테스트</a>
+        </nav>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Rust 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

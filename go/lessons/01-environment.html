@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="go" data-lesson="01">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Go 설치를 확인하고 VS Code에 Go 확장과 gopls·dlv를 연결합니다.">
+  <title>01 · 환경 준비: Go와 VS Code 연결 — Go 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Go 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Go</span>
+      <span>Go 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 01 · 환경 준비</p>
+        <h1>환경 준비: Go와 VS Code 연결</h1>
+        <p class="lead">Go 설치를 확인하고, VS Code에 Go 확장과 도구(<code>gopls</code>, <code>dlv</code>)를 연결합니다. 이 레슨이 끝나면 터미널에서 <code>go version</code>이 나오고, 에디터에서 언어 서버가 켜져 있는 상태가 됩니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 90분</li>
+          <li><b>난이도</b> ★☆☆☆☆</li>
+          <li><b>선행</b> <a href="00-vscode-start.html">레슨 00</a></li>
+          <li><b>실습 폴더</b> <span class="file">D:\study\go</span> (이 레슨은 코드 없음)</li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li><code>go version</code>과 <code>go env</code>로 설치된 Go 버전과 <code>GOROOT</code>, <code>GOPATH</code>, <code>GOWORK</code> 경로를 읽고 각각 무엇인지 설명할 수 있다.</li>
+          <li>VS Code로 <span class="file">D:\study\go</span> 폴더를 열고 작업 영역 신뢰(Workspace Trust)를 허용할 수 있다.</li>
+          <li>확장 탭의 <code>@recommended</code> 목록에서 Go 확장(<code>golang.go</code>)을 찾아 설치하고, <code>Go: Install/Update Tools</code>로 도구를 설치할 수 있다.</li>
+          <li>PowerShell 터미널과 bash(MSYS2) 터미널을 각각 열어 보고, bash에서 <code>go</code>를 찾지 못하는 원인을 설명할 수 있다. 사용자 설정을 바꿔야 할 때는 먼저 백업하고 되돌릴 방법을 준비한다.</li>
+          <li>코스 폴더의 <span class="file">go.work</span>가 왜 있는지, 클론한 외부 저장소 안에서 <code>go test</code>가 막히는 이유를 설명할 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>영문 원문은 이 페이지의 한국어 요약을 먼저 읽은 뒤 확인하는 순서를 권합니다. 로컬 원문은 VS Code에서 <kbd class="key">Ctrl+P</kbd>로 파일 이름을 입력해 바로 열 수 있습니다.</p>
+        <ul>
+          <li><a href="https://go.dev/doc/install">Download and install (영문)</a> — Go 공식 설치 안내입니다. 이미 설치되어 있으므로 마지막의 <code>go version</code> 확인 부분만 읽으면 됩니다.</li>
+          <li>Learn Go with Tests의 <span class="file" data-local="learn-go-with-tests/install-go.md">learn-go-with-tests/install-go.md</span> — 환경 변수, 모듈, 린트 도구를 짧게 훑습니다.</li>
+          <li><a href="https://github.com/golang/vscode-go/blob/master/docs/tools.md">VS Code Go 확장의 도구 문서 (영문)</a> — 확장이 어떤 도구를 설치하는지 설명합니다.</li>
+          <li><a href="https://go.dev/gopls/workspace">gopls 작업 영역 문서 (영문)</a> — 폴더를 열었을 때 gopls가 모듈과 <span class="file">go.work</span>를 어떻게 찾는지 설명합니다.</li>
+          <li><a href="https://code.visualstudio.com/docs/editing/workspaces/workspace-trust">VS Code 작업 영역 신뢰 (영문)</a>, <a href="https://code.visualstudio.com/docs/terminal/profiles">터미널 프로필 (영문)</a></li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>Go 도구 체인(toolchain)</b>은 <code>go</code> 명령 하나에 컴파일러, 실행, 테스트, 포맷터, 정적 검사, 모듈 관리가 모두 들어 있습니다. JDK, Gradle, ktlint, JUnit을 따로 맞추던 것과 달리 설치할 것이 하나입니다.</p>
+        <p><b><code>GOROOT</code></b>는 Go 자체가 설치된 폴더(표준 라이브러리 소스와 도구 포함)이고, <b><code>GOPATH</code></b>는 내려받은 모듈 캐시와 <code>go install</code>로 설치한 실행 파일(<span class="file">GOPATH\bin</span>)이 쌓이는 폴더입니다. 모듈(module) 방식에서는 내 코드를 <code>GOPATH</code> 안에 둘 필요가 없습니다.</p>
+        <p><b>언어 서버(Language Server)</b>는 에디터와 분리된 분석 프로그램입니다. Go의 언어 서버가 <code>gopls</code>이고, 자동 완성, 정의로 이동, 오류 표시를 맡습니다. 디버거는 <code>dlv</code>(Delve)입니다. Go 확장은 이 도구들을 <span class="file">GOPATH\bin</span>에 설치합니다. 공식 문서에 따르면 <code>gopls</code>가 없으면 확장이 설치를 시도하고, 나머지 도구는 <code>Go: Install/Update Tools</code> 명령으로 설치하거나 갱신합니다.</p>
+        <p><b>작업 영역 신뢰(Workspace Trust)</b>는 낯선 폴더의 코드를 VS Code가 마음대로 실행하지 못하게 하는 장치입니다. 신뢰하지 않으면 제한 모드(Restricted Mode)로 열리고, 공식 문서 기준으로 터미널, 태스크, 디버깅, 작업 영역 설정, 확장 기능이 제한됩니다. 즉 신뢰하지 않으면 이 코스의 실습이 대부분 동작하지 않습니다.</p>
+        <p><b><code>go.work</code></b>는 여러 모듈을 한 작업 영역으로 묶는 파일입니다. 이 코스 폴더에는 클론한 외부 저장소가 여러 개 있고 저마다 <span class="file">go.mod</span>를 갖고 있습니다. 그래서 직접 작업하는 모듈은 <span class="file">lab</span> 하나라고 <span class="file">go.work</span>가 알려 줍니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>단계는 앞 단계의 결과에 이어집니다. 이 레슨에는 직접 입력할 코드가 없고, 모든 명령은 PowerShell과 bash에서 같은 모양입니다(다른 경우만 따로 표시합니다). 터미널 출력의 사용자 이름이나 경로는 PC마다 다릅니다.</p>
+        <ol class="steps">
+          <li>
+            <strong>코스 폴더가 열려 있고 신뢰된 상태인지 확인하기</strong>
+            <p><a href="00-vscode-start.html">레슨 00</a>에서 폴더 열기와 신뢰, 권장 확장 설치까지 마쳤다면 이 단계는 상태만 확인하고 넘어갑니다. 아직 폴더가 열려 있지 않다면 VS Code에서 <kbd class="key">Ctrl+K Ctrl+O</kbd>를 눌러 폴더 선택 창을 열고 <span class="file">D:\study\go</span>를 선택한 뒤 <b>폴더 선택</b>을 누릅니다.</p>
+            <p>확인: 왼쪽 탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에 <span class="file">lab</span>, <span class="file">lessons</span>, <span class="file">go.work</span> 같은 항목이 보이고, 창 위쪽에 제한 모드(Restricted Mode) 배너와 상태 표시줄의 제한 모드 배지가 모두 없어야 합니다. 배너나 배지가 보이면 아직 신뢰하지 않은 상태이므로 배너의 <b>Manage</b> 링크로 신뢰 화면을 열어 이 폴더를 신뢰합니다. "이 폴더의 작성자를 신뢰합니까?"라는 질문 창이 뜨면 <b>Trust Folder &amp; Continue</b>(또는 <b>Yes, I trust the authors</b>) 버튼을 누르고, 부모 폴더 전체를 신뢰하는 체크 상자는 켜지 마세요.</p>
+          </li>
+          <li>
+            <strong>통합 터미널 열고 PowerShell 터미널 만들기</strong>
+            <p>1단계에서 폴더를 연 상태에서 <kbd class="key">Ctrl+`</kbd>를 눌러 터미널 패널을 엽니다(키보드에서 백틱을 누르기 어렵다면 명령 팔레트 <kbd class="key">Ctrl+Shift+P</kbd>에서 <code>Terminal: Create New Terminal</code>을 실행합니다). 터미널 패널 오른쪽 위의 <b>+</b> 옆 화살표(⌄)를 눌러 프로필 목록을 보고 <b>PowerShell</b> 계열 프로필을 선택해 새 터미널을 엽니다.</p>
+            <p>확인: 프롬프트가 <code>PS</code>로 시작하고 현재 폴더가 <span class="file">D:\study\go</span>입니다. 터미널 패널 오른쪽의 탭 목록에 프로필 이름이 표시됩니다.</p>
+          </li>
+          <li>
+            <strong>go version과 go env 확인하기</strong>
+            <p>2단계의 PowerShell 터미널에 다음을 입력합니다.</p>
+<pre class="code" data-lang="text">go version
+go env GOROOT GOPATH GOOS GOARCH</pre>
+<pre class="output">go version go1.27.0 windows/amd64
+C:\Program Files\Go
+C:\Users\사용자\go
+windows
+amd64</pre>
+            <p>첫 줄은 설치된 Go 버전과 운영체제/CPU 구조입니다. 이어지는 네 줄은 순서대로 <code>GOROOT</code>(Go 설치 폴더), <code>GOPATH</code>(모듈 캐시와 도구 설치 위치), <code>GOOS</code>, <code>GOARCH</code>입니다. 버전 숫자와 사용자 이름 부분은 다를 수 있습니다. <code>go env</code>에 변수 이름을 여러 개 주면 값만 한 줄씩 출력합니다.</p>
+          </li>
+          <li>
+            <strong>bash(MSYS2) 터미널에서 같은 명령 실행하기</strong>
+            <p>이번에는 같은 터미널 프로필 목록(⌄)에서 bash 계열(MSYS2) 프로필로 새 터미널을 엽니다. 프롬프트가 <code>$</code>로 끝나는 bash 모양이면 같은 명령을 입력합니다.</p>
+<pre class="code" data-lang="bash">pwd
+go version</pre>
+            <p>MSYS2 bash는 Windows 경로를 <code>/d/study/go</code> 형태로 보여 줍니다. 그리고 로그인 셸(<code>bash --login</code>)로 시작하면 MSYS2가 <code>PATH</code>를 자기 기준으로 다시 만들기 때문에, 기본 설정에서는 Windows에 설치한 <code>go</code>를 찾지 못합니다. 이 PC의 MSYS2 프로필을 같은 방식(<code>--login -i</code>, <code>MSYSTEM=UCRT64</code>)으로 직접 실행해 확인한 결과입니다.</p>
+<pre class="output">/d/study/go
+bash: go: 명령을 찾을 수 없음</pre>
+            <p>이 문제를 피하는 방법은 "설정 체험하기"에서 안전한 순서로 다룹니다. 가장 안전한 방법은 <b>설정을 바꾸지 않고</b> 터미널을 열 때마다 PowerShell 프로필을 고르는 것이며, 이 코스는 그 방법만으로 끝까지 진행할 수 있습니다. <code>gopls</code>, <code>dlv</code> 같은 도구도 PowerShell에서 먼저 확인하세요.</p>
+          </li>
+          <li>
+            <strong>확장 탭에서 Go 확장 확인하고 설치하기</strong>
+            <p><kbd class="key">Ctrl+Shift+X</kbd>로 확장 탭을 엽니다. 위쪽 검색창에 <code>@recommended</code>를 입력하면 권장 확장 목록만 필터링됩니다. 이 코스 폴더의 <span class="file">.vscode/extensions.json</span>이 알려 주는 <b>작업 영역 권장 사항(Workspace Recommendations)</b> 아래에 <code>golang.go</code>(이름 <b>Go</b>, 게시자 <b>Go Team at Google</b>)와 <code>humao.rest-client</code>가 보입니다. 레슨 00에서 이미 설치했다면 <b>Installed</b>(설치됨)로 표시되니 상세 화면에서 확장 ID가 <code>golang.go</code>인지만 확인합니다. 아직이라면 Go 확장의 <b>Install</b>(설치)을 누릅니다.</p>
+            <p>목록에서 보이지 않으면 검색창을 지우고 <code>golang.go</code>를 입력해 찾습니다. 같은 일을 명령줄로 하려면 <code>code --install-extension golang.go</code>를 실행합니다. 이미 설치한 Java, Kotlin, Python 확장과는 서로 다른 언어를 맡으므로 그대로 두어도 됩니다.</p>
+          </li>
+          <li>
+            <strong>Go 파일을 열어 언어 서버와 도구 설치하기</strong>
+            <p>5단계에서 확장을 설치한 상태에서 <kbd class="key">Ctrl+P</kbd>를 눌러 <code>lesson02/main.go</code>를 입력하고 엔터 키로 엽니다(레슨 02의 완성 코드입니다. 지금은 읽기만 합니다). <code>.go</code> 파일을 열면 확장이 활성화되고, 오른쪽 아래 상태 표시줄에 Go 버전이 나타납니다.</p>
+            <p>화면 오른쪽 아래에 도구가 없다는 알림(<code>Analysis Tools Missing</code>)이 나오면 설치 버튼을 누릅니다. 알림이 없거나 놓쳤다면 <kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열고 <code>Go: Install/Update Tools</code>를 실행해 목록에서 <code>gopls</code>와 <code>dlv</code>를 포함한 도구를 선택하고 확인합니다. 진행 로그는 출력 패널(<kbd class="key">Ctrl+Shift+U</kbd>)에서 볼 수 있습니다.</p>
+            <p>설치가 끝나면 PowerShell 터미널에서 확인합니다. 도구는 <span class="file">GOPATH\bin</span>에 설치되므로, 그 폴더가 <code>PATH</code>에 있어야 터미널에서 이름만으로 실행됩니다.</p>
+<pre class="code" data-lang="text">gopls version
+dlv version</pre>
+<pre class="output">golang.org/x/tools/gopls v0.24.0
+Delve Debugger
+Version: 1.27.2
+Build: $Id: 360e7b2181d3da54115aaee4f569954bca95cfe3 $</pre>
+            <p>버전 숫자는 설치 시점과 확장 버전에 따라 다릅니다. 같은 파일에서 <code>fmt.Println</code> 위에 마우스를 올렸을 때 설명 팝업이 뜨고, 상태 표시줄의 Go 버전 옆에 번개 아이콘(⚡)이 보이면 <code>gopls</code>가 동작 중이라는 뜻입니다(공식 문서의 안내입니다).</p>
+          </li>
+          <li>
+            <strong>go.work와 작업 모듈 확인하기</strong>
+            <p>6단계의 PowerShell 터미널에서 <span class="file">lab</span> 폴더로 이동한 뒤 확인합니다. 탐색기에서 <span class="file">go.work</span>를 열어 주석과 <code>use ./lab</code> 줄도 읽어 봅니다.</p>
+<pre class="code" data-lang="text">cd lab
+go env GOWORK
+go list -m</pre>
+<pre class="output">D:\study\go\go.work
+golab</pre>
+            <p><code>GOWORK</code>는 <code>go</code> 명령이 현재 쓰는 <span class="file">go.work</span>의 경로입니다. 현재 폴더에서 위로 올라가며 찾기 때문에 <span class="file">lab</span> 안에서도 같은 파일이 잡힙니다. <code>go list -m</code>은 작업 영역의 모듈 이름 <code>golab</code>(<span class="file">lab/go.mod</span>의 <code>module golab</code>)을 보여 줍니다. 이후 모든 레슨의 명령은 <span class="file">lab</span> 폴더에서 실행합니다.</p>
+          </li>
+        </ol>
+        <div class="callout warn"><strong>클론한 자료 폴더는 읽기용입니다</strong><span class="file">go-by-example</span>, <span class="file">learn-go-with-tests</span>, <span class="file">tour-of-go</span>, <span class="file">100-go-mistakes</span>는 <span class="file">go.work</span>에 없는 별개의 모듈입니다. 이 폴더들 안에서는 <code>go</code> 명령을 실행하지 마세요. 원문 예제를 따라 해 보고 싶으면 코드를 읽고 <span class="file">lab/lessonNN/mine</span> 폴더에 직접 입력해서 실행합니다. GitHub에서 이 저장소를 새로 받았다면 이 폴더들은 없으니, 저장소 맨 위 <span class="file">README.md</span>의 <code>git clone</code> 명령으로 받으세요. 받지 않아도 <span class="file">lab</span> 실습은 진행됩니다.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Go</th></tr></thead>
+            <tbody>
+              <tr><td>언어·빌드 도구 설치</td><td>JDK + Gradle(보통 <code>gradlew</code> 래퍼)</td><td>Python + <code>venv</code> + <code>pip</code></td><td>Go 설치 하나. 컴파일, 실행, 테스트, 포맷, 모듈 관리가 <code>go</code>에 모두 포함</td></tr>
+              <tr><td>프로젝트 정의 파일</td><td><code>build.gradle.kts</code>, <code>settings.gradle.kts</code></td><td><code>pyproject.toml</code>, <code>requirements.txt</code></td><td><code>go.mod</code> (여러 모듈이면 <code>go.work</code>)</td></tr>
+              <tr><td>의존성 내려받는 곳</td><td>Maven Central, <code>~/.gradle</code> 캐시</td><td>PyPI, 가상환경</td><td>모듈 프록시(<code>proxy.golang.org</code>), <code>GOPATH\pkg\mod</code></td></tr>
+              <tr><td>에디터 분석 엔진</td><td>IntelliJ가 IDE 안에서 인덱싱</td><td>Pylance 같은 언어 서버</td><td><code>gopls</code> (별도 프로세스인 언어 서버)</td></tr>
+              <tr><td>디버거</td><td>JVM 디버거(IntelliJ 내장)</td><td><code>debugpy</code></td><td><code>dlv</code> (Delve)</td></tr>
+              <tr><td>환경 변수</td><td><code>JAVA_HOME</code></td><td><code>VIRTUAL_ENV</code></td><td><code>GOROOT</code>, <code>GOPATH</code> (대부분 기본값으로 충분)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정</strong>IntelliJ에서는 프로젝트를 열면 Gradle 동기화로 모듈 구조를 불러옵니다. Go에는 그런 "프로젝트 가져오기" 단계가 없고, <code>go.mod</code>(또는 <code>go.work</code>)가 기준입니다. VS Code에서 어느 폴더를 여느냐, 그 안의 <code>go.mod</code>가 어디 있느냐에 따라 <code>gopls</code>가 코드를 인식하는 범위가 달라집니다. 그래서 이 코스는 폴더를 <span class="file">D:\study\go</span>로 열고 <code>go.work</code>로 작업 모듈을 고정합니다.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 확장 설치와 터미널 프로필</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>확장 탭 열기</td><td><kbd class="key">Ctrl+Shift+X</kbd></td><td>확장 검색, <code>@recommended</code> 필터</td></tr>
+                <tr><td>명령 팔레트</td><td><kbd class="key">Ctrl+Shift+P</kbd></td><td><code>Go: Install/Update Tools</code>, <code>Terminal: Select Default Profile</code> 실행</td></tr>
+                <tr><td>폴더 열기</td><td><kbd class="key">Ctrl+K Ctrl+O</kbd></td><td>코스 폴더를 작업 영역으로 열기</td></tr>
+                <tr><td>터미널 열기/닫기</td><td><kbd class="key">Ctrl+`</kbd></td><td>통합 터미널 토글</td></tr>
+                <tr><td>새 터미널</td><td><kbd class="key">Ctrl+Shift+`</kbd></td><td>PowerShell과 bash를 나란히 열어 비교</td></tr>
+                <tr><td>탐색기</td><td><kbd class="key">Ctrl+Shift+E</kbd></td><td>폴더 구조, <span class="file">go.work</span> 열기</td></tr>
+                <tr><td>출력 패널</td><td><kbd class="key">Ctrl+Shift+U</kbd></td><td>도구 설치 로그와 gopls 로그 보기</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p><b>폴더 열기와 작업 영역(Workspace)의 차이.</b> VS Code에서 "폴더 열기"는 폴더 하나를 작업 영역으로 쓰는 가장 흔한 방식입니다. 설정은 그 폴더의 <span class="file">.vscode/settings.json</span>에 저장됩니다. 폴더 여러 개를 한 창에 묶는 다중 루트 작업 영역(<span class="file">.code-workspace</span> 파일)도 있지만, 이 코스는 폴더 하나(<span class="file">D:\study\go</span>)와 <span class="file">go.work</span> 조합으로 충분합니다.</p>
+        <h3>설정 체험하기</h3>
+        <div class="callout warn"><strong>사용자 설정은 백업한 뒤, 되돌릴 방법과 함께 바꿉니다</strong>아래 6단계 중 <b>사용자 설정 파일을 바꾸는 것</b>은 4번(기본 프로필)과 5번(MSYS2 환경 변수) 두 가지뿐입니다. 사용자 <span class="file">settings.json</span>은 이 PC의 모든 VS Code 창에 적용되고 다른 설정이 이미 많이 들어 있을 수 있습니다. 바꾸기 전에 반드시 3번에서 백업 파일을 만드세요. 두 단계는 꼭 할 필요가 없습니다. 2번만으로 이 코스는 끝까지 진행할 수 있습니다.</div>
+        <ol class="steps">
+          <li>
+            <strong>기본 터미널 프로필 설정 읽어 보기 (설정 변경 없음)</strong>
+            <p><kbd class="key">Ctrl+,</kbd>로 설정 화면을 열고 검색창에 <code>terminal.integrated.defaultProfile.windows</code>를 입력합니다. <b>사용자</b> 탭에서 현재 값(기본으로 여는 프로필 이름)을 확인하고 <b>메모해 둡니다</b>. 화면 오른쪽 위의 <b>설정 열기(JSON)</b> 아이콘을 누르면 같은 값이 <code>settings.json</code>에 <code>"terminal.integrated.defaultProfile.windows": "프로필 이름"</code> 형태로 적혀 있는 것을 볼 수 있습니다. 보기만 하고 아무것도 고치지 마세요.</p>
+          </li>
+          <li>
+            <strong>가장 안전한 방법: 터미널을 열 때 PowerShell 고르기 (설정 변경 없음)</strong>
+            <p>터미널 패널의 <b>+</b> 옆 화살표(⌄)에서 PowerShell 프로필을 고르면 그 터미널 하나만 PowerShell로 열립니다. 어떤 설정 파일도 바뀌지 않습니다. 2단계에서 이미 해 본 방법이고, 이 코스의 모든 명령은 이 터미널에서 그대로 동작합니다. 기본 셸을 바꾸지 않은 채 필요할 때만 PowerShell을 쓰는 것이 가장 안전합니다.</p>
+          </li>
+          <li>
+            <strong>사용자 settings.json 백업하기 (4번, 5번을 하기 전에 필수)</strong>
+            <p>Windows에서 사용자 설정 파일의 기본 위치는 <span class="file">%APPDATA%\Code\User\settings.json</span>입니다(공식 문서). VS Code 프로필을 따로 만들어 쓴다면 <span class="file">%APPDATA%\Code\User\profiles\프로필 ID\settings.json</span>처럼 경로가 다릅니다. 이 PC에는 첫 번째 위치에 파일이 있는 것을 확인했습니다. 아래 명령은 <b>PowerShell 터미널에서 직접 실행</b>합니다(<code>$env:</code> 문법이라 bash에서는 동작하지 않습니다).</p>
+            <p>먼저 이미 백업 파일이 있는지 확인합니다. <code>False</code>가 나와야 정상입니다. <code>True</code>가 나오면 예전 백업이 있다는 뜻이니 다음 복사를 하지 마세요. 복사 명령은 이미 있는 파일을 아무 경고 없이 덮어씁니다(임시 폴더로 같은 명령을 실행해 확인했습니다). 덮어쓰면 원래 설정의 백업을 잃습니다.</p>
+<pre class="code" data-lang="powershell">Test-Path "$env:APPDATA\Code\User\settings.json.bak"</pre>
+<pre class="output">False</pre>
+            <p>백업을 만들고 확인합니다. <code>True</code>가 나오면 백업이 만들어진 것입니다.</p>
+<pre class="code" data-lang="powershell">Copy-Item "$env:APPDATA\Code\User\settings.json" "$env:APPDATA\Code\User\settings.json.bak"
+Test-Path "$env:APPDATA\Code\User\settings.json.bak"</pre>
+<pre class="output">True</pre>
+            <p>설정이 망가졌을 때의 <b>복원 명령</b>은 다음과 같습니다. 백업 파일로 설정 파일을 덮어씁니다. 복원한 뒤에는 새 터미널을 열어 기본 셸이 원래대로인지 확인합니다. 백업은 모든 확인이 끝나기 전까지 지우지 마세요.</p>
+<pre class="code" data-lang="powershell">Copy-Item "$env:APPDATA\Code\User\settings.json.bak" "$env:APPDATA\Code\User\settings.json" -Force</pre>
+          </li>
+          <li>
+            <strong>(선택) 기본 프로필을 PowerShell로 바꾸기</strong>
+            <p>3단계의 백업이 있는 상태에서만 합니다. 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)에서 <code>Terminal: Select Default Profile</code>을 실행하고 PowerShell 프로필을 고릅니다. 다시 <code>settings.json</code>을 보면 1단계의 값이 선택한 이름으로 바뀌어 있습니다. 이 설정은 사용자 설정이라 모든 프로젝트에 적용됩니다.</p>
+            <p><b>되돌리는 방법</b>: 같은 명령 <code>Terminal: Select Default Profile</code>을 다시 실행해 1단계에서 메모한 원래 프로필을 고릅니다. 그래도 이상하면 3단계의 복원 명령을 실행합니다.</p>
+          </li>
+          <li>
+            <strong>(선택·고급) bash(MSYS2)에서 go를 찾게 하기</strong>
+            <p><b>되도록 건너뛰고 2번의 PowerShell 프로필을 쓰세요.</b> MSYS2 공식 문서는 다른 MSYS2 설치본, Cygwin, 컴파일러 도구 체인 같은 외부 프로그램을 PATH에 섞는 것을 지원하지 않으며 예상하지 못한 방식으로 깨질 수 있다고 경고합니다. 아래 방법은 bash에서 <code>go</code>를 찾게 해 주는 것을 이 PC에서 확인했지만(<code>go version</code> 출력 확인), Windows의 PATH 전체를 bash에 섞는 일이라 다른 도구와 충돌할 가능성이 있습니다.</p>
+            <p>그래도 해 보고 싶다면 3단계의 백업이 있는 상태에서만 합니다. 명령 팔레트에서 <code>Preferences: Open User Settings (JSON)</code>을 실행합니다. <code>terminal.integrated.profiles.windows</code> 안에서 MSYS2 프로필을 찾아, 그 프로필의 <code>env</code> 객체 안에 아래 한 줄을 추가합니다(앞 항목 끝에 쉼표가 있어야 합니다). <code>env</code>가 없다면 프로필 안에 <code>"env": { ... }</code>를 새로 만들어 그 안에 넣습니다. 다른 항목은 건드리지 않습니다.</p>
+<pre class="code" data-lang="json">"MSYS2_PATH_TYPE": "inherit"</pre>
+            <p>저장한 뒤 <code>settings.json</code> 탭에 빨간 물결 밑줄이 없는지 확인합니다(공식 문서: JSON 형식 오류는 편집기에 강조 표시됩니다). 밑줄이 보이면 추가한 줄을 지우거나 3단계의 복원 명령을 실행합니다. 문제가 없으면 이미 열려 있는 터미널에는 적용되지 않으니 새 bash 터미널(<kbd class="key">Ctrl+Shift+`</kbd>)에서 <code>go version</code>을 다시 실행합니다.</p>
+            <p><code>MSYS2_PATH_TYPE</code>은 MSYS2가 Windows의 PATH를 얼마나 물려받을지 정하는 환경 변수이며 기본값은 <code>minimal</code>입니다. <code>inherit</code>로 바꾸면 모두 물려받습니다(<a href="https://www.msys2.org/wiki/MSYS2-introduction/">MSYS2 공식 문서 (영문)</a>의 PATH 항목). <b>되돌리는 방법</b>: 추가한 한 줄(과 새로 만든 <code>env</code>)을 지우고 저장하거나 3단계의 복원 명령을 실행합니다.</p>
+          </li>
+          <li>
+            <strong>작업 영역 신뢰 상태 보기</strong>
+            <p>명령 팔레트에서 <code>Workspaces: Manage Workspace Trust</code>를 실행하면 작업 영역 신뢰 편집기가 열리고, 신뢰한 폴더 목록과 이 폴더의 현재 신뢰 상태를 볼 수 있습니다. 부모 폴더를 신뢰 목록에 추가하면 그 아래 모든 폴더가 신뢰되므로, 낯선 코드를 내려받는 폴더는 따로 두는 것이 안전합니다.</p>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>이 코스의 설정</strong>코스 폴더의 <span class="file">.vscode/settings.json</span>에는 코스용 권장 설정이 이미 들어 있습니다. 위 설정은 <b>사용자</b> 범위이고, 그 파일은 <b>작업 영역</b> 범위입니다. 같은 키가 둘 다 있으면 작업 영역 값이 우선합니다. 자세한 우선순위는 레슨 10에서 다시 다룹니다.</div>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <h3>문제 1. bash에서 go를 못 찾는 이유 확인하기</h3>
+        <p>PowerShell 터미널과 bash(MSYS2) 터미널 두 곳에서 각각 <code>go version</code>을 실행해 결과를 비교하고, 차이가 나는 이유를 설명하세요. <b>완료 조건</b>: (1) PowerShell 터미널에서 <code>go version go1.27.0 windows/amd64</code> 같은 한 줄이 출력된다. (2) bash 터미널의 결과를 확인하고(<code>go</code>를 찾지 못하면 그 메시지를 확인), 원인이 "MSYS2가 Windows의 PATH를 최소한만 물려받기 때문"임을 한 문장으로 설명할 수 있다. <b>설정 파일은 바꾸지 않아도 이 문제를 끝낼 수 있습니다.</b> (선택 도전) 두 터미널이 같은 출력을 내게 하려면 "설정 체험하기" 5번을 적용하세요. 그때는 3번의 백업을 먼저 만들어야 합니다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>터미널 패널의 ⌄ 메뉴에서 PowerShell 프로필과 bash 프로필로 터미널을 각각 하나씩 엽니다. bash에서만 <code>go: 명령을 찾을 수 없음</code>이 나온다면 PATH 문제입니다. 원인 설명이 목표이므로 두 터미널을 열어 결과를 비교하는 것만으로 충분합니다. 선택 도전은 사용자 설정을 바꾸는 일이라 반드시 백업 뒤에, 되돌리는 방법을 확인하고 진행하세요.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+            <p>설정을 바꾸지 않은 상태의 결과입니다. 두 터미널에서 <code>go version</code>을 실행했을 때 PowerShell과 bash의 출력입니다(bash는 이 PC의 MSYS2 프로필과 같은 인자로 직접 실행해 확인했습니다).</p>
+<pre class="output">go version go1.27.0 windows/amd64</pre>
+<pre class="output">bash: go: 명령을 찾을 수 없음</pre>
+            <p>설명 예시: MSYS2의 로그인 셸은 PATH를 자기 기준으로 다시 만들고 Windows의 PATH는 기본 폴더 몇 개만 물려받습니다(<code>MSYS2_PATH_TYPE</code> 기본값 <code>minimal</code>). 그래서 <span class="file">C:\Program Files\Go\bin</span>이 빠집니다. 선택 도전을 적용하고 새 bash 터미널을 열면 bash에서도 PowerShell과 같은 한 줄이 나옵니다(이 PC의 MSYS2 프로필과 같은 인자에 <code>MSYS2_PATH_TYPE=inherit</code>를 준 프로세스에서 확인했습니다). 다만 공식 문서의 경고가 있으니 이 방법보다 PowerShell 프로필을 먼저 권합니다.</p>
+<pre class="output">go version go1.27.0 windows/amd64</pre>
+          </div>
+        </details>
+
+        <h3>문제 2. go.work의 영향 범위 확인하기</h3>
+        <p><span class="file">lab</span> 폴더에서는 <code>go env GOWORK</code>가 경로를 보여 주지만, 코스 폴더 밖에서는 비어 있는 것을 확인하세요. <b>완료 조건</b>: 두 위치의 출력을 비교하고, 왜 다른지 한 문장으로 설명할 수 있다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p><code>go</code> 명령은 현재 폴더에서 부모 폴더로 올라가며 <span class="file">go.work</span>를 찾습니다. 터미널에서 <code>cd ..\..</code>(<span class="file">D:\study</span>)로 이동해 같은 명령을 실행합니다. 확인이 끝나면 <code>cd go\lab</code>으로 돌아옵니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="text">cd ..\..
+go env GOWORK
+cd go\lab
+go env GOWORK</pre>
+<pre class="output">(빈 줄)
+D:\study\go\go.work</pre>
+            <p>첫 번째 출력은 빈 줄입니다(위에서는 (빈 줄)로 표시했습니다). <span class="file">D:\study</span> 위로는 <span class="file">go.work</span>가 없기 때문입니다. 두 번째는 <span class="file">D:\study\go\go.work</span>가 잡힌 결과입니다. bash에서는 <code>cd ../..</code>, <code>cd go/lab</code>처럼 슬래시를 씁니다.</p>
+          </div>
+        </details>
+
+        <h3>문제 3 (도전). 설치된 도구 위치 찾기</h3>
+        <p>명령 팔레트의 <code>Go: Locate Configured Go Tools</code>를 실행해 <code>gopls</code>와 <code>dlv</code>가 설치된 폴더를 찾으세요. <b>완료 조건</b>: 출력 창에서 두 도구의 경로를 찾아 <code>go env GOPATH</code> 값 아래의 <span class="file">bin</span> 폴더와 같은지 비교했다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>공식 문서에 따르면 이 명령은 설정된 <code>GOPATH</code>, <code>GOROOT</code>, 도구 위치와 <code>go env</code> 결과를 출력 창에 보여 줍니다. 출력 패널(<kbd class="key">Ctrl+Shift+U</kbd>)의 드롭다운에서 Go 항목을 고릅니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div><p>도구는 기본적으로 <code>GOBIN</code>이 지정되어 있으면 그 폴더에, 아니면 첫 번째 <code>GOPATH</code> 아래의 <span class="file">bin</span> 폴더에 설치됩니다(Go 확장 고급 문서). 이 PC에서는 3단계에서 확인한 <code>GOPATH</code> 아래 <span class="file">bin</span> 폴더입니다.</p></div>
+        </details>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="go-01-version"><span>PowerShell 터미널에서 <code>go version</code>과 <code>go env GOROOT GOPATH</code>를 실행해 결과를 읽고, 두 경로가 무엇인지 내 말로 설명할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-01-trust"><span><span class="file">D:\study\go</span> 폴더를 열고 작업 영역을 신뢰했으며 제한 모드 배너가 없다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-01-extension"><span>확장 탭의 <code>@recommended</code> 필터에서 Go 확장(<code>golang.go</code>)이 설치됨을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-01-tools"><span><code>gopls version</code>과 <code>dlv version</code>이 터미널에서 출력되는 것을 보았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-01-terminal"><span>PowerShell과 bash 터미널을 모두 열어 보았고, bash에서 <code>go</code>를 못 찾을 때의 원인을 설명할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-01-gowork"><span><code>lab</code> 폴더에서 <code>go env GOWORK</code>가 <span class="file">go.work</span> 경로를 출력하는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-01-backup"><span>사용자 <span class="file">settings.json</span>을 바꿨다면 먼저 백업 파일(<span class="file">settings.json.bak</span>)을 만들고 <code>Test-Path</code>가 <code>True</code>인 것을 확인했다. 바꾸지 않았다면 바꾸지 않았음을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-01-shortcut"><span>오늘의 단축키 3개 이상을 마우스 없이 사용했다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <h3>증상: bash에서 go를 찾지 못한다</h3>
+        <p>원인은 MSYS2 로그인 셸이 Windows의 PATH를 최소한만 물려받기 때문입니다. PowerShell에서는 되는데 bash에서만 나오면 이 경우입니다. 해결은 안전한 순서로 세 가지입니다. (1) 설정을 바꾸지 않고 터미널을 열 때 PowerShell 프로필을 고릅니다. (2) 기본 프로필을 PowerShell로 바꿉니다(사용자 설정, "설정 체험하기" 4번). (3) MSYS2 프로필에 <code>MSYS2_PATH_TYPE</code>을 추가합니다(고급, "설정 체험하기" 5번). MSYS2 공식 문서는 PATH에 다른 프로그램을 섞는 것을 지원하지 않는다고 경고하므로 (1)을 가장 먼저 권합니다. (2)와 (3)은 3번의 백업을 만든 뒤에 하세요.</p>
+<pre class="output">bash: go: 명령을 찾을 수 없음</pre>
+        <h3>증상: settings.json을 고친 뒤 빨간 밑줄이 생기거나 설정이 이상해졌다</h3>
+        <p>JSON 형식(쉼표, 따옴표, 괄호)이 틀렸을 가능성이 큽니다. 방금 추가한 줄을 지우고 다시 확인하세요. 그래도 해결되지 않으면 백업으로 복원합니다. PowerShell 터미널에서 실행하며, 이 명령은 백업 파일로 설정 파일을 덮어씁니다. 백업을 만들기 전에 고쳤다면 복원할 파일이 없으므로, 4번이나 5번 전에는 반드시 3번 백업을 먼저 만드세요.</p>
+<pre class="code" data-lang="powershell">Copy-Item "$env:APPDATA\Code\User\settings.json.bak" "$env:APPDATA\Code\User\settings.json" -Force</pre>
+        <h3>증상: PowerShell에서 gopls를 찾지 못한다</h3>
+        <p>도구가 아직 설치되지 않았거나, 설치 폴더(<code>GOPATH</code> 아래 <span class="file">bin</span>)가 PATH에 없을 때 나옵니다. 먼저 <code>Go: Install/Update Tools</code>로 도구를 설치하고, VS Code를 완전히 닫았다 다시 열어 새 PATH를 읽게 합니다. 이 PC에서 도구를 설치하기 전에 실행한 실제 출력입니다.</p>
+<pre class="output">gopls: 'gopls' 용어는 cmdlet, 함수, 스크립트 파일 또는 실행 프로그램의 이름으로 인식되지 않습니다.
+이름의 철자를 확인하거나 경로가 포함되어 있으면 경로가 올바른지 확인하고 다시 시도합니다.</pre>
+        <h3>증상: 클론한 자료 폴더 안에서 go 명령이 오류를 낸다</h3>
+        <p>실수로 <span class="file">learn-go-with-tests</span> 같은 자료 폴더 안에서 <code>go test</code>를 실행했을 때 나오는 오류입니다. <span class="file">go.work</span>가 있으면 <code>go</code> 명령은 워크스페이스 모드로 동작하고, 목록에 없는 모듈 폴더에서는 실행을 거부합니다. 그 폴더들은 이 코스에서 <b>읽기용</b>이므로 원인을 고치려 하지 말고 터미널을 <span class="file">lab</span> 폴더로 옮깁니다. 아래는 <span class="file">learn-go-with-tests/hello-world/v1</span> 폴더에서 실행한 실제 출력입니다.</p>
+<pre class="output">FAIL	. [setup failed]
+FAIL
+# .
+current directory is contained in a module that is not one of the workspace modules listed in go.work. You can add the module to the workspace using:
+	go work use ..\..</pre>
+        <p>안내 문구의 <code>go work use</code>를 따라 하지 마세요. 자료 폴더를 작업 영역에 넣는 일이 되고, 그러면 <span class="file">go-by-example</span> 같은 모듈이 요구하는 Go 버전(<code>go 1.27.1</code>)이 설치된 1.27.0보다 높아서 모든 <code>go</code> 명령이 도구 체인을 내려받으려 하거나 오류를 낼 수 있습니다. 따라 해 보고 싶은 예제는 레슨마다 안내하는 <span class="file">lab/lessonNN/mine</span> 폴더에 직접 입력하세요.</p>
+        <h3>증상: go.mod를 찾지 못한다</h3>
+        <p>터미널의 현재 폴더가 코스 폴더 밖일 때 나옵니다. 프롬프트의 경로를 확인하고 <span class="file">D:\study\go\lab</span>으로 이동합니다. 아래는 <span class="file">D:\study</span>에서 <code>go run</code>을 실행한 실제 출력입니다.</p>
+<pre class="output">go: go.mod file not found in current directory or any parent directory; see 'go help modules'</pre>
+        <h3>증상: 터미널이나 Go 기능이 동작하지 않고 제한 모드 배너가 보인다</h3>
+        <p>작업 영역을 신뢰하지 않은 상태입니다. 배너의 <b>Manage</b>를 눌러 신뢰하거나 <code>Workspaces: Manage Workspace Trust</code> 명령으로 폴더를 신뢰합니다. 신뢰한 뒤 일부 확장은 창을 다시 불러와야 동작할 수 있습니다.</p>
+      </section>
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨 02에서는 <code>lab</code> 안에 첫 Go 프로그램을 직접 만들고 <code>go run</code>, <code>go build</code>, <code>go fmt</code>, <code>go vet</code>을 써 봅니다. 탐색기에서 파일을 만들고, 에디터를 둘로 나누고, 저장할 때 자동으로 포맷되는 설정도 체험합니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="00-vscode-start.html"><small>← 이전 레슨</small>00 · VS Code 첫걸음</a>
+          <a class="next" rel="next" href="02-hello-go.html"><small>다음 레슨 →</small>02 · 첫 프로그램과 go 명령어</a>
+        </nav>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Go 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

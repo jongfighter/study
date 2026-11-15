@@ -1,0 +1,2 @@
+# golab/lesson04/mine/slices
+lesson04\mine\slices\main.go:7:19: invalid argument: index 5 out of bounds [0:3]

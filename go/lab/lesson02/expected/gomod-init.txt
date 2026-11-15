@@ -1,0 +1,4 @@
+go: creating new go.mod: module example.com/scratch
+module example.com/scratch
+
+go 1.27.0

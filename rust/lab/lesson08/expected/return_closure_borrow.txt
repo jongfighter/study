@@ -1,0 +1,20 @@
+error[E0373]: closure may outlive the current function, but it borrows `n`, which is owned by the current function
+ --> lesson08\examples\scratch.rs:2:5
+  |
+2 |     |x| x + n
+  |     ^^^     - `n` is borrowed here
+  |     |
+  |     may outlive borrowed value `n`
+  |
+note: closure is returned here
+ --> lesson08\examples\scratch.rs:2:5
+  |
+2 |     |x| x + n
+  |     ^^^^^^^^^
+help: to force the closure to take ownership of `n` (and any other referenced variables), use the `move` keyword
+  |
+2 |     move |x| x + n
+  |     ++++
+
+For more information about this error, try `rustc --explain E0373`.
+error: could not compile `lesson08` (example "scratch") due to 1 previous error

@@ -1,0 +1,17 @@
+평균: 2.5 <nil>
+오류: 평균을 구할 값이 없습니다
+1
+2
+Fizz
+4
+Buzz
+Fizz
+7
+8
+Fizz
+Buzz
+11
+Fizz
+13
+14
+FizzBuzz

@@ -1,0 +1,2 @@
+# golab/lesson03/mine/functions
+lesson03\mine\functions\main.go:16:12: assignment mismatch: 1 variable but divide returns 2 values

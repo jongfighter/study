@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="rust" data-lesson="03">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="변수·타입·제어 흐름·함수를 Kotlin과 비교하며 직접 입력해 익힙니다.">
+  <title>03 · 변수·타입·제어 흐름·함수 — Rust 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Rust 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Rs</span>
+      <span>Rust 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 03 · 기본 문법</p>
+        <h1>변수·타입·제어 흐름·함수</h1>
+        <p class="lead"><code>let</code>/<code>mut</code>/섀도잉, 정수 오버플로, 표현식 중심 문법을 Kotlin과 비교하며 직접 입력합니다. 컴파일러가 내는 첫 오류 메시지를 읽는 연습도 함께 합니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 120분</li>
+          <li><b>난이도</b> ★★☆☆☆</li>
+          <li><b>선행</b> <a href="02-hello-cargo.html">레슨 02</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson03</span></li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li><code>let</code>, <code>let mut</code>, 섀도잉(shadowing), <code>const</code>를 상황에 맞게 골라 쓰고 그 차이를 Kotlin의 <code>val</code>/<code>var</code>과 비교해 설명할 수 있다.</li>
+          <li>정수·부동소수·<code>bool</code>·<code>char</code>·튜플·배열을 선언하고, 정수 오버플로가 debug와 release에서 어떻게 다른지 직접 실행해 확인할 수 있다.</li>
+          <li><code>if</code>, <code>loop</code>, <code>while</code>, <code>for</code>를 쓰고, <code>if</code>와 <code>loop</code>가 값을 돌려주는 표현식이라는 것을 코드로 보일 수 있다.</li>
+          <li>함수를 정의하고, 표현식(마지막 식)과 문장(세미콜론)의 차이로 생기는 <code>mismatched types</code> 오류를 읽고 고칠 수 있다.</li>
+          <li>VS Code의 자동 완성, 매개변수 힌트, 줄 이동·복사·삭제·주석 단축키를 코드를 입력하면서 사용할 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>영문 원문은 한국어 해설을 먼저 읽은 뒤 확인하세요. 로컬 파일은 <kbd class="key">Ctrl+P</kbd>로 파일 이름을 입력해 열 수 있습니다.</p>
+        <ul>
+          <li><a href="https://doc.rust-lang.org/book/ch03-01-variables-and-mutability.html">The Rust Programming Language · 3.1 Variables and Mutability (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch03-01-variables-and-mutability.md">the-rust-book/src/ch03-01-variables-and-mutability.md</span></li>
+          <li><a href="https://doc.rust-lang.org/book/ch03-02-data-types.html">The Rust Programming Language · 3.2 Data Types (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch03-02-data-types.md">the-rust-book/src/ch03-02-data-types.md</span></li>
+          <li><a href="https://doc.rust-lang.org/book/ch03-03-how-functions-work.html">The Rust Programming Language · 3.3 Functions (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch03-03-how-functions-work.md">the-rust-book/src/ch03-03-how-functions-work.md</span></li>
+          <li><a href="https://doc.rust-lang.org/book/ch03-05-control-flow.html">The Rust Programming Language · 3.5 Control Flow (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch03-05-control-flow.md">the-rust-book/src/ch03-05-control-flow.md</span></li>
+          <li><a href="https://doc.rust-lang.org/rust-by-example/variable_bindings/mut.html">Rust by Example · Mutability (영문)</a> — 로컬 파일: <span class="file" data-local="rust-by-example/src/variable_bindings/mut.md">rust-by-example/src/variable_bindings/mut.md</span>, 배열은 <span class="file" data-local="rust-by-example/src/primitives/array.md">rust-by-example/src/primitives/array.md</span>, 반복문은 <span class="file" data-local="rust-by-example/src/flow_control/loop.md">rust-by-example/src/flow_control/loop.md</span></li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>변수는 기본이 불변</b>입니다. <code>let x = 5;</code>로 만든 변수에 다시 값을 넣으면 컴파일 오류이고, 바꾸려면 <code>let mut x</code>라고 명시해야 합니다. 값이 바뀔 수 있는 곳이 눈에 보이게 하려는 설계입니다. <b>섀도잉(shadowing)</b>은 같은 이름으로 <code>let</code>을 다시 쓰는 것이며, 새 변수를 만들기 때문에 타입이 바뀌어도 됩니다. <b>상수(constant)</b>는 <code>const</code>로 선언하고 타입을 반드시 적으며 이름은 관례적으로 대문자와 밑줄을 씁니다.</p>
+        <p>Rust는 <b>정적 타입</b> 언어이지만 대부분 타입을 추론합니다. 정수의 기본은 <code>i32</code>, 소수의 기본은 <code>f64</code>입니다. 정수 타입 이름은 부호(<code>i</code>는 부호 있음, <code>u</code>는 부호 없음)와 비트 수로 정해집니다. <code>usize</code>는 컬렉션의 길이와 인덱스에 쓰는 타입입니다. 서로 다른 정수 타입끼리는 자동 변환되지 않아서 <code>as</code>나 <code>From</code>으로 직접 바꿔야 합니다. <b>튜플(tuple)</b>은 서로 다른 타입을 묶는 고정 길이 값이고, <b>배열(array)</b>은 같은 타입의 고정 길이 값입니다.</p>
+        <p>Rust는 <b>표현식 중심</b> 언어입니다. <code>if</code>, <code>match</code>, 블록 <code>{ ... }</code>이 모두 값을 가질 수 있고, 블록의 값은 <b>마지막 식</b>입니다. 문장(statement)은 값을 만들지 않으며, 식 뒤에 세미콜론을 붙이면 그 식은 문장이 되어 값이 버려집니다. 함수 끝에 <code>a + b</code>라고 쓰면 그 값이 반환되고, <code>a + b;</code>라고 쓰면 반환하지 않는 함수가 됩니다. 이 차이가 가장 흔한 초보 오류의 원인입니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>앞 레슨의 <span class="file">lab</span> 터미널에서 이어갑니다. 터미널이 닫혀 있다면 <kbd class="key">Ctrl+`</kbd>로 열고 <code>cd lab</code>으로 이동하세요. 코드 위의 파일 이름 막대는 완성본의 위치이고, 직접 입력할 파일은 <span class="file">lab/lesson03/src/bin</span> 안에 <code>my_</code>를 붙인 이름으로 새로 만듭니다. 이 레슨의 크레이트는 실행 파일이 여러 개라서 <code>cargo run</code>에는 항상 <code>--bin 이름</code>이 필요합니다.</p>
+        <ol class="steps">
+          <li>
+            <strong>변수와 섀도잉 입력하기</strong>
+            <p>(앞 단계 없음) 탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson03/src/bin</span> 폴더를 우클릭해 <b>새 파일</b>을 만들고 <code>my_variables.rs</code>를 입력합니다. 아래 코드를 직접 입력합니다. <code>println!(</code> 안에서 <code>{</code>를 입력할 때 닫는 괄호가 자동으로 붙는 것도 관찰해 보세요. 입력이 끝나면 <kbd class="key">Ctrl+S</kbd>로 저장하고 실행합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson03/src/bin/variables.rs">const MAX_RETRY: u32 = 3;
+
+fn main() {
+    let x = 5;
+    println!("x = {x}");
+
+    let mut count = 0;
+    count += 1;
+    println!("count = {count}");
+
+    let spaces = "   ";
+    let spaces = spaces.len();
+    println!("공백 개수 = {spaces}");
+
+    let x = x * 2;
+    {
+        let x = x + 100;
+        println!("안쪽 블록의 x = {x}");
+    }
+    println!("바깥 x = {x}");
+
+    println!("최대 재시도 횟수 = {MAX_RETRY}");
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson03 --bin my_variables</pre>
+<pre class="output" data-src="lab/lesson03/expected/variables.txt">x = 5
+count = 1
+공백 개수 = 3
+안쪽 블록의 x = 110
+바깥 x = 10
+최대 재시도 횟수 = 3</pre>
+            <p>확인할 점 세 가지입니다. <code>spaces</code>는 처음에 문자열(<code>&amp;str</code>)이었다가 두 번째 <code>let</code>에서 숫자(<code>usize</code>)로 바뀌었습니다. 섀도잉은 새 변수를 만드는 것이라 타입이 바뀌어도 되지만, <code>let mut</code> 변수는 타입을 바꿀 수 없습니다. 안쪽 블록의 <code>x</code>(110)는 블록이 끝나면 사라지고 바깥 <code>x</code>(10)가 다시 보입니다. 끝으로 <code>{MAX_RETRY}</code>처럼 상수도 서식 문자열에 이름으로 넣을 수 있습니다.</p>
+          </li>
+          <li>
+            <strong>타입과 자동 완성</strong>
+            <p>(1단계 이후) 같은 폴더에 <code>my_types.rs</code>를 만들고 아래 코드를 입력합니다. <code>let b: u8 = 255;</code>를 입력한 뒤 아래 <code>println!</code> 줄에서 <code>b.</code>까지 입력하면 메서드 목록이 자동으로 뜹니다. 목록이 안 뜨면 <kbd class="key">Ctrl+Space</kbd>를 누릅니다. <code>chec</code>까지 입력하면 목록이 좁혀지고 <code>checked_add</code>를 방향키와 Enter로 고르면 괄호까지 채워집니다. 괄호 안에서 <kbd class="key">Ctrl+Shift+Space</kbd>를 누르면 매개변수 설명이 작은 창으로 뜹니다. 단축키가 반응하지 않으면 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)에서 <code>Trigger Suggest</code>를 실행해도 같은 목록이 열립니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson03/src/bin/types.rs">fn main() {
+    let a: i32 = -42;
+    let b: u8 = 255;
+    let big: i64 = 3_000_000_000;
+    let ratio = 2.5;
+    let ok = true;
+    let letter = 'R';
+    let hangul = '한';
+    println!("{a} {b} {big} {ratio} {ok} {letter} {hangul}");
+
+    println!("u8 최댓값 {}, i32 최솟값 {}", u8::MAX, i32::MIN);
+    println!("255u8 + 1 (checked)  = {:?}", b.checked_add(1));
+    println!("255u8 + 1 (wrapping) = {}", b.wrapping_add(1));
+
+    let pair: (i32, &amp;str) = (7, "일곱");
+    let (number, word) = pair;
+    println!("{number} {word} {}", pair.0);
+
+    let days = [31, 28, 31];
+    println!("첫 달은 {}일, 달 수는 {}", days[0], days.len());
+
+    let average = f64::from(days[0] + days[1] + days[2]) / 3.0;
+    println!("평균 {average:.2}");
+
+    let truncated = 7.9_f64 as i32;
+    println!("7.9 as i32 = {truncated}");
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson03 --bin my_types</pre>
+<pre class="output" data-src="lab/lesson03/expected/types.txt">-42 255 3000000000 2.5 true R 한
+u8 최댓값 255, i32 최솟값 -2147483648
+255u8 + 1 (checked)  = None
+255u8 + 1 (wrapping) = 0
+7 일곱 7
+첫 달은 31일, 달 수는 3
+평균 30.00
+7.9 as i32 = 7</pre>
+            <p><code>255u8 + 1</code>을 <code>checked_add</code>로 하면 결과가 없다는 뜻의 <code>None</code>(레슨 05의 <code>Option</code>), <code>wrapping_add</code>로 하면 한 바퀴 돌아 <code>0</code>입니다. <code>7.9 as i32</code>는 소수점 아래를 버려 <code>7</code>입니다. <code>f64::from(…)</code>은 손실 없이 정수를 소수로 바꿉니다. <code>'한'</code> 같은 <code>char</code> 하나는 유니코드 문자 하나입니다.</p>
+          </li>
+          <li>
+            <strong>제어 흐름 입력하기</strong>
+            <p>(2단계 이후) <code>my_control_flow.rs</code>를 만들어 입력합니다. <code>if</code>가 값을 돌려주는 줄(<code>let label = …</code>)과 <code>loop</code>에서 <code>break counter;</code>로 값을 돌려주는 부분을 특히 눈여겨보세요.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson03/src/bin/control_flow.rs">fn main() {
+    let number = 7;
+    if number % 2 == 0 {
+        println!("{number}은(는) 짝수");
+    } else {
+        println!("{number}은(는) 홀수");
+    }
+
+    let label = if number &gt; 5 { "큰 수" } else { "작은 수" };
+    println!("{number}은(는) {label}");
+
+    let mut counter = 0;
+    let found = loop {
+        counter += 1;
+        if counter * counter &gt; 50 {
+            break counter;
+        }
+    };
+    println!("제곱이 50을 넘는 첫 수: {found}");
+
+    let mut remaining = 3;
+    while remaining &gt; 0 {
+        println!("카운트다운 {remaining}");
+        remaining -= 1;
+    }
+
+    let fruits = ["사과", "배", "귤"];
+    for fruit in fruits {
+        println!("과일: {fruit}");
+    }
+    for i in 1..=3 {
+        println!("{i}번째");
+    }
+    for (index, fruit) in fruits.iter().enumerate() {
+        println!("{index}: {fruit}");
+    }
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson03 --bin my_control_flow</pre>
+<pre class="output" data-src="lab/lesson03/expected/control_flow.txt">7은(는) 홀수
+7은(는) 큰 수
+제곱이 50을 넘는 첫 수: 8
+카운트다운 3
+카운트다운 2
+카운트다운 1
+과일: 사과
+과일: 배
+과일: 귤
+1번째
+2번째
+3번째
+0: 사과
+1: 배
+2: 귤</pre>
+            <p><code>for i in 1..=3</code>에서 <code>1..=3</code>은 끝을 포함하고 <code>1..3</code>은 끝을 제외합니다. Kotlin의 <code>1..3</code>이 끝을 포함하는 것과 반대라서 주의하세요. <code>if</code> 조건에는 괄호가 필요 없고 반드시 <code>bool</code>이어야 합니다.</p>
+          </li>
+          <li>
+            <strong>함수와 테스트 입력하기</strong>
+            <p>(3단계 이후) <code>my_functions.rs</code>를 만들어 입력합니다. <code>main</code>에서 <code>add(</code>를 입력하는 순간 <kbd class="key">Ctrl+Shift+Space</kbd>를 눌러, 함수 선언에 적은 매개변수 이름과 타입이 힌트로 뜨는지 확인합니다. 이 파일 아래쪽의 <code>#[cfg(test)]</code> 블록은 테스트 코드이고, <code>cargo test</code>를 실행할 때만 컴파일됩니다(자세한 내용은 레슨 09).</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson03/src/bin/functions.rs">fn add(a: i32, b: i32) -&gt; i32 {
+    a + b
+}
+
+fn square(n: i32) -&gt; i32 {
+    n * n
+}
+
+fn greet(name: &amp;str) {
+    println!("안녕하세요, {name}님!");
+}
+
+fn classify(n: i32) -&gt; String {
+    if n &lt; 0 {
+        return String::from("음수");
+    }
+    if n == 0 {
+        String::from("영")
+    } else {
+        String::from("양수")
+    }
+}
+
+fn main() {
+    let y = {
+        let a = 3;
+        a + 1
+    };
+    println!("블록의 값 y = {y}");
+
+    println!("add(2, 3) = {}", add(2, 3));
+    println!("square(add(1, 2)) = {}", square(add(1, 2)));
+    greet("Rust");
+
+    for n in [-5, 0, 8] {
+        println!("{n}은(는) {}", classify(n));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn add_works() {
+        assert_eq!(add(2, 3), 5);
+    }
+
+    #[test]
+    fn square_works() {
+        assert_eq!(square(-4), 16);
+    }
+
+    #[test]
+    fn classify_handles_all_signs() {
+        assert_eq!(classify(-1), "음수");
+        assert_eq!(classify(0), "영");
+        assert_eq!(classify(9), "양수");
+    }
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson03 --bin my_functions
+cargo test -p lesson03 --bin my_functions</pre>
+<pre class="output" data-src="lab/lesson03/expected/functions.txt">블록의 값 y = 4
+add(2, 3) = 5
+square(add(1, 2)) = 9
+안녕하세요, Rust님!
+-5은(는) 음수
+0은(는) 영
+8은(는) 양수</pre>
+<pre class="output">running 3 tests
+test tests::add_works ... ok
+test tests::classify_handles_all_signs ... ok
+test tests::square_works ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+          <p>테스트 줄의 순서와 걸린 시간(<code>finished in …s</code>)은 실행마다 조금 다를 수 있습니다.</p>
+            <p><code>add</code>와 <code>square</code>는 마지막 식(세미콜론 없음)이 반환값입니다. <code>classify</code>의 첫 <code>return</code>은 함수를 일찍 끝내는 용도로만 씁니다. <code>greet</code>는 값을 반환하지 않는 함수이며 내부적으로는 빈 튜플 <code>()</code>(유닛)을 돌려줍니다. 테스트 출력의 <code>… ok</code> 한 줄이 테스트 하나입니다.</p>
+          </li>
+          <li>
+            <strong>줄 편집 단축키 연습하기</strong>
+            <p>(4단계의 <span class="file">my_functions.rs</span>에서) 마우스를 쓰지 않고 다음을 해 봅니다. 모두 커서가 있는 줄(또는 선택한 줄들)에 적용됩니다.</p>
+            <ol>
+              <li><code>fn greet</code>가 있는 줄(<code>fn greet(name: &amp;str) {</code>)에 커서를 두고 <kbd class="key">Alt+↑</kbd>를 눌러 줄을 위로 옮겨 봅니다. 한 줄씩 위치가 바뀝니다. (함수 전체를 옮기려면 여러 줄을 선택한 뒤 같은 단축키를 씁니다.) <kbd class="key">Alt+↓</kbd>로 되돌립니다.</li>
+              <li><code>println!("add(2, 3) = …</code> 줄에서 <kbd class="key">Shift+Alt+↓</kbd>를 눌러 줄을 복제합니다. 복제된 줄의 인자를 <code>add(10, 20)</code>으로 바꿔 보세요.</li>
+              <li>복제한 줄을 <kbd class="key">Ctrl+Shift+K</kbd>로 삭제합니다.</li>
+              <li><code>greet("Rust");</code> 줄에서 <kbd class="key">Ctrl+/</kbd>를 눌러 주석으로 만들고, 한 번 더 눌러 되돌립니다.</li>
+              <li>마지막으로 <kbd class="key">Ctrl+S</kbd>로 저장하면 저장 시 자동 정렬이 실행됩니다.</li>
+            </ol>
+            <p>실수했다면 <kbd class="key">Ctrl+Z</kbd>로 되돌립니다. 모두 끝낸 뒤 <code>cargo test -p lesson03 --bin my_functions</code>가 다시 통과하는지 확인합니다.</p>
+          </li>
+          <li>
+            <strong>컴파일 오류 일부러 만들어 읽기</strong>
+            <p>(4단계와 별개) <span class="file">lab/lesson03/src/bin</span>에 <code>scratch.rs</code>라는 새 파일을 만들고, <span class="file">lab/lesson03/fail/immutable_assign.rs.txt</span>의 내용을 복사해 붙여 넣습니다. 이 파일에는 불변 변수에 두 번 값을 넣는 코드가 들어 있습니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson03/fail/immutable_assign.rs.txt">fn main() {
+    let x = 5;
+    println!("x = {x}");
+    x = 6;
+    println!("x = {x}");
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson03 --bin scratch</pre>
+<pre class="output" data-src="lab/lesson03/expected/immutable_assign.err.txt">error[E0384]: cannot assign twice to immutable variable `x`
+ --&gt; lesson03\src\bin\scratch.rs:4:5
+  |
+2 |     let x = 5;
+  |         - first assignment to `x`
+3 |     println!("x = {x}");
+4 |     x = 6;
+  |     ^^^^^ cannot assign twice to immutable variable
+  |
+help: consider making this binding mutable
+  |
+2 |     let mut x = 5;
+  |         +++
+
+For more information about this error, try `rustc --explain E0384`.
+error: could not compile `lesson03` (bin "scratch") due to 1 previous error</pre>
+            <p>오류를 위에서부터 읽습니다. <code>error[E0384]</code>는 오류 번호와 요약, <code>--&gt;</code>는 위치(파일:줄:열), 그 아래 코드 조각의 <code>-</code>와 <code>^</code> 표시는 "첫 번째 대입은 여기, 문제의 두 번째 대입은 여기"를 가리킵니다. 마지막 <code>help:</code>는 해결책(<code>let mut x</code>)입니다. 그대로 고쳐서 실행해 보세요. 에디터에서도 저장하면 같은 위치에 빨간 밑줄이 생깁니다. 이어서 <span class="file">fail/semicolon_return.rs.txt</span> 내용으로 <span class="file">scratch.rs</span>를 바꿔 같은 방법으로 실행합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson03/fail/semicolon_return.rs.txt">fn add(a: i32, b: i32) -&gt; i32 {
+    a + b;
+}
+
+fn main() {
+    println!("{}", add(1, 2));
+}</pre>
+<pre class="output" data-src="lab/lesson03/expected/semicolon_return.err.txt">error[E0308]: mismatched types
+ --&gt; lesson03\src\bin\scratch.rs:1:27
+  |
+1 | fn add(a: i32, b: i32) -&gt; i32 {
+  |    ---                    ^^^ expected `i32`, found `()`
+  |    |
+  |    implicitly returns `()` as its body has no tail or `return` expression
+2 |     a + b;
+  |          - help: remove this semicolon to return this value
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `lesson03` (bin "scratch") due to 1 previous error</pre>
+            <p>이번 메시지는 함수 본문에 마지막 식이 없어서 <code>()</code>를 돌려주는데 <code>i32</code>가 필요하다는 뜻이고, <code>help</code>가 "이 세미콜론을 지우면 값이 반환된다"고 정확히 알려 줍니다.</p>
+          </li>
+          <li>
+            <strong>정수 오버플로: debug와 release 비교하기</strong>
+            <p>(6단계의 <span class="file">scratch.rs</span>는 지워도 됩니다) 이미 들어 있는 완성본 <span class="file">overflow.rs</span>를 읽고 실행합니다. 문자열 <code>"255"</code>를 <code>u8</code>로 파싱해 1을 더합니다. 컴파일러는 값이 실행 중에야 정해진다고 보기 때문에 컴파일 오류가 아니라 실행 중에 판단합니다. <code>unwrap()</code>은 레슨 06에서 배우니 지금은 "실패하면 멈춘다"로만 이해하세요.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson03/src/bin/overflow.rs">fn main() {
+    let text = "255";
+    let value: u8 = text.parse().unwrap();
+    println!("값: {value}");
+
+    let next = value + 1;
+    println!("1을 더한 값: {next}");
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson03 --bin overflow</pre>
+<pre class="output" data-src="lab/lesson03/expected/overflow_debug.txt">값: 255
+
+thread 'main' (...) panicked at lesson03\src\bin\overflow.rs:6:16:
+attempt to add with overflow
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</pre>
+            <p>debug 빌드는 오버플로를 검사해서 <b>패닉(panic)</b>으로 프로그램을 멈춥니다. 위치(<code>overflow.rs:6:16</code>)가 보이고, <code>thread 'main'</code> 뒤 괄호의 숫자는 실행마다 달라서 <code>(...)</code>로 줄여 실었습니다. 위에는 프로그램이 낸 출력만 실었으며, cargo는 이어서 <code>error: process didn't exit successfully</code>로 시작하는 줄(종료 코드 101)을 덧붙입니다. 같은 프로그램을 release로 실행해 보세요.</p>
+<pre class="code" data-lang="powershell">cargo run --release -p lesson03 --bin overflow</pre>
+<pre class="output" data-src="lab/lesson03/expected/overflow_release.txt">값: 255
+1을 더한 값: 0</pre>
+            <p>release 빌드는 검사를 끄기 때문에 255 + 1이 조용히 <code>0</code>으로 한 바퀴 돕니다. Kotlin의 <code>Int</code>가 항상 이렇게 조용히 도는 것과 같은 동작입니다. 의도한 동작이라면 <code>wrapping_add</code>, 실패를 값으로 받고 싶다면 <code>checked_add</code>를 쓰는 습관이 안전합니다.</p>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong> 같은 레슨의 "자주 나는 오류"를 먼저 확인하세요. <span class="file">scratch.rs</span>나 오류가 있는 <span class="file">my_</span> 파일이 남아 있으면 <code>cargo test -p lesson03</code> 같은 패키지 전체 명령이 그 파일 때문에 실패합니다. 다 쓴 파일은 지우세요.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Rust</th></tr></thead>
+            <tbody>
+              <tr><td>불변 변수</td><td><code>val x = 5</code></td><td>(문법 없음, 관례로 대문자)</td><td><code>let x = 5;</code></td></tr>
+              <tr><td>가변 변수</td><td><code>var count = 0</code></td><td><code>count = 0</code></td><td><code>let mut count = 0;</code></td></tr>
+              <tr><td>상수</td><td><code>const val MAX = 3</code></td><td><code>MAX = 3</code> (관례)</td><td><code>const MAX: u32 = 3;</code></td></tr>
+              <tr><td>같은 이름 다시 선언</td><td>같은 범위에서는 오류, 안쪽 범위에서는 경고</td><td>그냥 재할당(타입도 바뀜)</td><td><code>let x = x * 2;</code> 가능 (섀도잉, 타입도 바뀔 수 있음)</td></tr>
+              <tr><td>기본 정수</td><td><code>Int</code>(32비트), <code>Long</code></td><td><code>int</code>(크기 제한 없음)</td><td><code>i32</code>, <code>i64</code>, <code>u8</code>, <code>usize</code> …</td></tr>
+              <tr><td>정수 오버플로</td><td><code>Int.MAX_VALUE + 1</code>은 조용히 한 바퀴 돎</td><td>제한이 없어 오버플로 없음</td><td>debug는 패닉, release는 한 바퀴 돎</td></tr>
+              <tr><td>조건</td><td><code>if (x &gt; 0)</code>, 값으로도 사용</td><td><code>if x:</code> (참/거짓으로 판정)</td><td><code>if x &gt; 0</code>, 반드시 <code>bool</code>, 값으로도 사용</td></tr>
+              <tr><td>범위 반복</td><td><code>for (i in 1..3)</code> (끝 포함)</td><td><code>for i in range(1, 4)</code></td><td><code>for i in 1..=3</code> (<code>..</code>은 끝 제외)</td></tr>
+              <tr><td>함수</td><td><code>fun add(a: Int, b: Int): Int = a + b</code></td><td><code>def add(a: int, b: int) -&gt; int:</code></td><td><code>fn add(a: i32, b: i32) -&gt; i32 { a + b }</code></td></tr>
+              <tr><td>반환 값 없음</td><td><code>Unit</code></td><td><code>None</code></td><td><code>()</code> (유닛)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정</strong>Kotlin의 <code>val</code>은 "다시 대입할 수 없다"는 뜻이어서 가리키는 객체 안의 값은 바뀔 수 있습니다. Rust의 <code>let</code>은 변수에 값 전체가 묶여 있어서 <code>let v = Vec::new();</code> 뒤 <code>v.push(1)</code>도 막힙니다(레슨 06에서 오류로 확인합니다). 또 Kotlin에서는 <code>Int + Long</code>이 자동으로 <code>Long</code>이 되지만 Rust는 서로 다른 정수 타입끼리의 덧셈을 아예 막습니다. 파이썬 습관으로 <code>if count:</code>처럼 정수를 조건에 쓰는 것도 안 됩니다. 아래 "자주 나는 오류"에서 이 두 경우의 실제 메시지를 봅니다.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 코드를 빠르게 입력하고 고치기</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>자동 완성 열기</td><td><kbd class="key">Ctrl+Space</kbd></td><td><code>b.</code> 뒤의 메서드, 함수 이름을 고를 때</td></tr>
+                <tr><td>매개변수 힌트</td><td><kbd class="key">Ctrl+Shift+Space</kbd></td><td>함수 호출 괄호 안에서 매개변수 이름과 타입을 볼 때</td></tr>
+                <tr><td>줄 위/아래로 이동</td><td><kbd class="key">Alt+↑</kbd> <kbd class="key">Alt+↓</kbd></td><td>함수 순서를 바꾸거나 줄 위치를 고칠 때</td></tr>
+                <tr><td>줄 복사</td><td><kbd class="key">Shift+Alt+↓</kbd></td><td>비슷한 <code>println!</code>이나 테스트 줄을 만들 때</td></tr>
+                <tr><td>줄 삭제</td><td><kbd class="key">Ctrl+Shift+K</kbd></td><td>줄 전체를 지울 때</td></tr>
+                <tr><td>줄 주석 토글</td><td><kbd class="key">Ctrl+/</kbd></td><td>코드를 잠깐 빼고 실험할 때</td></tr>
+                <tr><td>되돌리기</td><td><kbd class="key">Ctrl+Z</kbd></td><td>실수했을 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>인레이 힌트 끄고 켜기: <code>editor.inlayHints.enabled</code></strong>
+            <p>인레이 힌트(inlay hints)는 코드 줄 사이에 흐리게 끼워 보여 주는 추론 정보입니다. 먼저 <span class="file">my_variables.rs</span>에서 <code>let spaces = spaces.len();</code> 줄을 보면 변수 이름 뒤에 회색 <code>: usize</code>가 붙어 있습니다. 실제 입력한 글자가 아니라 rust-analyzer가 추론한 타입입니다. <kbd class="key">Ctrl+,</kbd>로 설정을 열고 <code>editor.inlayHints.enabled</code>를 검색해 <b>작업 영역</b> 탭에서 값을 <code>off</code>로 바꿉니다. 회색 글씨가 모두 사라집니다. <span class="file">.vscode/settings.json</span>에는 <code>"editor.inlayHints.enabled": "off"</code>로 기록됩니다. 선택 가능한 값은 <code>on</code>, <code>off</code>, <code>onUnlessPressed</code>, <code>offUnlessPressed</code>입니다. <code>offUnlessPressed</code>는 평소에는 숨기고 <code>Ctrl+Alt</code>를 누르는 동안만 보여 줍니다. 값을 확인하고 <code>on</code>으로 되돌립니다.</p>
+            <p>Rust만 골라서 종류별로 끄는 설정도 있습니다. <code>rust-analyzer.inlayHints.typeHints.enable</code>(변수 타입 힌트)과 <code>rust-analyzer.inlayHints.parameterHints.enable</code>(호출할 때 매개변수 이름 힌트)가 대표적입니다. 타입 힌트는 읽기에 도움이 되지만, 힌트가 코드의 일부라고 착각하지 않도록 처음 한동안은 켜 둔 채 "내가 쓴 글자인가?"를 확인하는 습관을 권합니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <h3>문제 1. FizzBuzz</h3>
+        <p><span class="file">lab/lesson03/src/bin/my_practice_fizzbuzz.rs</span>를 새로 만들고 <code>fn fizzbuzz(n: u32) -&gt; String</code>을 구현합니다. 3의 배수는 <code>"Fizz"</code>, 5의 배수는 <code>"Buzz"</code>, 둘 다의 배수는 <code>"FizzBuzz"</code>, 그 외는 숫자를 문자열로 돌려줍니다. <code>main</code>은 1부터 15까지 한 줄씩 출력합니다. 아래 테스트를 파일 아래쪽에 붙여 넣고 통과시키세요. <b>완료 조건</b>: <code>cargo test -p lesson03 --bin my_practice_fizzbuzz</code>에서 테스트 3개가 통과하고, <code>cargo run</code> 출력의 3번째 줄이 <code>Fizz</code>, 15번째 줄이 <code>FizzBuzz</code>입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson03/src/bin/practice_fizzbuzz.rs" data-lines="19-40">#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn plain_numbers_stay_numbers() {
+        assert_eq!(fizzbuzz(1), "1");
+        assert_eq!(fizzbuzz(7), "7");
+    }
+
+    #[test]
+    fn multiples_of_three_and_five() {
+        assert_eq!(fizzbuzz(9), "Fizz");
+        assert_eq!(fizzbuzz(10), "Buzz");
+    }
+
+    #[test]
+    fn multiples_of_fifteen() {
+        assert_eq!(fizzbuzz(15), "FizzBuzz");
+        assert_eq!(fizzbuzz(30), "FizzBuzz");
+    }
+}</pre>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>조건은 가장 좁은 것부터 검사합니다. 15의 배수를 먼저 검사해야 3의 배수 분기에 잡히지 않습니다. 숫자를 문자열로 바꾸는 메서드는 <code>n.to_string()</code>입니다. 배수 판정을 <code>n % 15 == 0</code>으로 쓰면 이 코스의 clippy 설정이 노란 경고를 내며 <code>is_multiple_of</code>를 권합니다(아래 "자주 나는 오류" 참고).</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson03/src/bin/practice_fizzbuzz.rs">fn fizzbuzz(n: u32) -&gt; String {
+    if n.is_multiple_of(15) {
+        String::from("FizzBuzz")
+    } else if n.is_multiple_of(3) {
+        String::from("Fizz")
+    } else if n.is_multiple_of(5) {
+        String::from("Buzz")
+    } else {
+        n.to_string()
+    }
+}
+
+fn main() {
+    for n in 1..=15 {
+        println!("{}", fizzbuzz(n));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn plain_numbers_stay_numbers() {
+        assert_eq!(fizzbuzz(1), "1");
+        assert_eq!(fizzbuzz(7), "7");
+    }
+
+    #[test]
+    fn multiples_of_three_and_five() {
+        assert_eq!(fizzbuzz(9), "Fizz");
+        assert_eq!(fizzbuzz(10), "Buzz");
+    }
+
+    #[test]
+    fn multiples_of_fifteen() {
+        assert_eq!(fizzbuzz(15), "FizzBuzz");
+        assert_eq!(fizzbuzz(30), "FizzBuzz");
+    }
+}</pre>
+<pre class="output">running 3 tests
+test tests::multiples_of_fifteen ... ok
+test tests::multiples_of_three_and_five ... ok
+test tests::plain_numbers_stay_numbers ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+<pre class="output" data-src="lab/lesson03/expected/practice_fizzbuzz.txt">1
+2
+Fizz
+4
+Buzz
+Fizz
+7
+8
+Fizz
+Buzz
+11
+Fizz
+13
+14
+FizzBuzz</pre>
+          </div>
+        </details>
+        <h3>문제 2. 콜라츠 추측</h3>
+        <p><span class="file">my_practice_collatz.rs</span>에 <code>fn collatz_steps(start: u64) -&gt; u32</code>를 구현합니다. 수 <code>n</code>이 1이 될 때까지 짝수면 2로 나누고 홀수면 <code>3 * n + 1</code>로 바꾸며, 몇 번 바꿨는지 돌려줍니다. <code>while</code>과 <code>let mut</code>을 써 보세요. <b>완료 조건</b>: 아래 테스트 3개가 통과하고 <code>27</code>의 결과가 <code>111</code>입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson03/src/bin/practice_collatz.rs" data-lines="21-40">#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn one_needs_no_steps() {
+        assert_eq!(collatz_steps(1), 0);
+    }
+
+    #[test]
+    fn small_examples() {
+        assert_eq!(collatz_steps(2), 1);
+        assert_eq!(collatz_steps(6), 8);
+    }
+
+    #[test]
+    fn famous_example() {
+        assert_eq!(collatz_steps(27), 111);
+    }
+}</pre>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>매개변수는 바꿀 수 없으므로 <code>let mut n = start;</code>처럼 가변 복사본을 만들어 씁니다. 단계 횟수는 <code>let mut steps = 0;</code>으로 세고, 반복이 끝난 뒤 마지막 식으로 <code>steps</code>를 돌려줍니다(세미콜론 없이).</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson03/src/bin/practice_collatz.rs">fn collatz_steps(start: u64) -&gt; u32 {
+    let mut n = start;
+    let mut steps = 0;
+    while n != 1 {
+        if n.is_multiple_of(2) {
+            n /= 2;
+        } else {
+            n = 3 * n + 1;
+        }
+        steps += 1;
+    }
+    steps
+}
+
+fn main() {
+    for start in [1, 6, 27] {
+        println!("{start}에서 1까지 {}단계", collatz_steps(start));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn one_needs_no_steps() {
+        assert_eq!(collatz_steps(1), 0);
+    }
+
+    #[test]
+    fn small_examples() {
+        assert_eq!(collatz_steps(2), 1);
+        assert_eq!(collatz_steps(6), 8);
+    }
+
+    #[test]
+    fn famous_example() {
+        assert_eq!(collatz_steps(27), 111);
+    }
+}</pre>
+<pre class="output">running 3 tests
+test tests::famous_example ... ok
+test tests::one_needs_no_steps ... ok
+test tests::small_examples ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+<pre class="output" data-src="lab/lesson03/expected/practice_collatz.txt">1에서 1까지 0단계
+6에서 1까지 8단계
+27에서 1까지 111단계</pre>
+          </div>
+        </details>
+        <h3>문제 3 (권장). rustlings로 문법 근육 만들기</h3>
+        <p>클론해 둔 <span class="file" data-local="rustlings/exercises/01_variables">rustlings/exercises/01_variables</span>(<code>variables1.rs</code>~<code>variables6.rs</code>), <span class="file" data-local="rustlings/exercises/02_functions">02_functions</span>(<code>functions1.rs</code>~<code>functions5.rs</code>), <span class="file" data-local="rustlings/exercises/03_if">03_if</span>(<code>if1.rs</code>~<code>if3.rs</code>), <span class="file" data-local="rustlings/exercises/04_primitive_types">04_primitive_types</span>(<code>primitive_types1.rs</code>~<code>primitive_types6.rs</code>)의 문제를 읽어 보세요. 각 파일의 <code>TODO</code> 표시를 고치는 방식입니다. rustlings 설치와 진행 방법은 레슨 12에서 안내합니다. 지금은 각 문제의 <code>README.md</code>를 읽는 것만 해도 좋습니다. <b>완료 조건</b>: <code>variables1.rs</code>~<code>variables3.rs</code>가 어떤 오류를 일으키는지 소리 내어 설명할 수 있습니다.</p>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="rust-03-variables"><span><code>my_variables.rs</code>를 직접 입력해 <code>cargo run -p lesson03 --bin my_variables</code>의 출력(<code>바깥 x = 10</code> 포함)을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-03-completion"><span><kbd class="key">Ctrl+Space</kbd>로 메서드 목록을 열어 <code>checked_add</code>를 골라 입력했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-03-line-shortcuts"><span><kbd class="key">Alt+↓</kbd>, <kbd class="key">Shift+Alt+↓</kbd>, <kbd class="key">Ctrl+Shift+K</kbd>, <kbd class="key">Ctrl+/</kbd> 4개를 마우스 없이 모두 사용했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-03-inlay"><span>인레이 힌트 설정을 <code>off</code>로 바꿔 회색 글씨가 사라지는 것을 보고 <code>on</code>으로 되돌렸다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-03-error"><span><code>E0384</code> 오류를 직접 재현하고 <code>help:</code> 줄의 안내대로 고쳐 실행했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-03-overflow"><span>debug와 release에서 <code>overflow</code> 실행 결과가 다른 것을 직접 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-03-practice"><span>연습 문제 1, 2를 힌트 없이 먼저 시도하고 <code>cargo test</code> 통과를 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-03-compare"><span>Kotlin의 <code>val</code>과 Rust의 <code>let</code>이 다른 점을 내 말로 설명할 수 있다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <p>아래 오류는 <span class="file">lab/lesson03/fail</span> 폴더의 <code>.rs.txt</code> 파일 내용을 <span class="file">lab/lesson03/src/bin/scratch.rs</span>에 복사하고 <code>cargo check -p lesson03 --bin scratch</code>로 재현한 출력입니다. clippy 경고 항목에는 명령을 따로 적었습니다.</p>
+        <h3>증상: <code>cargo run</code>이 어떤 실행 파일을 돌릴지 모른다</h3>
+        <p>이 레슨의 패키지에는 실행 파일이 여러 개이고 <code>default-run</code>이 없습니다. <code>--bin 이름</code>을 붙이면 됩니다. 이름은 메시지에 나온 목록에서 고르세요. 목록은 직접 만든 <code>my_</code> 파일이 늘어날수록 길어집니다.</p>
+<pre class="output">error: `cargo run` could not determine which binary to run. Use the `--bin` option to specify a binary, or the `default-run` manifest key.
+available binaries: control_flow, functions, overflow, practice_collatz, practice_fizzbuzz, types, variables</pre>
+        <h3>증상: <code>expected u32, found &amp;str</code> (타입이 맞지 않음)</h3>
+        <p>문자열 <code>"42"</code>를 숫자 변수에 넣을 수 없습니다. Python이나 Kotlin의 자동 변환이 없습니다. 숫자로 바꾸려면 <code>"42".parse::&lt;u32&gt;()</code> 같은 명시적 변환이 필요하고, 그 결과는 레슨 06의 <code>Result</code>로 돌아옵니다. 이 파일은 <span class="file">fail/mismatched_types.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson03/expected/mismatched_types.err.txt">error[E0308]: mismatched types
+ --&gt; lesson03\src\bin\scratch.rs:2:22
+  |
+2 |     let guess: u32 = "42";
+  |                ---   ^^^^ expected `u32`, found `&amp;str`
+  |                |
+  |                expected due to this
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `lesson03` (bin "scratch") due to 1 previous error</pre>
+        <h3>증상: <code>if</code> 조건에 정수를 넣었더니 <code>expected bool, found integer</code></h3>
+        <p>Python의 <code>if count:</code>나 C 계열 언어처럼 0이 아니면 참으로 보지 않습니다. 조건은 반드시 <code>bool</code>입니다. <code>if count != 0</code>처럼 비교식으로 쓰세요. 이 파일은 <span class="file">fail/if_not_bool.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson03/expected/if_not_bool.err.txt">error[E0308]: mismatched types
+ --&gt; lesson03\src\bin\scratch.rs:3:8
+  |
+3 |     if count {
+  |        ^^^^^ expected `bool`, found integer
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `lesson03` (bin "scratch") due to 1 previous error</pre>
+        <h3>증상: <code>i32</code> 값을 <code>i64</code> 변수에 넣으면 타입 불일치</h3>
+        <p>정수 타입은 크기가 커지는 방향이어도 자동으로 바뀌지 않습니다. 메시지의 <code>help</code>가 알려 주는 <code>.into()</code>로 바꾸거나, 처음부터 같은 타입을 씁니다. 같은 이유로 <code>i32 + i64</code> 덧셈은 아예 컴파일되지 않습니다(Kotlin에서는 <code>Int + Long</code>이 <code>Long</code>으로 계산됩니다). 이 파일은 <span class="file">fail/mixed_int_types.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson03/expected/mixed_int_types.err.txt">error[E0308]: mismatched types
+ --&gt; lesson03\src\bin\scratch.rs:3:22
+  |
+3 |     let total: i64 = small;
+  |                ---   ^^^^^ expected `i64`, found `i32`
+  |                |
+  |                expected due to this
+  |
+help: you can convert an `i32` to an `i64`
+  |
+3 |     let total: i64 = small.into();
+  |                           +++++++
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `lesson03` (bin "scratch") due to 1 previous error</pre>
+        <h3>증상: clippy가 <code>n % 15 == 0</code>에 노란 경고를 낸다</h3>
+        <p>컴파일 오류가 아니라 clippy 경고입니다. 부호 없는 정수에서는 <code>is_multiple_of</code>가 읽기 쉽다는 제안입니다. 이 코스의 설정은 저장할 때 clippy를 돌리므로 FizzBuzz를 풀다 보면 문제 패널에도 이 경고가 나타납니다. 이 파일은 <span class="file">fail/manual_multiple.rs.txt</span>이고 <code>cargo clippy -p lesson03 --bin scratch</code>로 재현합니다.</p>
+<pre class="output" data-src="lab/lesson03/expected/manual_multiple.err.txt">warning: manual implementation of `.is_multiple_of()`
+ --&gt; lesson03\src\bin\scratch.rs:2:5
+  |
+2 |     n % 15 == 0
+  |     ^^^^^^^^^^^ help: replace with: `n.is_multiple_of(15)`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#manual_is_multiple_of
+  = note: `#[warn(clippy::manual_is_multiple_of)]` on by default
+
+warning: `lesson03` (bin "scratch") generated 1 warning (run `cargo clippy --fix --bin "scratch" -p lesson03 -- ` to apply 1 suggestion)</pre>
+        <h3>증상: 실행 중 <code>attempt to add with overflow</code></h3>
+        <p>7단계에서 본 debug 빌드의 오버플로 패닉입니다. 오류가 나기 전까지 컴파일 단계는 통과했다는 점이 컴파일 오류와 다릅니다. 값의 범위가 불확실하면 <code>checked_add</code>로 실패를 값으로 받거나 더 큰 타입을 쓰세요.</p>
+      </section>
+
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨은 이 코스의 핵심인 소유권입니다. <code>String</code>을 다른 변수에 대입하면 왜 원래 변수를 쓸 수 없는지, 빌림 규칙을 어기면 컴파일러가 어떤 말을 하는지를 직접 오류로 만들어 읽습니다. VS Code에서는 문제 패널, 다음 문제로 이동, Quick Fix를 씁니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="02-hello-cargo.html"><small>← 이전 레슨</small>02 · 첫 프로그램과 cargo</a>
+          <a class="next" rel="next" href="04-ownership.html"><small>다음 레슨 →</small>04 · 소유권·빌림·슬라이스</a>
+        </nav>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Rust 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

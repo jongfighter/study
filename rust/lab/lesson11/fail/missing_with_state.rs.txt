@@ -1,0 +1,16 @@
+use axum::Router;
+use axum::extract::State;
+use axum::routing::get;
+use lesson11::TaskStore;
+
+async fn count(State(store): State<TaskStore>) -> String {
+    store.list().len().to_string()
+}
+
+fn build() -> Router {
+    Router::new().route("/count", get(count))
+}
+
+fn main() {
+    let _app = build();
+}

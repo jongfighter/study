@@ -1,0 +1,1 @@
+lesson02\mine\main.go:10:14: fmt.Printf format %d has arg "안녕" of wrong type string

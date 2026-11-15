@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="go" data-lesson="08">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="net/http와 ServeMux 패턴으로 Task REST API 기본 서버를 만들고 .http로 시험합니다.">
+  <title>08 · net/http로 만드는 REST 서버 — Go 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Go 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Go</span>
+      <span>Go 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 08 · REST 서버</p>
+        <h1>net/http로 만드는 REST 서버</h1>
+        <p class="lead">표준 라이브러리 net/http만으로 Task REST API의 첫 버전(health, 목록, 생성, 조회, 수정, 삭제)을 만듭니다. 요청마다 고루틴이 도는 서버라는 점을 레슨 07과 연결하고, tasks.json, 터미널 분할, REST Client, 서버 디버깅을 직접 써 봅니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 150분</li>
+          <li><b>난이도</b> ★★★☆☆</li>
+          <li><b>선행</b> <a href="07-concurrency.html">레슨 07</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson08/mine</span> (완성 코드: <span class="file">lab/lesson08</span>)</li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li><code>http.NewServeMux</code>와 <code>GET /tasks/{id}</code> 같은 패턴으로 라우팅하고 <code>r.PathValue</code>로 경로 변수를 읽을 수 있다.</li>
+          <li>JSON 요청을 구조체로 읽고(<code>json.Decoder</code>) 응답을 JSON으로 쓰며(<code>json.Encoder</code>), 상태 코드(200, 201, 204, 400, 404, 405)를 상황에 맞게 고를 수 있다.</li>
+          <li>제목 검증, 알 수 없는 필드 거부, 포인터 필드를 이용한 부분 수정(PATCH)을 직접 구현할 수 있다.</li>
+          <li>VS Code에서 <code>tasks.json</code>을 직접 작성해 <code>Ctrl+Shift+B</code>로 실행하고 바로 원래대로 복원하며, <code>.http</code> 파일과 REST Client로 요청을 보낼 수 있다.</li>
+          <li>서버에 중단점을 걸고 요청을 보내 핸들러 안에서 멈추는 것을 확인할 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>영문 원문은 이 페이지의 한국어 요약을 먼저 읽은 뒤 확인하세요. 로컬 파일은 <kbd class="key">Ctrl+P</kbd>로 이름 일부를 입력해 열 수 있습니다.</p>
+        <ul>
+          <li>Go by Example (영문): <a href="https://gobyexample.com/http-server">HTTP Server</a> — 로컬 파일: <span class="file" data-local="go-by-example/examples/http-server/http-server.go">go-by-example/examples/http-server/http-server.go</span>. 이 예제는 <code>http.HandleFunc</code>와 기본 라우터(<code>nil</code>)를 쓰지만, 이 코스는 <code>http.NewServeMux()</code>로 라우터를 직접 만듭니다.</li>
+          <li>Learn Go with Tests: <span class="file" data-local="learn-go-with-tests/http-server.md">learn-go-with-tests/http-server.md</span>(핸들러를 테스트하며 서버 만들기), <span class="file" data-local="learn-go-with-tests/json.md">learn-go-with-tests/json.md</span>(JSON 응답, 라우팅). 완성 코드: <span class="file" data-local="learn-go-with-tests/http-server/v5/server.go">http-server/v5/server.go</span>, <span class="file" data-local="learn-go-with-tests/json/v6/server.go">json/v6/server.go</span></li>
+          <li>100 Go Mistakes: <span class="file" data-local="100-go-mistakes/docs/index.md">100-go-mistakes/docs/index.md</span>의 #22(nil 슬라이스와 빈 슬라이스, JSON에서 달라 보임), #77(JSON 처리 실수), #80(<code>http.Error</code> 뒤에 <code>return</code> 빠뜨리기), #81(기본 HTTP 서버·클라이언트 사용). 예제: <span class="file" data-local="100-go-mistakes/src/10-standard-lib/80-http-return/main.go">100-go-mistakes/src/10-standard-lib/80-http-return/main.go</span></li>
+          <li>공식 문서(영문): <a href="https://pkg.go.dev/net/http#ServeMux">net/http ServeMux</a>, <a href="https://go.dev/blog/routing-enhancements">Routing Enhancements for Go 1.22</a>, <a href="https://pkg.go.dev/encoding/json">encoding/json</a>, REST Client 확장 <a href="https://marketplace.visualstudio.com/items?itemName=humao.rest-client">humao.rest-client</a></li>
+        </ul>
+        <div class="callout warn"><strong>클론한 자료 폴더에서는 go 명령을 실행하지 마세요</strong><span class="file">go-by-example</span>, <span class="file">learn-go-with-tests</span>, <span class="file">100-go-mistakes</span>는 읽기 전용 자료입니다. 예를 들어 <span class="file">go-by-example/go.mod</span>는 <code>go 1.27.1</code>을 요구하는데 이 PC의 Go는 1.27.0이라, 그 폴더 안에서 <code>go</code> 명령을 실행하면 오류가 나거나 도구 체인을 내려받으려 할 수 있습니다. 파일은 VS Code로 열어 읽기만 하고, 실행은 항상 <span class="file">lab</span> 폴더에서 합니다.</div>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>핸들러(handler).</b> HTTP 요청을 처리하는 것은 <code>http.Handler</code> 인터페이스(메서드 <code>ServeHTTP(w, r)</code> 하나)이고, 보통은 <code>func(w http.ResponseWriter, r *http.Request)</code> 모양의 평범한 함수를 씁니다. <code>w</code>로 응답을 쓰고 <code>r</code>에서 요청을 읽습니다. 애너테이션도 리플렉션 마법도 없는 그냥 함수라서 테스트하기도 쉽습니다(레슨 09).</p>
+        <p><b>ServeMux와 패턴.</b> <code>ServeMux</code>는 요청 URL을 등록된 패턴과 맞춰 알맞은 핸들러를 부르는 라우터입니다. Go 1.22부터 패턴 모양은 <code>[메서드 ][호스트]/[경로]</code>이고, 경로에는 <code>{id}</code>처럼 이름 붙은 와일드카드를 쓸 수 있습니다. 메서드를 적으면 그 메서드만 맞는데, <code>GET</code>은 <code>HEAD</code>도 함께 받습니다. 여러 패턴이 맞으면 "더 구체적인 쪽"이 이기고, 어느 쪽이 더 구체적인지 가릴 수 없으면 등록할 때 <b>패닉</b>이 납니다. 경로는 맞지만 메서드가 다르면 <code>ServeMux</code>가 알아서 <code>405 Method Not Allowed</code>와 <code>Allow</code> 헤더를 보냅니다. 이 코스의 <span class="file">lab/go.mod</span>는 <code>go 1.24</code>라서 이 문법을 그대로 씁니다.</p>
+        <p><b>JSON.</b> <code>encoding/json</code>은 구조체의 <b>대문자로 시작하는(공개) 필드</b>만 다룹니다. 이름은 구조체 태그 <code>`json:"created_at"`</code>로 정합니다. 요청은 <code>json.NewDecoder(r.Body).Decode(&amp;v)</code>로 읽고, 응답은 <code>json.NewEncoder(w).Encode(v)</code>로 씁니다. <code>DisallowUnknownFields()</code>를 켜면 모르는 필드가 들어왔을 때 에러가 납니다. 이 레슨의 JSON은 널리 쓰는 <code>encoding/json</code>입니다. 클론한 Go by Example의 json 예제는 <code>encoding/json/v2</code>를 가져오는데, 이 코스에서는 쓰지 않습니다.</p>
+        <p><b>응답 쓰기 순서.</b> 응답은 <b>상태 코드 → 헤더 → 본문</b> 순서로 나갑니다. <code>w.WriteHeader(201)</code>은 헤더를 확정하므로 헤더(<code>Content-Type</code> 등)는 그 전에 설정해야 하고, 본문을 한 번이라도 썼다면 상태 코드는 자동으로 200이 됩니다. <code>http.Error</code>나 <code>writeError</code>를 부른 뒤에는 <b><code>return</code></b>으로 핸들러를 끝내야 합니다(아래 "자주 나는 오류"에서 실제로 재현합니다).</p>
+        <p><b>요청마다 고루틴.</b> <code>net/http</code> 서버는 요청 하나를 고루틴 하나로 처리합니다. 그래서 여러 요청이 같은 저장소(맵)를 동시에 건드립니다. 레슨 07의 <code>Mutex</code>가 여기서 필요합니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>완성 코드가 <span class="file">lab/lesson08</span>에 들어 있으므로 직접 입력하는 코드는 새로 만드는 <span class="file">lab/lesson08/mine</span> 폴더에 둡니다. 코드 블록 위의 파일 이름은 비교용 완성본의 위치입니다. 단계는 앞 단계의 터미널과 파일을 이어서 사용합니다. 서버를 띄운 터미널은 서버가 끝날 때까지 다른 명령을 받지 못하므로 2단계부터 터미널을 둘로 나눠 씁니다.</p>
+        <div class="callout tip"><strong>터미널 종류별 차이 (이 레슨에서 쓰는 것만)</strong>기본 터미널이 MSYS2 bash여도, PowerShell 7이어도 이 레슨의 <code>go run</code>, <code>curl.exe</code>, <code>go vet</code> 명령은 같은 모양입니다. 다른 점은 둘입니다. ① <b>환경변수 지정</b>: bash는 <code>PORT=9090 go run ./lesson08/mine</code>처럼 명령 앞에 쓰고(그 명령에만 적용), PowerShell은 <code>$env:PORT='9090'</code>을 먼저 실행하며 <b>이 터미널을 닫을 때까지 계속 적용</b>되므로 끝나면 <code>Remove-Item Env:PORT</code>로 지웁니다. ② <b>curl 이름</b>: Windows PowerShell 5.1에서는 <code>curl</code>이 <code>Invoke-WebRequest</code> 별칭이라 <code>curl.exe</code>라고 써야 하고, bash와 PowerShell 7에서는 <code>curl</code>도 <code>curl.exe</code>도 진짜 curl입니다. bash에서 <code>go</code>를 못 찾는다는 오류가 나면 <a href="01-environment.html">레슨 01</a>의 PATH 설정을 먼저 적용하세요. 이 코스는 PowerShell 터미널만으로도 끝까지 진행할 수 있습니다.</div>
+        <div class="callout warn"><strong>8080 포트는 한 번에 한 서버만 씁니다</strong>이 레슨은 서버를 여러 번 켜고 끕니다. 새 서버를 시작하기 전에 이전 서버가 실행 중인 터미널에서 <kbd class="key">Ctrl+C</kbd>를 눌러 끝내세요. 끝내지 않으면 "자주 나는 오류"의 포트 충돌 오류가 납니다.</div>
+        <ol class="steps">
+          <li>
+            <strong>가장 작은 서버 만들고 터미널 나누기</strong>
+            <p>탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson08</span> 폴더에 새 폴더 <code>mine</code>을 만들고, 그 안에 새 폴더 <code>hello</code>, 다시 그 안에 새 파일 <code>main.go</code>를 만들어 아래 코드를 입력합니다. <code>"GET /hello/{name}"</code>의 <code>{name}</code>이 경로 변수이고 <code>r.PathValue("name")</code>으로 읽습니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/hello/main.go">package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+)
+
+func main() {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "ok")
+	})
+	mux.HandleFunc("GET /hello/{name}", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "안녕하세요, %s!\n", r.PathValue("name"))
+	})
+
+	log.Println("서버 시작: http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
+}</pre>
+            <p>탐색기에서 <span class="file">lab</span> 폴더를 우클릭해 <b>통합 터미널에서 열기(Open in Integrated Terminal)</b>를 선택하고 서버를 시작합니다. 이 명령은 PowerShell과 bash에서 같습니다.</p>
+<pre class="code" data-lang="text">go run ./lesson08/mine/hello</pre>
+<pre class="output">2026/11/16 00:11:24 서버 시작: http://localhost:8080</pre>
+            <div class="callout warn" id="firewall"><strong>처음 서버를 실행하면 Windows 방화벽 창이 뜰 수 있습니다</strong>이 코스의 서버는 <code>":8080"</code>처럼 주소 없이 포트만 적어서 엽니다. Go 문서(<a href="https://pkg.go.dev/net#Listen">net 패키지의 Listen</a>)에 따르면 주소를 비워 두면 이 PC의 모든 네트워크 주소에서 연결을 받는 상태가 됩니다. 이럴 때 Windows Defender 방화벽이 "이 앱의 네트워크 접근을 허용할까요?"라고 묻는 <b>Windows 보안 경고</b> 창을 띄울 수 있습니다. 이 코스는 서버에 항상 이 PC 안에서만 접속하므로(<code>http://localhost:포트</code> 또는 <code>http://127.0.0.1:포트</code>) 네트워크 허용이 필요하지 않습니다. <b>관리자 권한(UAC)을 요구하는 창이 뜨면 "취소"를 누르고 계속 진행해도 됩니다.</b> 근거와 한계는 이렇습니다.
+          <ul>
+            <li><a href="https://learn.microsoft.com/en-us/windows/security/operating-system-security/network-security/windows-firewall/rules">Microsoft 문서의 Windows 방화벽 규칙</a>: 관리자 권한이 있는 사용자가 창을 취소하거나 아니오로 답하면 그 프로그램의 <b>차단 규칙</b>이 만들어지고, 관리자가 아닌 사용자는 어느 버튼을 눌러도 차단 규칙이 만들어집니다. 규칙은 지우기 전까지 남고 같은 프로그램에는 창이 다시 뜨지 않습니다. 이 문서는 같은 PC 안(loopback) 접속이 영향을 받는지는 말하지 않습니다.</li>
+            <li>같은 PC 안에서 일반 프로그램끼리 하는 loopback 접속은 Windows가 기본으로 허용하는 필터가 따로 있다는 분석이 있습니다(<a href="https://projectzero.google/2021/08/understanding-network-access-windows-app.html">Google Project Zero의 2021년 분석 글</a>). 그래서 <b>일반적으로</b> 취소해도 <code>localhost</code> 접속은 됩니다. 다만 <b>이 PC에서 방화벽 창을 실제로 띄워 확인하지는 못했습니다</b>(관리자 권한이 필요한 조작이라 실행하지 않았습니다).</li>
+            <li><code>go run</code>은 실행할 때마다 임시 폴더에 새 실행 파일을 만듭니다. 방화벽 규칙이 프로그램 경로를 기준으로 만들어진다면 같은 코드라도 실행할 때마다 창이 다시 뜰 수 있습니다(이 PC에서는 확인하지 못했습니다). 반복돼도 같은 방법으로 취소하면 됩니다.</li>
+            <li><code>go test</code>가 쓰는 <code>httptest</code>는 <code>127.0.0.1</code>에서만 서버를 열어서(Go 소스의 <span class="file">net/http/httptest/server.go</span>에서 확인) 이 창이 뜨지 않습니다.</li>
+          </ul>
+          취소했는데도 <code>localhost</code> 접속이 되지 않으면 서버 실행 단계는 건너뛰고 <code>go test</code>로 같은 동작을 확인하세요(레슨 09~11의 핸들러 테스트, 이 레슨 연습 문제의 테스트).</div>
+            <p>이 터미널은 서버가 쓰고 있으니 <kbd class="key">Ctrl+Shift+5</kbd>를 눌러 터미널을 오른쪽으로 <b>분할</b>합니다(명령 팔레트의 <b>Terminal: Split Terminal</b>과 같습니다). 새로 생긴 오른쪽 터미널에서 요청을 보냅니다. 서버 로그 줄 앞의 날짜와 시각은 실행할 때마다 다릅니다.</p>
+            <p><b>curl.exe 사용 메모.</b> Windows PowerShell 5.1에서는 <code>curl</code>이 <code>Invoke-WebRequest</code>의 별칭이라 진짜 curl이 아닙니다(이 PC에서 확인). PowerShell 7과 MSYS2 bash에서는 <code>curl</code>만 쳐도 진짜 curl이 실행되지만(이 PC에서 확인), 쉘마다 달라지지 않게 이 코스는 <b><code>curl.exe</code></b>라고 씁니다. MSYS2 bash에서도 <code>curl.exe</code>가 동작합니다. <code>-s</code>는 진행 표시를 끄고, <code>-i</code>는 응답 헤더를 함께 보여 줍니다.</p>
+<pre class="code" data-lang="text">curl.exe -si http://localhost:8080/health</pre>
+<pre class="output">HTTP/1.1 200 OK
+Date: Sun, 15 Nov 2026 15:11:25 GMT
+Content-Length: 3
+Content-Type: text/plain; charset=utf-8
+
+ok</pre>
+<pre class="code" data-lang="text">curl.exe -s http://localhost:8080/hello/gopher
+curl.exe -si -X POST http://localhost:8080/health
+curl.exe -si http://localhost:8080/nope</pre>
+<pre class="output">안녕하세요, gopher!
+HTTP/1.1 405 Method Not Allowed
+Allow: GET, HEAD
+Content-Type: text/plain; charset=utf-8
+X-Content-Type-Options: nosniff
+Date: Sun, 15 Nov 2026 15:11:25 GMT
+Content-Length: 19
+
+Method Not Allowed
+
+HTTP/1.1 404 Not Found
+Content-Type: text/plain; charset=utf-8
+X-Content-Type-Options: nosniff
+Date: Sun, 15 Nov 2026 15:11:25 GMT
+Content-Length: 19
+
+404 page not found</pre>
+            <p>패턴에 <code>GET</code>만 등록했는데 <code>POST</code>를 보내자 <code>ServeMux</code>가 직접 <code>405</code>와 <code>Allow: GET, HEAD</code>를 돌려주었습니다(<code>GET</code> 패턴이 <code>HEAD</code>도 받기 때문입니다). 등록하지 않은 경로는 <code>404</code>입니다. 확인이 끝나면 서버 터미널(왼쪽)을 클릭하고 <kbd class="key">Ctrl+C</kbd>로 서버를 끝냅니다. 터미널 분할은 그대로 두고 오른쪽 터미널은 이후 단계의 요청 전용으로 씁니다.</p>
+          </li>
+          <li>
+            <strong>스타터 파일 복사하고 구조 읽기</strong>
+            <p>이제 Task API 본체입니다. 처음부터 다 입력하면 길어서, <span class="file">lab/lesson08/starter/main.go</span>에 <b>뼈대</b>를 준비해 두었습니다. 저장소(<code>taskStore</code>), JSON 도우미(<code>writeJSON</code>, <code>writeError</code>, <code>decodeJSON</code>), 라우팅과 <code>main</code>은 완성되어 있고, 다섯 핸들러(<code>listTasks</code>, <code>createTask</code>, <code>getTask</code>, <code>updateTask</code>, <code>deleteTask</code>)는 "아직 구현하지 않았습니다"(501)를 돌려주는 빈 함수입니다. 3~5단계에서 이 함수들을 직접 채웁니다.</p>
+            <p>탐색기에서 <span class="file">starter/main.go</span>를 우클릭해 <b>복사(Copy)</b>를 고르고, <span class="file">mine</span> 폴더를 우클릭해 <b>붙여넣기(Paste)</b>를 고릅니다. <span class="file">mine/main.go</span>가 생기면 열어서 위에서부터 훑어 읽습니다. 저장소는 레슨 07에서 배운 <code>sync.Mutex</code>로 맵을 보호합니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/starter/main.go" data-lines="23-27">type taskStore struct {
+	mu     sync.Mutex
+	nextID int
+	tasks  map[int]Task
+}</pre>
+            <p>라우팅은 아래 여섯 줄입니다. 메서드와 경로를 문자열 하나에 적고, 핸들러는 메서드 값(<code>s.listTasks</code>)으로 넘깁니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/starter/main.go" data-lines="112-121">func (s *server) routes() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", s.health)
+	mux.HandleFunc("GET /tasks", s.listTasks)
+	mux.HandleFunc("POST /tasks", s.createTask)
+	mux.HandleFunc("GET /tasks/{id}", s.getTask)
+	mux.HandleFunc("PATCH /tasks/{id}", s.updateTask)
+	mux.HandleFunc("DELETE /tasks/{id}", s.deleteTask)
+	return mux
+}</pre>
+            <p>서버를 시작하고(왼쪽 터미널) 오른쪽 터미널에서 요청을 보냅니다.</p>
+<pre class="code" data-lang="text">go run ./lesson08/mine</pre>
+<pre class="code" data-lang="text">curl.exe -s http://localhost:8080/health
+curl.exe -si http://localhost:8080/tasks</pre>
+<pre class="output">{"status":"ok"}
+HTTP/1.1 501 Not Implemented
+Content-Type: application/json
+Date: Sun, 15 Nov 2026 15:11:27 GMT
+Content-Length: 48
+
+{"error":"아직 구현하지 않았습니다"}</pre>
+            <p>이 상태가 출발점입니다. 앞으로 함수 하나를 채울 때마다 서버를 다시 시작해 501이 정상 응답으로 바뀌는 것을 확인합니다. 서버를 끝내려면 왼쪽 터미널에서 <kbd class="key">Ctrl+C</kbd>입니다.</p>
+          </li>
+          <li>
+            <strong>목록 조회와 생성 구현하기 (JSON 읽고 쓰기, 검증)</strong>
+            <p><span class="file">mine/main.go</span>에서 <kbd class="key">Ctrl+F</kbd>로 <code>func (s *server) listTasks</code>를 찾아 501을 돌려주던 함수를 아래로 바꿉니다. 목록은 저장소가 돌려준 슬라이스를 그대로 JSON 배열로 씁니다. 저장소의 <code>list</code>는 <code>make([]Task, 0, ...)</code>로 빈 슬라이스를 만들기 때문에 할 일이 하나도 없어도 <code>[]</code>가 나갑니다(<code>nil</code> 슬라이스였다면 <code>null</code>이 나가는 문제는 "자주 나는 오류"에서 봅니다).</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/main.go" data-lines="130-132">func (s *server) listTasks(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, s.store.list())
+}</pre>
+            <p>이어서 <code>createTask</code> 스텁을 아래로 바꿉니다. 요청 본문용 구조체를 함수 바로 위에 둡니다. 순서는 ① 본문 읽기(모르는 필드·깨진 JSON이면 400) → ② 제목 검증(공백을 지우고 비었으면 400) → ③ 저장 → ④ <code>Location</code> 헤더와 함께 <b>201 Created</b>입니다. <code>return</code>을 빠뜨리지 않았는지 줄마다 확인하세요.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/main.go" data-lines="134-153">type createTaskRequest struct {
+	Title string `json:"title"`
+}
+
+func (s *server) createTask(w http.ResponseWriter, r *http.Request) {
+	var req createTaskRequest
+	if err := decodeJSON(r, &amp;req); err != nil {
+		writeError(w, http.StatusBadRequest, "요청 본문을 읽을 수 없습니다: "+err.Error())
+		return
+	}
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		writeError(w, http.StatusBadRequest, "title은 비어 있을 수 없습니다")
+		return
+	}
+
+	task := s.store.create(title)
+	w.Header().Set("Location", "/tasks/"+strconv.Itoa(task.ID))
+	writeJSON(w, http.StatusCreated, task)
+}</pre>
+            <p><code>strconv</code>와 <code>strings</code> import가 아직 없으므로 저장(<kbd class="key">Ctrl+S</kbd>)하면 이 코스의 설정(<code>source.organizeImports</code>)이 import 줄을 채워 줍니다. 채워지지 않으면 직접 <code>import</code> 블록에 두 줄을 추가합니다. 서버를 다시 시작하고 요청을 보냅니다. 아래 명령은 bash와 PowerShell 7에서 그대로 동작합니다(Windows PowerShell 5.1의 따옴표 문제는 "자주 나는 오류" 참고).</p>
+<pre class="code" data-lang="text">curl.exe -si -X POST http://localhost:8080/tasks -H "Content-Type: application/json" -d '{"title":"Go 공부하기"}'
+curl.exe -s -X POST http://localhost:8080/tasks -H "Content-Type: application/json" -d '{"title":"장보기"}'
+curl.exe -s http://localhost:8080/tasks</pre>
+<pre class="output">HTTP/1.1 201 Created
+Content-Type: application/json
+Location: /tasks/1
+Date: Sun, 15 Nov 2026 15:11:41 GMT
+Content-Length: 92
+
+{"id":1,"title":"Go 공부하기","done":false,"created_at":"2026-11-15T15:11:41.7935144Z"}
+
+{"id":2,"title":"장보기","done":false,"created_at":"2026-11-15T15:11:41.8065945Z"}
+[{"id":1,"title":"Go 공부하기","done":false,"created_at":"2026-11-15T15:11:41.7935144Z"},{"id":2,"title":"장보기","done":false,"created_at":"2026-11-15T15:11:41.8065945Z"}]</pre>
+            <p><code>created_at</code> 시각과 <code>Date</code> 헤더 값은 실행할 때마다 다릅니다. 이제 잘못된 요청 세 가지를 보냅니다. 제목이 공백뿐인 경우, 필드 이름에 오타가 난 경우(<code>DisallowUnknownFields</code> 덕분), 깨진 JSON인 경우입니다.</p>
+<pre class="code" data-lang="text">curl.exe -s -X POST http://localhost:8080/tasks -H "Content-Type: application/json" -d '{"title":"   "}'
+curl.exe -s -X POST http://localhost:8080/tasks -H "Content-Type: application/json" -d '{"titel":"오타"}'
+curl.exe -s -X POST http://localhost:8080/tasks -H "Content-Type: application/json" -d '{"title":'</pre>
+<pre class="output">{"error":"title은 비어 있을 수 없습니다"}
+{"error":"요청 본문을 읽을 수 없습니다: json: unknown field \"titel\""}
+{"error":"요청 본문을 읽을 수 없습니다: unexpected EOF"}</pre>
+          </li>
+          <li>
+            <strong>한 개 조회 구현하기 (경로 변수, 400과 404 구분)</strong>
+            <p><code>getTask</code> 스텁을 아래로 바꿉니다. 경로 변수 <code>{id}</code>는 항상 문자열로 오므로 <code>strconv.Atoi</code>로 정수로 바꿉니다. 숫자가 아니면 <b>클라이언트의 잘못된 요청이라 400</b>, 숫자인데 그 id가 없으면 <b>없는 자원이라 404</b>입니다. 이 구분을 지키면 API를 쓰는 쪽이 원인을 알 수 있습니다. 변환 함수 <code>parseID</code>는 수정·삭제에서도 씁니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/main.go" data-lines="155-175">func parseID(r *http.Request) (int, error) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id &lt; 1 {
+		return 0, errors.New("id는 1 이상의 정수여야 합니다")
+	}
+	return id, nil
+}
+
+func (s *server) getTask(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	task, ok := s.store.get(id)
+	if !ok {
+		writeError(w, http.StatusNotFound, "할 일을 찾을 수 없습니다")
+		return
+	}
+	writeJSON(w, http.StatusOK, task)
+}</pre>
+            <p><code>errors</code> import가 아직 없으므로 저장(<kbd class="key">Ctrl+S</kbd>)하면 자동으로 채워집니다. 채워지지 않으면 <code>import</code> 블록에 <code>"errors"</code>를 직접 추가합니다(저장 전에 <code>go vet ./lesson08/mine</code>을 실행하면 <code>undefined: errors</code>라고 알려 줍니다).</p>
+            <p>서버를 다시 시작한 뒤 3단계처럼 할 일을 하나 만들고(저장소가 메모리라서 서버를 끄면 데이터가 사라집니다) 조회합니다.</p>
+<pre class="code" data-lang="text">curl.exe -s http://localhost:8080/tasks/1
+curl.exe -s -w "%{http_code}\n" http://localhost:8080/tasks/9999
+curl.exe -s -w "%{http_code}\n" http://localhost:8080/tasks/abc</pre>
+<pre class="output">{"id":1,"title":"Go 공부하기","done":false,"created_at":"2026-11-15T15:11:41.7935144Z"}
+{"error":"할 일을 찾을 수 없습니다"}
+404
+{"error":"id는 1 이상의 정수여야 합니다"}
+400</pre>
+            <p><code>-w "%{http_code}\n"</code>은 응답 본문 뒤에 상태 코드를 한 줄 덧붙입니다. 이 따옴표 모양도 bash와 PowerShell 7에서 같습니다.</p>
+          </li>
+          <li>
+            <strong>수정과 삭제 구현하기 (포인터 필드, 204)</strong>
+            <p><code>updateTask</code>는 <b>일부 필드만</b> 바꾸는 PATCH입니다. 요청 구조체의 필드를 <code>*string</code>, <code>*bool</code> 같은 <b>포인터</b>로 두면 "보내지 않음"은 <code>nil</code>이고, 보냈다면 값이 있는 포인터가 됩니다. <code>"done": false</code>와 "보내지 않음"을 구분하려고 <code>bool</code> 대신 <code>*bool</code>을 씁니다. 아래 코드로 <code>updateTask</code> 스텁을 바꿉니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/main.go" data-lines="177-212">type updateTaskRequest struct {
+	Title *string `json:"title"`
+	Done  *bool   `json:"done"`
+}
+
+func (s *server) updateTask(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	var req updateTaskRequest
+	if err := decodeJSON(r, &amp;req); err != nil {
+		writeError(w, http.StatusBadRequest, "요청 본문을 읽을 수 없습니다: "+err.Error())
+		return
+	}
+	if req.Title == nil &amp;&amp; req.Done == nil {
+		writeError(w, http.StatusBadRequest, "수정할 필드(title, done)가 없습니다")
+		return
+	}
+	if req.Title != nil {
+		title := strings.TrimSpace(*req.Title)
+		if title == "" {
+			writeError(w, http.StatusBadRequest, "title은 비어 있을 수 없습니다")
+			return
+		}
+		req.Title = &amp;title
+	}
+
+	task, ok := s.store.update(id, req.Title, req.Done)
+	if !ok {
+		writeError(w, http.StatusNotFound, "할 일을 찾을 수 없습니다")
+		return
+	}
+	writeJSON(w, http.StatusOK, task)
+}</pre>
+            <p>삭제는 성공하면 <b>204 No Content</b>(본문 없음)입니다. <code>deleteTask</code> 스텁을 아래로 바꿉니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/main.go" data-lines="214-225">func (s *server) deleteTask(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !s.store.remove(id) {
+		writeError(w, http.StatusNotFound, "할 일을 찾을 수 없습니다")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}</pre>
+            <p>서버를 다시 시작하고, 할 일 두 개를 만든 뒤 수정과 삭제를 시험합니다.</p>
+<pre class="code" data-lang="text">curl.exe -s -X PATCH http://localhost:8080/tasks/1 -H "Content-Type: application/json" -d '{"done":true}'
+curl.exe -s -w "%{http_code}\n" -X PATCH http://localhost:8080/tasks/2 -H "Content-Type: application/json" -d '{}'
+curl.exe -s -w "%{http_code}\n" -X PATCH http://localhost:8080/tasks/2 -H "Content-Type: application/json" -d '{"title":"  "}'
+curl.exe -si -X DELETE http://localhost:8080/tasks/2
+curl.exe -s -w "%{http_code}\n" http://localhost:8080/tasks/2</pre>
+<pre class="output">{"id":1,"title":"Go 공부하기","done":true,"created_at":"2026-11-15T15:11:41.7935144Z"}
+{"error":"수정할 필드(title, done)가 없습니다"}
+400
+{"error":"title은 비어 있을 수 없습니다"}
+400
+HTTP/1.1 204 No Content
+Date: Sun, 15 Nov 2026 15:11:41 GMT
+
+{"error":"할 일을 찾을 수 없습니다"}
+404</pre>
+            <p>PATCH에 <code>{"title": null, "done": true}</code>를 보내면 <code>title</code>은 <code>null</code>도 <code>nil</code>로 읽히므로 "보내지 않은 것"과 같게 취급되어 제목은 그대로이고 <code>done</code>만 바뀝니다(이 PC에서 확인). Kotlin의 <code>String?</code>이나 pydantic의 <code>Optional</code>에서도 "보내지 않음"과 "null을 보냄"을 구분하려면 별도 장치가 필요하다는 점은 같습니다.</p>
+          </li>
+          <li>
+            <strong>REST Client로 .http 파일 실행하기</strong>
+            <p>요청을 매번 터미널에 치는 대신 파일로 저장해 두고 편집기에서 바로 보냅니다. 확장 보기(<kbd class="key">Ctrl+Shift+X</kbd>)에서 검색창에 <code>@recommended</code>를 입력하면 이 코스가 권하는 확장이 나오고, 거기서 <b>REST Client</b>(확장 ID <code>humao.rest-client</code>)를 설치합니다(이미 설치했다면 건너뜁니다). 그다음 <span class="file">lab/lesson08/requests.http</span>를 엽니다.</p>
+<pre class="code" data-lang="http" data-src="lab/lesson08/requests.http"># Task API 요청 모음 (VS Code REST Client 확장: humao.rest-client)
+# 요청 안에 커서를 두고 Ctrl+Alt+R 을 누르거나, 요청 위의 Send Request 링크를 클릭합니다.
+
+@host = http://localhost:8080
+
+### 서버 상태 확인
+GET {{host}}/health
+
+### 할 일 목록
+GET {{host}}/tasks
+
+### 할 일 만들기 (응답의 id를 아래 요청들이 사용합니다)
+# @name created
+POST {{host}}/tasks
+Content-Type: application/json
+
+{
+  "title": "Go 공부하기"
+}
+
+### 방금 만든 할 일 한 개 조회
+GET {{host}}/tasks/{{created.response.body.$.id}}
+
+### 완료로 표시
+PATCH {{host}}/tasks/{{created.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "done": true
+}
+
+### 삭제
+DELETE {{host}}/tasks/{{created.response.body.$.id}}
+
+### 오류 확인: 제목이 공백뿐인 요청
+POST {{host}}/tasks
+Content-Type: application/json
+
+{
+  "title": "   "
+}
+
+### 오류 확인: 없는 id
+GET {{host}}/tasks/9999
+
+### 오류 확인: 숫자가 아닌 id
+GET {{host}}/tasks/abc</pre>
+            <p>파일 모양은 간단합니다. <code>###</code> 줄이 요청 사이의 구분선이고, <code>@host = ...</code>은 파일 변수(<code>{{host}}</code>로 사용), <code># @name created</code>는 그 요청에 이름을 붙여 <code>{{created.response.body.$.id}}</code>처럼 <b>응답의 JSON 값을 다음 요청에서 쓰게</b> 합니다. 이름 붙인 요청은 먼저 한 번 보내야 그 응답을 쓸 수 있습니다. 서버가 켜져 있는지 확인한 뒤(켜 있지 않으면 <code>go run ./lesson08</code>로 완성본을, 또는 <code>go run ./lesson08/mine</code>으로 내 코드를 시작), 첫 요청 <code>GET {{host}}/health</code> 안에 커서를 두고 <kbd class="key">Ctrl+Alt+R</kbd>을 누릅니다(요청 바로 위에 보이는 <b>Send Request</b> 링크를 클릭해도 같습니다). 응답이 옆 패널에 상태 줄·헤더·본문 순서로 나타납니다.</p>
+            <p>같은 방법으로 위에서부터 차례로 보냅니다: 목록 → <b>할 일 만들기</b>(<code>@name created</code>) → 방금 만든 할 일 조회 → 완료로 표시 → 삭제. 마지막의 오류 확인 세 개(공백 제목, 없는 id, 숫자가 아닌 id)는 각각 400, 404, 400이 나와야 합니다. 이 확장의 단축키는 편집 언어 모드가 <code>HTTP</code>(<code>.http</code> 파일이면 자동)일 때만 동작합니다.</p>
+          </li>
+          <li>
+            <strong>tasks.json을 직접 작성하고 Ctrl+Shift+B로 점검하기</strong>
+            <p>터미널에서 <code>go vet ./...</code>를 매번 치지 않고 <b>작업(task)</b>으로 등록해 단축키 하나로 실행합니다. 이 코스의 완성본 <span class="file">.vscode/tasks.json</span>에는 <code>go: test all</code>, <code>go: vet all</code>, <code>go: run task api</code> 세 작업이 이미 있습니다(<code>go: run task api</code>는 레슨 10의 최종본 서버를 실행합니다). 여기서는 <code>go: vet all</code> 하나를 직접 만들어 봅니다. 먼저 완성본을 비켜 둡니다.</p>
+            <p>① 탐색기에서 <span class="file">.vscode/tasks.json</span>을 선택하고 <kbd class="key">F2</kbd>로 이름을 <code>tasks.json.bak</code>으로 바꿉니다. ② 위쪽 <b>터미널(Terminal)</b> 메뉴 → <b>작업 구성(Configure Tasks)</b>을 열고 <b>템플릿에서 tasks.json 파일 만들기(Create tasks.json file from template)</b> → <b>Others</b>를 고릅니다. <span class="file">.vscode/tasks.json</span>이 새로 만들어지면 내용을 아래로 바꿔 저장합니다.</p>
+<pre class="code" data-lang="json">{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "go: vet all",
+      "type": "process",
+      "command": "go",
+      "args": ["vet", "./..."],
+      "options": {
+        "cwd": "${workspaceFolder}/lab"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": {
+        "owner": "go-lab-task",
+        "fileLocation": ["relative", "${workspaceFolder}/lab"],
+        "pattern": {
+          "regexp": "^(?:vet(?:\\.exe)?: )?(?:\\.[\\\\/])?(\\S+?\\.go):(\\d+):(?:(\\d+):)? (.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "message": 4
+        }
+      }
+    }
+  ]
+}</pre>
+            <p>속성을 하나씩 읽어 봅니다. <code>label</code>은 작업 이름(이 코스의 규칙은 <code>go: vet all</code>), <code>type</code>이 <code>process</code>면 쉘을 거치지 않고 <code>command</code>와 <code>args</code>로 프로그램을 직접 실행하므로 기본 터미널이 bash든 PowerShell이든 똑같이 동작합니다(<code>shell</code>이면 쉘 문법이 적용됩니다). <code>options.cwd</code>는 실행 폴더로 <code>${workspaceFolder}</code>(열어 둔 폴더)에 <code>/lab</code>을 붙였습니다. <code>group</code>의 <code>build</code>와 <code>isDefault</code>가 이 작업을 <b>기본 빌드 작업</b>으로 지정합니다. <code>problemMatcher</code>는 출력에서 <code>파일:줄:열: 메시지</code> 모양을 찾아 <b>문제 패널</b>에 모읍니다. 정규식 그룹 1~4가 파일, 줄, 열, 메시지이고, <code>fileLocation</code>이 파일 경로를 <span class="file">lab</span> 기준으로 읽게 합니다. 패턴 앞쪽의 <code>vet.exe: </code>는 <code>go vet</code>이 타입 오류를 낼 때 붙이는 접두어입니다(이 PC에서 확인).</p>
+            <p>③ <kbd class="key">Ctrl+Shift+B</kbd>를 누릅니다. 이 단축키는 <b>기본 빌드 작업</b>을 실행하는데, 이 코스의 완성본 <span class="file">tasks.json</span>에서 기본 빌드 작업으로 지정된 것이 바로 <code>go: vet all</code>입니다(같은 파일에서 <code>go: test all</code>은 기본 <b>테스트</b> 작업이라 명령 팔레트의 <b>Tasks: Run Test Task</b>로 실행합니다). 지금은 기본 빌드 작업이 하나뿐이라 선택 창 없이 바로 실행되고, 터미널 패널에서 <code>go vet ./...</code>가 돕니다. 코드에 문제가 없으면 <code>go vet</code>은 아무것도 출력하지 않고 끝납니다. ④ 일부러 오류를 만들어 봅니다. <span class="file">mine/main.go</span>의 <code>createTask</code>에서 <code>writeError</code> 한 곳을 <code>writeErr</code>로 고치고 저장한 뒤 다시 <kbd class="key">Ctrl+Shift+B</kbd>를 누르면, 문제 패널(<kbd class="key">Ctrl+Shift+M</kbd>)에 <code>undefined: writeErr</code> 항목이 나타나고 클릭하면 그 줄로 이동합니다. 확인한 뒤 코드를 되돌립니다.</p>
+            <p>⑤ <b>연습이 끝났으니 다음 단계로 넘어가기 전에, 지금 바로</b> 원래대로 되돌립니다. 먼저 ④에서 일부러 고친 <span class="file">mine/main.go</span>가 원래대로(<code>writeErr</code>가 아니라 <code>writeError</code>) 돌아와 있는지 봅니다. 그다음 직접 만든 <span class="file">tasks.json</span>을 삭제하고(탐색기에서 우클릭 → <b>삭제(Delete)</b>), <span class="file">tasks.json.bak</span>을 선택해 <kbd class="key">F2</kbd>로 이름을 <code>tasks.json</code>으로 다시 바꿉니다.</p>
+            <p>⑥ 복원 확인(증거 세 가지): <b>첫째</b>, 터미널(<span class="file">lab</span> 폴더)에서 <code>ls ../.vscode</code>를 실행하거나 탐색기에서 <span class="file">.vscode</span> 폴더를 봅니다. <span class="file">extensions.json</span>, <span class="file">launch.json</span>, <span class="file">settings.json</span>, <span class="file">tasks.json</span> 네 파일만 있고 <code>.bak</code>이 없어야 합니다. <b>둘째</b>, 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)에서 <b>Tasks: Run Task</b>를 실행하면 목록에 <code>go: test all</code>, <code>go: vet all</code>, <code>go: run task api</code> <b>세 작업이</b> 보여야 합니다(<kbd class="key">Esc</kbd>로 닫습니다). <code>go: vet all</code> 하나만 보이면 직접 만든 파일이 남아 있는 것이니 ⑤를 다시 합니다. <b>셋째</b>, 명령 팔레트에서 <b>Tasks: Run Test Task</b>를 실행합니다. 기본 테스트 작업 <code>go: test all</code>이 다시 실행되어 터미널에 <code>go test ./...</code> 실행 줄이 보이고, 끝난 뒤 <code>FAIL</code> 줄이 없어야 합니다. <code>FAIL</code>이 나오면 패키지 이름이 내 <span class="file">mine</span> 폴더인지 보고, 복원이 아니라 코드 문제이므로 그 코드를 먼저 고칩니다.</p>
+          </li>
+          <li>
+            <strong>서버를 디버거로 실행하고 요청을 보내 핸들러에서 멈추기</strong>
+            <p>먼저 왼쪽 터미널의 서버를 <kbd class="key">Ctrl+C</kbd>로 끝냅니다(8080 포트를 비우기 위해서입니다). <span class="file">mine/main.go</span>를 열고 <code>createTask</code> 안의 <code>task := s.store.create(title)</code> 줄에 커서를 두고 <kbd class="key">F9</kbd>로 중단점을 겁니다. 실행 및 디버그 보기(<kbd class="key">Ctrl+Shift+D</kbd>)의 드롭다운에서 <b>Go: 현재 파일 디버그</b>를 고르고 <kbd class="key">F5</kbd>를 누릅니다. 서버가 디버거 아래에서 시작합니다(디버그 콘솔에 서버 시작 로그가 보입니다).</p>
+            <p>REST Client로 돌아와 <b>할 일 만들기</b> 요청에서 <kbd class="key">Ctrl+Alt+R</kbd>을 누릅니다. 요청이 서버에 도착하면 코드가 중단점에서 멈추고 VS Code가 앞으로 나옵니다. 변수 영역에서 <code>req</code>(읽어 낸 요청 구조체), <code>title</code>(공백을 지운 제목)을 펼쳐 봅니다. 아직 <code>task</code>는 저장되기 전입니다. <kbd class="key">F10</kbd>을 눌러 한 줄 실행하면 <code>task</code>에 값이 생깁니다. <kbd class="key">F5</kbd>로 계속 실행하면 REST Client 쪽에 201 응답이 나타납니다. 확인이 끝나면 <kbd class="key">Shift+F5</kbd>로 디버깅을 멈춥니다. 중단점에서 멈춰 있는 동안에는 요청이 끝나지 않아서 REST Client가 기다리고 있는 것이 정상입니다.</p>
+            <p>이 방식은 마지막 단계의 "레슨 10 서버 디버그"(구성 이름 <b>Go: Task API 디버그</b>)와 같은 원리입니다. 서버 코드에 중단점을 걸고 REST Client나 curl로 요청을 보내면 됩니다.</p>
+          </li>
+          <li>
+            <strong>완성본과 비교하고 점검하기</strong>
+            <p>탐색기에서 <span class="file">mine/main.go</span>를 우클릭해 <b>비교를 위해 선택(Select for Compare)</b>을 고르고, <span class="file">lab/lesson08/main.go</span>를 우클릭해 <b>선택 항목과 비교(Compare with Selected)</b>를 고릅니다. 두 파일의 차이가 나란히 보입니다. 차이가 없으면 완전히 같게 입력한 것이고, 있다면 대부분 주석이나 줄 간격입니다. 마지막으로 터미널에서 점검 명령 두 개를 실행합니다. 아무 출력도 없는 것이 정상입니다.</p>
+<pre class="code" data-lang="text">go vet ./lesson08/...
+gofmt -l lesson08</pre>
+            <p>이 비교 화면의 "왼쪽은 원래 상태, 오른쪽은 바뀐 상태" 구조는 레슨 09에서 보는 소스 제어의 변경 내용(diff) 화면과 같은 모양입니다.</p>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong>같은 레슨의 "자주 나는 오류"를 먼저 확인하세요. 코드가 안 맞으면 <span class="file">lab/lesson08/main.go</span>와 비교해 보세요.</div>
+        <div class="callout warn"><strong>끝낼 때는 "정리하기"를 꼭 하세요</strong><span class="file">mine</span> 폴더에 미완성 코드가 남아 있으면 <span class="file">lab</span> 전체를 대상으로 하는 <code>go: test all</code>·<code>go: vet all</code> 작업이 실패합니다. 연습 문제까지 마친 뒤(또는 오늘 공부를 여기서 멈출 때) 연습 문제 절 끝의 <a href="#cleanup">정리하기</a>를 합니다.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring MVC</th><th>Python / FastAPI</th><th>Go net/http</th></tr></thead>
+            <tbody>
+              <tr><td>라우팅</td><td><code>@GetMapping("/tasks/{id}")</code></td><td><code>@app.get("/tasks/{task_id}")</code></td><td><code>mux.HandleFunc("GET /tasks/{id}", h)</code></td></tr>
+              <tr><td>경로 변수</td><td><code>@PathVariable id: Int</code> (타입 변환 자동, 실패하면 400)</td><td>함수 인자 <code>task_id: int</code> (실패하면 422)</td><td><code>r.PathValue("id")</code>는 문자열, <code>strconv.Atoi</code>로 직접 변환</td></tr>
+              <tr><td>요청 본문</td><td><code>@RequestBody</code> + Jackson</td><td>pydantic 모델 인자</td><td><code>json.NewDecoder(r.Body).Decode(&amp;req)</code>와 구조체 태그</td></tr>
+              <tr><td>입력 검증</td><td><code>@Valid</code> + Bean Validation(<code>@NotBlank</code>)</td><td>pydantic <code>Field(min_length=1)</code></td><td>직접 <code>if</code>로 검사 (레슨 09에서 서비스로 이동)</td></tr>
+              <tr><td>상태 코드와 응답</td><td><code>ResponseEntity.status(201).body(x)</code></td><td><code>status_code=201</code>, <code>JSONResponse</code></td><td><code>w.WriteHeader(201)</code> 후 <code>json.NewEncoder(w).Encode(x)</code>. 헤더→본문 순서</td></tr>
+              <tr><td>오류 응답</td><td><code>@ControllerAdvice</code>, <code>@ExceptionHandler</code></td><td><code>HTTPException</code>, <code>exception_handler</code></td><td><code>writeError</code> 같은 도우미를 직접 만듦</td></tr>
+              <tr><td>메서드가 다른 요청</td><td>405를 자동 응답</td><td>405를 자동 응답</td><td><code>ServeMux</code>가 405와 <code>Allow</code> 헤더를 자동 응답 (Go 1.22+)</td></tr>
+              <tr><td>서버 실행</td><td>내장 Tomcat, <code>bootRun</code></td><td><code>uvicorn main:app --reload</code></td><td><code>http.ListenAndServe(":8080", mux)</code></td></tr>
+              <tr><td>요청 처리 단위</td><td>스레드 풀의 스레드(WebFlux는 이벤트 루프)</td><td>이벤트 루프</td><td>요청마다 고루틴 하나 (그래서 공유 상태에 <code>Mutex</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ①: 프레임워크가 해 주던 일을 직접 합니다</strong>Spring이나 FastAPI에서는 타입 변환, 검증, 직렬화, 오류 형식이 프레임워크 설정으로 처리됩니다. Go에서는 모두 핸들러 안의 평범한 코드입니다. 그래서 <code>writeError</code>를 부르고 <code>return</code>을 빠뜨리는 식의 실수가 생깁니다. 예외를 던지면 프레임워크가 응답으로 바꿔 주는 구조가 아니라 "응답을 쓰고 함수를 끝내는" 구조입니다(100 Go Mistakes #80).</div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ②: JSON의 기본 동작이 서로 다릅니다</strong>Go의 <code>encoding/json</code>은 구조체 필드가 <b>대문자로 시작할 때만</b> JSON에 포함합니다. 태그가 없으면 JSON 이름도 <code>Title</code>처럼 대문자입니다(<code>json:"title"</code> 태그로 지정). 모르는 필드는 기본적으로 무시하고(Spring Boot의 기본 ObjectMapper 설정과 pydantic v2의 기본값도 무시), 이 레슨에서는 <code>DisallowUnknownFields</code>로 거부했습니다. 또 비어 있는 <code>nil</code> 슬라이스는 <code>[]</code>가 아니라 <code>null</code>로 직렬화됩니다(100 Go Mistakes #22, 아래 "자주 나는 오류"에서 재현).</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 작업(tasks.json), 터미널 분할, REST Client, 서버 디버그</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>기본 빌드 작업 실행</td><td><kbd class="key">Ctrl+Shift+B</kbd></td><td><code>go vet</code> 같은 점검을 한 번에 돌릴 때</td></tr>
+                <tr><td>터미널 분할</td><td><kbd class="key">Ctrl+Shift+5</kbd></td><td>서버는 왼쪽, 요청은 오른쪽에서 실행할 때</td></tr>
+                <tr><td>REST Client 요청 보내기</td><td><kbd class="key">Ctrl+Alt+R</kbd></td><td><code>.http</code> 파일의 요청 안에서</td></tr>
+                <tr><td>터미널 보이기/숨기기</td><td><kbd class="key">Ctrl+`</kbd></td><td>코드와 터미널을 오갈 때</td></tr>
+                <tr><td>문제 패널 열기</td><td><kbd class="key">Ctrl+Shift+M</kbd></td><td>작업이 모은 오류 목록을 볼 때</td></tr>
+                <tr><td>명령 팔레트</td><td><kbd class="key">Ctrl+Shift+P</kbd></td><td><b>Tasks: Run Task</b>로 작업을 골라 실행할 때</td></tr>
+                <tr><td>디버그 시작 / 중단점</td><td><kbd class="key">F5</kbd>, <kbd class="key">F9</kbd></td><td>서버 핸들러에 중단점을 걸 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><b>Ctrl+Shift+B</b>가 실행하는 기본 빌드 작업은 이 코스에서 <code>go: vet all</code>이고, 기본 테스트 작업은 <code>go: test all</code>입니다. 세 번째 작업 <code>go: run task api</code>는 레슨 10의 서버를 실행합니다.</p>
+          <p>터미널 분할 명령은 키보드 배열 때문에 단축키가 다르게 보일 수 있습니다. 그럴 때는 명령 팔레트에서 <b>Terminal: Split Terminal</b>을 실행하세요. <b>Ctrl+Alt+R</b>은 REST Client 확장이 제공하는 단축키이며, 확장이 설치되어 있지 않으면 동작하지 않습니다.</p>
+        </div>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>연습용 프로필에서 REST Client 응답 표시 방식 바꿔 보기</strong>
+            <p><a href="07-concurrency.html#practice-profile">레슨 07의 연습용 프로필 절차</a> 1~6번으로 <code>go-practice</code> 프로필을 만들고 전환합니다(기본 프로필에서 복사, 제목 표시줄이나 관리 버튼에서 프로필 이름 확인). 이 레슨의 6단계에서 REST Client를 기본 프로필에 설치했으므로 복사된 프로필에도 있어야 합니다. 확장 보기(<kbd class="key">Ctrl+Shift+X</kbd>)의 설치된 목록에 <b>REST Client</b>가 없으면 이 프로필에서 설치합니다. 서버를 켜 둡니다(터미널에서 <code>go run ./lesson08</code>).</p>
+            <p><kbd class="key">Ctrl+,</kbd>로 설정을 열고 <b>User</b> 탭이 선택되어 있는지 확인한 뒤 검색창에 <code>rest-client.previewOption</code>을 입력합니다(확장이 있어야 보입니다). 값은 <code>full</code>(상태 줄+헤더+본문, 기본값), <code>headers</code>, <code>body</code>, <code>exchange</code>(요청과 응답 모두) 중에서 고릅니다. <code>body</code>로 바꾼 뒤 6단계의 요청 하나를 다시 보내 응답 패널에서 헤더가 사라지는 것을 확인하고, <code>exchange</code>로도 바꿔 요청까지 함께 보이는지 비교합니다. 응답을 표시하는 방식 대신 일반 편집기 문서에서 검색·복사하고 싶다면 <code>rest-client.previewResponseInUntitledDocument</code>를 <code>true</code>로 켜는 방법도 확장 문서에 있습니다.</p>
+            <p>바꾼 값은 JSON 파일에 <code>"rest-client.previewOption": "body"</code>처럼 기록됩니다. <kbd class="key">Ctrl+Shift+P</kbd> → <b>Preferences: Open User Settings (JSON)</b>으로 열고 편집기 탭에 마우스를 올려 경로가 <code>...\Code\User\profiles\...\settings.json</code> 모양인지 확인합니다. <code>profiles</code>가 없는 경로면 기본 프로필의 파일이니 고치지 말고 닫습니다.</p>
+            <p><b>실험이 끝났으니 지금 바로 정리합니다.</b> 서버를 터미널에서 <kbd class="key">Ctrl+C</kbd>로 끝내고, 레슨 07 절차의 8번(기본 프로필로 돌아오기, <code>go-practice</code> 삭제)과 9번(확인)을 합니다. 확인: 기본 프로필에서 설정 화면 <b>User</b> 탭의 <code>@modified</code> 검색 결과에 <code>rest-client.previewOption</code>이 없고, 관리 버튼에 프로필 이름이 없습니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <h3>문제 1. 제목 길이 제한과 검증 메시지 추가하기</h3>
+        <p><span class="file">mine/main.go</span>의 <code>createTask</code>와 <code>updateTask</code>를 고쳐서, 제목이 <b>100글자(룬 기준)를 넘으면 400</b>과 <code>{"error":"title은 100자 이하여야 합니다"}</code>를 돌려주게 하세요. 한글 100글자는 허용하고 101글자는 거부해야 합니다. <b>완료 조건</b>: 서버를 시작해 <code>requests.http</code>(또는 curl)로 한글 100자 제목은 201, 101자 제목은 400이 나오는 것을 확인한다. (레슨 10의 <span class="file">requests.http</span>에 101자 제목 요청이 들어 있습니다.)</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p><code>len(title)</code>은 글자 수가 아니라 <b>바이트 수</b>입니다. 한글은 글자 하나가 3바이트라서 <code>len</code>으로 세면 34글자에서 막힙니다. 글자(룬) 수는 <code>unicode/utf8</code> 패키지의 <code>utf8.RuneCountInString</code>으로 셉니다(100 Go Mistakes #36). 검증은 두 핸들러에 똑같이 필요하니 함수 하나로 모으면 좋습니다. 이 규칙은 다음 레슨 09에서 서비스 계층의 <code>normalizeTitle</code>이 됩니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+            <p>이 레슨의 완성본 <span class="file">lab/lesson08/main.go</span>는 문제 1을 반영하지 않은 기본 버전입니다. 검증 규칙만 따로 뽑은 정답 예시가 <span class="file">lab/lesson08/exercises/title.go</span>에 있고 <code>go test ./lesson08/exercises</code>로 검증됩니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/exercises/title.go">// Package exercises는 레슨 08 연습 문제의 정답 예시입니다.
+package exercises
+
+import (
+	"errors"
+	"strings"
+	"unicode/utf8"
+)
+
+const maxTitleRunes = 100
+
+// ValidateTitle은 제목의 앞뒤 공백을 지우고, 비어 있거나 100글자(룬 기준)를 넘으면 에러를 돌려줍니다.
+// len(title)은 글자 수가 아니라 바이트 수이므로 utf8.RuneCountInString으로 셉니다.
+func ValidateTitle(title string) (string, error) {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return "", errors.New("title은 비어 있을 수 없습니다")
+	}
+	if utf8.RuneCountInString(title) &gt; maxTitleRunes {
+		return "", errors.New("title은 100자 이하여야 합니다")
+	}
+	return title, nil
+}</pre>
+            <p>이 함수를 <code>createTask</code>(제목을 읽은 직후)와 <code>updateTask</code>(<code>req.Title</code>이 있을 때)에서 호출하고, 에러가 오면 <code>writeError(w, http.StatusBadRequest, err.Error())</code> 뒤에 <code>return</code>하면 됩니다. 아래는 이 함수를 검증하는 테스트입니다. 한글 100자와 101자 경계 값이 들어 있습니다. 이 규칙은 레슨 09에서 서비스 계층의 <code>normalizeTitle</code>이 됩니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/exercises/title_test.go">package exercises
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestValidateTitle(t *testing.T) {
+	tests := []struct {
+		name    string
+		title   string
+		want    string
+		wantErr string
+	}{
+		{"정상", "Go 공부하기", "Go 공부하기", ""},
+		{"앞뒤 공백 제거", "  장보기  ", "장보기", ""},
+		{"빈 문자열", "", "", "title은 비어 있을 수 없습니다"},
+		{"공백만", "   ", "", "title은 비어 있을 수 없습니다"},
+		{"한글 100자는 허용", strings.Repeat("가", 100), strings.Repeat("가", 100), ""},
+		{"한글 101자는 거부", strings.Repeat("가", 101), "", "title은 100자 이하여야 합니다"},
+		{"영문 100자는 허용", strings.Repeat("a", 100), strings.Repeat("a", 100), ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ValidateTitle(tt.title)
+			if tt.wantErr != "" {
+				if err == nil || err.Error() != tt.wantErr {
+					t.Fatalf("err = %v, want %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("예상하지 못한 에러: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}</pre>
+          </div>
+        </details>
+
+        <h3>문제 2. 이미 완료된 할 일만 지우는 엔드포인트 규칙 만들기</h3>
+        <p>삭제 규칙을 바꿉니다. <b>완료(<code>done: true</code>)된 할 일만 삭제할 수 있고, 완료되지 않은 할 일을 지우려 하면 409 Conflict</b>와 <code>{"error":"완료된 할 일만 삭제할 수 있습니다"}</code>를 돌려주세요. <b>완료 조건</b>: 할 일을 만들고 바로 DELETE하면 409, PATCH로 <code>done</code>을 <code>true</code>로 바꾼 뒤 DELETE하면 204가 나오고, 없는 id는 여전히 404다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>저장소의 <code>remove</code>가 한 번에 "확인하고 지우기"를 하면 락 안에서 안전합니다. 지금 <code>remove</code>는 <code>bool</code> 하나만 돌려주므로, 결과를 구분할 수 있게 (지웠음 / 없음 / 완료 전) 세 가지 중 하나를 돌려주도록 반환 값을 바꾸세요. 열거형이 없는 Go에서는 <code>error</code> 값(<code>errNotFound</code>, <code>errNotDone</code>)을 돌려주고 핸들러에서 <code>errors.Is</code>로 구분하는 방식이 자연스럽습니다. 핸들러는 <code>errors.Is</code> 결과에 따라 404, 409를 고릅니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="go" data-src="lab/lesson08/exercises/delete_done.go">package exercises
+
+import (
+	"errors"
+	"sync"
+)
+
+var (
+	// ErrNotFound는 해당 id의 할 일이 없을 때의 에러입니다. 핸들러에서 404로 바꿉니다.
+	ErrNotFound = errors.New("할 일을 찾을 수 없습니다")
+	// ErrNotDone은 완료되지 않은 할 일을 지우려 할 때의 에러입니다. 핸들러에서 409로 바꿉니다.
+	ErrNotDone = errors.New("완료된 할 일만 삭제할 수 있습니다")
+)
+
+// Store는 id와 완료 여부만 가진 아주 작은 저장소입니다.
+type Store struct {
+	mu    sync.Mutex
+	items map[int]bool
+}
+
+// NewStore는 빈 저장소를 만듭니다.
+func NewStore() *Store {
+	return &amp;Store{items: make(map[int]bool)}
+}
+
+// Add는 id에 해당하는 할 일을 완료 여부와 함께 저장합니다.
+func (s *Store) Add(id int, done bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.items[id] = done
+}
+
+// Remove는 완료된 할 일만 지웁니다. 확인과 삭제를 같은 락 안에서 하므로
+// 그 사이에 다른 요청이 끼어들 수 없습니다.
+func (s *Store) Remove(id int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	done, ok := s.items[id]
+	switch {
+	case !ok:
+		return ErrNotFound
+	case !done:
+		return ErrNotDone
+	}
+	delete(s.items, id)
+	return nil
+}</pre>
+            <p>이 정답은 독립 파일로 만든 예시이며 <code>go test ./lesson08/exercises</code>로 검증됩니다. 핵심은 "확인과 삭제를 같은 락 안에서" 하는 것입니다. 확인과 삭제 사이에 다른 요청이 끼어드는 문제(검사 후 사용, check-then-act)를 막습니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/exercises/delete_done_test.go">package exercises
+
+import (
+	"errors"
+	"sync"
+	"testing"
+)
+
+func TestRemoveOnlyDone(t *testing.T) {
+	s := NewStore()
+	s.Add(1, false)
+	s.Add(2, true)
+
+	if err := s.Remove(1); !errors.Is(err, ErrNotDone) {
+		t.Errorf("완료 전에는 ErrNotDone이어야 합니다: %v", err)
+	}
+	if err := s.Remove(2); err != nil {
+		t.Errorf("완료된 할 일은 지워져야 합니다: %v", err)
+	}
+	if err := s.Remove(2); !errors.Is(err, ErrNotFound) {
+		t.Errorf("이미 지운 id는 ErrNotFound여야 합니다: %v", err)
+	}
+	if err := s.Remove(99); !errors.Is(err, ErrNotFound) {
+		t.Errorf("없는 id는 ErrNotFound여야 합니다: %v", err)
+	}
+}
+
+func TestRemoveConcurrentlyDeletesOnce(t *testing.T) {
+	s := NewStore()
+	s.Add(1, true)
+
+	const n = 50
+	results := make(chan error, n)
+	var wg sync.WaitGroup
+	for range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results &lt;- s.Remove(1)
+		}()
+	}
+	wg.Wait()
+	close(results)
+
+	succeeded := 0
+	for err := range results {
+		if err == nil {
+			succeeded++
+		} else if !errors.Is(err, ErrNotFound) {
+			t.Errorf("예상하지 못한 에러: %v", err)
+		}
+	}
+	if succeeded != 1 {
+		t.Errorf("삭제는 정확히 한 번만 성공해야 합니다: %d번 성공", succeeded)
+	}
+}</pre>
+          </div>
+        </details>
+
+        <h3 id="cleanup">정리하기: 연습 파일 지우고 전체 점검이 통과하는지 확인</h3>
+        <p>연습 문제까지 마쳤거나 오늘 공부를 여기서 멈출 때 합니다. <code>go: test all</code>과 <code>go: vet all</code>은 <span class="file">lab</span> 안의 모든 폴더(<code>./...</code>)를 대상으로 하므로, <span class="file">mine</span>에 컴파일되지 않는 코드(예: 연습 문제 2로 <code>remove</code>의 반환 값을 바꾸다 만 상태)가 남아 있으면 레슨과 상관없이 실패합니다(레슨 07 "정리하기"의 실제 출력 참고).</p>
+        <ol class="steps">
+          <li>
+            <strong>mine 폴더 지우고 상태 확인하기</strong>
+            <p>① 서버가 켜져 있으면 해당 터미널에서 <kbd class="key">Ctrl+C</kbd>로 끝냅니다. ② 남기고 싶은 코드가 있으면 <span class="file">lab</span> 폴더 밖으로 복사해 둡니다. ③ 탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson08/mine</span> 폴더(안의 <span class="file">hello</span> 폴더 포함)를 우클릭해 <b>삭제(Delete)</b>합니다. 터미널(<span class="file">lab</span> 폴더)에서 <code>ls lesson08</code>을 실행했을 때 목록에 <code>mine</code>이 없어야 합니다(PowerShell과 bash 모두 됩니다). ④ <code>ls ../.vscode</code>에 네 파일(<span class="file">extensions.json</span>, <span class="file">launch.json</span>, <span class="file">settings.json</span>, <span class="file">tasks.json</span>)만 있고 <code>.bak</code>이 없어야 합니다. ⑤ 관리 버튼과 제목 표시줄에 프로필 이름이 없어야 합니다. ⑥ 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)의 <b>Tasks: Run Test Task</b>로 <code>go: test all</code>을 실행해 <code>FAIL</code> 줄이 없는 것을 확인합니다. <code>FAIL</code>이 나오면 패키지 이름으로 어느 <span class="file">mine</span> 때문인지 알 수 있습니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="go-08-hello"><span><kbd class="key">Ctrl+Shift+5</kbd>로 터미널을 나눠 왼쪽에는 hello 서버, 오른쪽에는 요청을 실행했고, <code>/health</code>는 200, <code>POST /health</code>는 405(<code>Allow: GET, HEAD</code>), 없는 경로는 404가 나오는 것을 <code>curl.exe</code>로 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-08-crud"><span>다섯 핸들러를 직접 채워 생성(201 + <code>Location</code>), 조회(200/404/400), 수정(200/400), 삭제(204)의 응답을 확인했고, 공백 제목·필드 이름 오타·깨진 JSON이 각각 400과 설명 메시지를 돌려주는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-08-restclient"><span><kbd class="key">Ctrl+Alt+R</kbd>로 <code>requests.http</code>의 요청을 보내고, <code>@name created</code>로 만든 id가 다음 요청에 쓰이는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-08-tasks"><span><code>tasks.json</code>을 직접 작성해 <kbd class="key">Ctrl+Shift+B</kbd>로 <code>go vet</code>을 실행하고 일부러 낸 오류가 문제 패널에 나오는 것을 본 뒤, <b>그 단계에서 바로</b> 완성본으로 복원했다. <code>.vscode</code>에 <code>.bak</code>이 없고, <code>Tasks: Run Task</code> 목록에 <code>go: test all</code>·<code>go: vet all</code>·<code>go: run task api</code>가 보이며, <code>Tasks: Run Test Task</code>로 <code>go: test all</code>이 다시 실행되는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-08-debug"><span>서버를 <kbd class="key">F5</kbd>로 디버그하며 <code>createTask</code>의 중단점에서 멈추는 것과 변수 영역의 <code>req</code> 값을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-08-practice"><span>연습 문제를 힌트 없이 먼저 시도했고, 서버에서 한글 100자는 통과·101자는 거부되는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-08-profile"><span>기본 프로필에서 복사한 연습용 프로필에서만 <code>rest-client.previewOption</code>을 바꿨고(설정 JSON 탭의 경로에 <code>profiles</code>가 있었다), 기본 프로필로 돌아와 프로필을 지웠다(관리 버튼에 이름이 없고 <code>@modified</code>에 이 항목이 없다).</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-08-cleanup"><span><code>lesson08/mine</code>을 지운 뒤 <code>ls lesson08</code>에 <code>mine</code>이 없는 것을 확인했고, <code>Tasks: Run Test Task</code>의 <code>go: test all</code>이 <code>FAIL</code> 없이 끝나는 것을 확인했다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <h3>증상: listen tcp :8080: bind: Only one usage of each socket address ...</h3>
+        <p>8080 포트를 이미 다른 프로세스가 쓰고 있습니다. 이전에 시작한 서버를 끝내지 않았거나, <code>go run</code> 서버가 켜진 채로 디버그(<kbd class="key">F5</kbd>)를 시작했을 때 납니다. 켜져 있는 서버의 터미널에서 <kbd class="key">Ctrl+C</kbd>를 누르거나, 다른 포트로 실행합니다. bash에서는 <code>PORT=9090 go run ./lesson08</code>, PowerShell에서는 <code>$env:PORT='9090'</code>을 실행한 뒤 <code>go run ./lesson08</code>입니다(PowerShell의 값은 터미널을 닫을 때까지 남으니 끝나면 <code>Remove-Item Env:PORT</code>). 아래는 서버가 떠 있는 상태에서 <code>go run ./lesson08</code>을 한 번 더 실행한 실제 출력입니다. 첫 줄 "서버 시작" 로그가 에러보다 먼저 찍히는 점도 눈여겨보세요. 레슨 10에서는 포트를 연 뒤에 로그를 남깁니다.</p>
+<pre class="output">2026/11/15 23:49:35 Task API 서버 시작: http://localhost:8080
+2026/11/15 23:49:35 listen tcp :8080: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+exit status 1</pre>
+        <h3>증상: undefined: strings (또는 imported and not used)</h3>
+        <p>import를 채우지 않았거나 쓰지 않는 import가 남았습니다. 저장(<kbd class="key">Ctrl+S</kbd>) 시 import 정리가 켜져 있으면 지운 줄이 곧바로 되살아나서 아래 상태를 직접 재현하기는 어렵고, 대부분 자동으로 고쳐집니다. 아래는 완성된 <span class="file">mine/main.go</span>에서 <code>"strings"</code> import 줄 하나를 지운 파일에 두 명령을 실행한 결과입니다(<code>vet.exe:</code> 접두어는 <code>go vet</code>의 타입 오류 출력 형식입니다). 줄 번호는 내 파일이 완성본과 같을 때의 값입니다. <code>-o NUL</code>은 Windows에서 결과 파일을 버리라는 뜻입니다. <code>strings</code>를 쓰는 곳이 두 군데라서 <code>go build</code>는 둘 다 알려 줍니다.</p>
+<pre class="code" data-lang="text">go vet ./lesson08/mine
+go build -o NUL ./lesson08/mine</pre>
+<pre class="output"># golab/lesson08/mine
+# [golab/lesson08/mine]
+vet.exe: lesson08\mine\main.go:143:11: undefined: strings</pre>
+<pre class="output"># golab/lesson08/mine
+lesson08\mine\main.go:143:11: undefined: strings
+lesson08\mine\main.go:197:12: undefined: strings</pre>
+        <p>반대로 쓰지 않는 import가 남은 경우입니다. 같은 파일의 import 블록 맨 윗줄에 <code>"fmt"</code> 한 줄을 추가하고 <code>go build -o NUL ./lesson08/mine</code>을 실행한 결과입니다(마찬가지로 저장하면 자동 정리가 지울 수 있습니다).</p>
+<pre class="output"># golab/lesson08/mine
+lesson08\mine\main.go:4:2: "fmt" imported and not used</pre>
+        <h3>증상: 서버가 뜨자마자 panic: pattern ... conflicts with pattern ...</h3>
+        <p>같은 요청에 맞는 패턴을 둘 이상 등록했고 어느 쪽이 더 구체적인지 가릴 수 없을 때 <code>ServeMux</code>가 등록 시점에 패닉을 냅니다. 재현하려면 <span class="file">mine/main.go</span>의 <code>routes</code>에서 <code>mux.HandleFunc("GET /tasks/{id}", s.getTask)</code> 줄 바로 아래에 <code>mux.HandleFunc("GET /tasks/{name}", s.getTask)</code> 한 줄을 추가하고 서버를 시작합니다. 와일드카드 이름만 다르고 같은 요청에 맞는 패턴이라 충돌합니다. 둘 중 하나만 남기세요. 반면 <code>/tasks/{id}</code>와 <code>/tasks/new</code>는 후자가 더 구체적이라 함께 등록할 수 있습니다. 패닉은 <code>routes()</code>를 부르는 순간, 즉 서버가 포트를 열기 전에 일어납니다(첫 줄의 "서버 시작" 로그는 이 코드가 로그를 먼저 찍기 때문입니다). 확인한 뒤 추가한 줄을 지웁니다. 줄 번호는 내 파일이 완성본과 같을 때의 값이고, 경로는 PC마다 다릅니다.</p>
+<pre class="code" data-lang="text">go run ./lesson08/mine</pre>
+<pre class="output">2026/11/16 03:40:12 Task API 서버 시작: http://localhost:8080
+panic: pattern "GET /tasks/{name}" (registered at D:/study/go/lab/lesson08/mine/main.go:121) conflicts with pattern "GET /tasks/{id}" (registered at D:/study/go/lab/lesson08/mine/main.go:120):
+	GET /tasks/{name} matches the same requests as GET /tasks/{id}
+
+goroutine 1 [running]:
+net/http.(*ServeMux).register(...)
+	C:/Program Files/Go/src/net/http/server.go:2957
+...</pre>
+        <h3>증상: curl.exe로 JSON을 보냈더니 400 invalid character</h3>
+        <p>쉘이 따옴표를 처리하는 방식이 달라서 서버에 도착하는 본문이 바뀐 것입니다. 이 PC에서 같은 명령 <code>-d '{"title":"Go study"}'</code>을 실험한 결과는 이렇습니다: <b>bash(MSYS2)와 PowerShell 7.7은 그대로 성공</b>, <b>Windows PowerShell 5.1은 따옴표가 사라져 400</b>. 반대로 예전 Windows PowerShell 5.1용으로 알려진 <code>\"</code> 이스케이프(<code>'{\"title\":\"x\"}'</code>)를 PowerShell 7.7에서 쓰면 백슬래시가 본문에 그대로 전달되어 400이 납니다. 쉘 버전에 상관없이 안전한 방법은 JSON을 파일(UTF-8, BOM 없음)에 저장하고 <code>--data-binary '@파일'</code>로 보내는 것이며, 이 코스에서는 <code>.http</code> 파일을 권합니다.</p>
+<pre class="output">{"error":"요청 본문을 읽을 수 없습니다: invalid character 't' looking for beginning of object key string"}</pre>
+<pre class="output">{"error":"요청 본문을 읽을 수 없습니다: invalid character '\\\\' looking for beginning of object key string"}</pre>
+<pre class="code" data-lang="powershell">curl.exe -s -X POST http://localhost:8080/tasks -H "Content-Type: application/json" --data-binary '@body.json'</pre>
+        <h3>증상: 응답의 한글이 ???쇱쓣 같은 글자로 깨져 보인다</h3>
+        <p>서버는 JSON을 UTF-8로 보내는데 터미널이 한국어 Windows 기본 코드 페이지(CP949)로 해석하면 깨집니다. REST Client 패널은 영향을 받지 않습니다. 이 증상은 콘솔 출력 인코딩을 949로 바꿔 같은 요청을 보내 재현했습니다(실제 화면 표시를 그대로 캡처한 것은 아니고, 같은 디코딩 경로를 거친 문자열입니다). PowerShell에서는 <code>chcp 65001</code> 또는 <code>[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)</code>로 UTF-8로 맞춥니다. MSYS2 bash는 이 PC에서 <code>locale charmap</code>이 UTF-8이라 그대로 정상이었습니다.</p>
+<pre class="output">{"error":"???쇱쓣 李얠쓣 ???놁뒿?덈떎"}</pre>
+        <h3>증상: 목록이 [] 대신 null로 나온다</h3>
+        <p>할 일이 하나도 없을 때 <code>nil</code> 슬라이스를 그대로 JSON으로 만들면 <code>null</code>이 됩니다. 이 레슨의 <code>list</code>는 <code>make([]Task, 0, ...)</code>로 빈 슬라이스를 만들어 <code>[]</code>를 돌려줍니다. 재현하려면 <span class="file">mine/main.go</span>의 <code>list</code> 함수를 아래 코드(<code>var out []Task</code>로 바꾼 잘못된 버전)로 바꾸고, 서버를 시작해 할 일이 하나도 없는 상태에서 목록을 조회합니다. 확인한 뒤 <code>list</code>를 원래 코드로 되돌립니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/fail/nil_slice.go.txt">func (s *taskStore) list() []Task {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []Task
+	for _, t := range s.tasks {
+		out = append(out, t)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID &lt; out[j].ID })
+	return out
+}</pre>
+<pre class="code" data-lang="text">curl.exe -s http://localhost:8080/tasks</pre>
+<pre class="output">null</pre>
+        <p>원래 코드(<code>make</code>로 만든 빈 슬라이스)에서는 같은 요청이 <code>[]</code>를 돌려줍니다.</p>
+<pre class="output">[]</pre>
+        <h3>증상: 오류 응답 뒤에 성공 응답이 이어서 나온다</h3>
+        <p><code>writeError</code>를 부른 뒤 <code>return</code>을 빼먹은 경우입니다. 재현하려면 <span class="file">mine/main.go</span>의 <code>createTask</code>에서 제목 검증 <code>if</code> 블록 안의 <code>return</code> 줄을 지웁니다(아래 코드가 그 모양입니다). 서버를 다시 시작하고 공백 제목으로 생성 요청을 보내면, 클라이언트는 상태 코드 400과 함께 본문에서 오류 JSON과 <b>방금 만든 할 일 JSON이 연달아</b> 오는 이상한 응답을 받고, 서버에는 빈 제목의 할 일이 저장됩니다. 서버 로그에는 헤더를 두 번 썼다는 경고가 남습니다. 확인한 뒤 지운 <code>return</code>을 되돌립니다. <code>if</code> 안에서 응답을 쓰면 반드시 <code>return</code>하세요.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson08/fail/missing_return.go.txt">func (s *server) createTask(w http.ResponseWriter, r *http.Request) {
+	var req createTaskRequest
+	if err := decodeJSON(r, &amp;req); err != nil {
+		writeError(w, http.StatusBadRequest, "요청 본문을 읽을 수 없습니다: "+err.Error())
+		return
+	}
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		writeError(w, http.StatusBadRequest, "title은 비어 있을 수 없습니다")
+	}
+
+	task := s.store.create(title)
+	w.Header().Set("Location", "/tasks/"+strconv.Itoa(task.ID))
+	writeJSON(w, http.StatusCreated, task)
+}</pre>
+<pre class="code" data-lang="text">curl.exe -si -X POST http://localhost:8080/tasks -H "Content-Type: application/json" -d '{"title":"   "}'</pre>
+<pre class="output">HTTP/1.1 400 Bad Request
+Content-Type: application/json
+Date: Sun, 15 Nov 2026 14:49:46 GMT
+Content-Length: 129
+
+{"error":"title은 비어 있을 수 없습니다"}
+{"id":1,"title":"","done":false,"created_at":"2026-11-15T14:49:46.7663467Z"}</pre>
+<pre class="output">2026/11/15 23:49:46 http: superfluous response.WriteHeader call from main.writeJSON (main.go:95)</pre>
+        <h3>증상: Windows 보안 경고(방화벽) 창이 뜬다</h3>
+        <p>서버를 처음 실행할 때 뜰 수 있는 정상적인 창입니다. 이 코스는 이 PC 안에서만 접속하므로 허용이 필요 없고, 관리자 권한을 요구하면 취소하고 계속 진행해도 됩니다. 이유와 근거, 확인하지 못한 부분은 이 레슨 1단계의 <a href="#firewall">방화벽 안내</a>에 적었습니다.</p>
+      </section>
+
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨 09에서는 이 서버를 <b>handler / service / repository</b> 계층으로 나눕니다. 같은 동작을 유지하면서 생성자 주입, 미들웨어(로깅, 패닉 복구), <code>httptest</code>로 핸들러 테스트를 작성하고, VS Code의 전체 검색·바꾸기와 소스 제어 보기를 읽어 봅니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="07-concurrency.html"><small>← 이전 레슨</small>07 · 고루틴·채널·context</a>
+          <a class="next" rel="next" href="09-taskapi-layers.html"><small>다음 레슨 →</small>09 · Task API 계층 구조와 httptest</a>
+        </nav>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Go 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

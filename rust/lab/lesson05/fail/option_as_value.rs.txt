@@ -1,0 +1,8 @@
+fn parse_number(text: &str) -> Option<i32> {
+    text.parse().ok()
+}
+
+fn main() {
+    let n: i32 = parse_number("5");
+    println!("{n}");
+}

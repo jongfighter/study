@@ -1,0 +1,6 @@
+fn main() {
+    let count = 1;
+    if count {
+        println!("값이 있습니다");
+    }
+}

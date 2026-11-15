@@ -1,0 +1,5 @@
+fn main() {
+    let small: i32 = 1;
+    let total: i64 = small;
+    println!("{total}");
+}

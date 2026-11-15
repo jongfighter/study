@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="go" data-lesson="03">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Go의 변수, zero value, 제어문, 다중 반환 함수를 Kotlin과 비교하며 익힙니다.">
+  <title>03 · 변수·타입·제어문·함수 — Go 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Go 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Go</span>
+      <span>Go 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 03 · 기본 문법</p>
+        <h1>변수·타입·제어문·함수</h1>
+        <p class="lead">Kotlin으로 익숙한 기본 문법이 Go에서는 어떻게 달라지는지 직접 입력하고 실행해 봅니다. <code>null</code> 대신 zero value, 예외 대신 다중 반환이라는 Go의 사고방식을 코드로 확인합니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 110분</li>
+          <li><b>난이도</b> ★★☆☆☆</li>
+          <li><b>선행</b> <a href="02-hello-go.html">레슨 02</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson03/mine</span> (완성 코드: <span class="file">lab/lesson03</span>)</li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li><code>var</code>와 <code>:=</code>를 상황에 맞게 골라 쓰고, 타입을 쓰지 않아도 추론되는 타입을 <code>%T</code>로 확인할 수 있다.</li>
+          <li>타입별 zero value(<code>0</code>, <code>""</code>, <code>false</code>, <code>nil</code>)를 말하고, 명시적 타입 변환이 필요한 이유를 설명할 수 있다.</li>
+          <li><code>if</code>(초기화문 포함), <code>for</code>의 세 가지 형태, <code>switch</code>(값 여러 개, 조건 없는 형태)를 직접 작성할 수 있다.</li>
+          <li>값을 여러 개 돌려주는 함수와 <code>(값, error)</code> 패턴, 가변 인자 함수를 작성하고 호출할 수 있다.</li>
+          <li>컴파일러의 대표 오류 메시지(<code>declared and not used</code> 등)를 읽고 고칠 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>영문 원문은 한국어 요약을 먼저 읽은 뒤 확인하세요. 로컬 파일은 VS Code에서 <kbd class="key">Ctrl+P</kbd>로 파일 이름을 입력해 열 수 있습니다. 클론한 자료 폴더는 읽기용이라 그 안에서 <code>go</code> 명령을 실행하지 않고, 따라 해 보고 싶은 예제는 <span class="file">lab/lesson03/mine</span>에 직접 입력합니다.</p>
+        <ul>
+          <li><a href="https://go.dev/tour/basics/1">A Tour of Go · Basics (영문)</a>, <a href="https://go.dev/tour/flowcontrol/1">Flow control statements (영문)</a> — 웹 페이지가 원문입니다.</li>
+          <li>Go by Example: <a href="https://gobyexample.com/values">Values</a> · <a href="https://gobyexample.com/variables">Variables</a> · <a href="https://gobyexample.com/constants">Constants</a> · <a href="https://gobyexample.com/for">For</a> · <a href="https://gobyexample.com/if-else">If/Else</a> · <a href="https://gobyexample.com/switch">Switch</a> · <a href="https://gobyexample.com/functions">Functions</a> · <a href="https://gobyexample.com/multiple-return-values">Multiple Return Values</a> · <a href="https://gobyexample.com/variadic-functions">Variadic Functions</a> · <a href="https://gobyexample.com/closures">Closures</a> (모두 영문). 로컬 파일 예: <span class="file" data-local="go-by-example/examples/variables/variables.go">go-by-example/examples/variables/variables.go</span>, <span class="file" data-local="go-by-example/examples/multiple-return-values/multiple-return-values.go">go-by-example/examples/multiple-return-values/multiple-return-values.go</span></li>
+          <li>Learn Go with Tests: <span class="file" data-local="learn-go-with-tests/hello-world.md">learn-go-with-tests/hello-world.md</span>(상수와 <code>switch</code>), <span class="file" data-local="learn-go-with-tests/integers.md">learn-go-with-tests/integers.md</span>, <span class="file" data-local="learn-go-with-tests/iteration.md">learn-go-with-tests/iteration.md</span>(<code>for</code> 반복). 이 장들은 테스트를 먼저 쓰는 방식이라 레슨 06을 마친 뒤 연습으로 다시 풀면 좋습니다.</li>
+          <li>100 Go Mistakes #1 <a href="https://100go.co/#unintended-variable-shadowing-1">변수 가리기(shadowing)</a> (영문) — 로컬 코드: <span class="file" data-local="100-go-mistakes/src/02-code-project-organization/1-variable-shadowing/main.go">100-go-mistakes/src/02-code-project-organization/1-variable-shadowing/main.go</span></li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>변수 선언.</b> <code>var 이름 타입 = 값</code>이 정식 문법이고, 함수 안에서는 <code>이름 := 값</code>(짧은 선언, short variable declaration)을 주로 씁니다. <code>:=</code>는 타입을 값에서 추론하며 함수 밖에서는 쓸 수 없습니다. 선언한 변수를 쓰지 않으면 <b>컴파일 오류</b>입니다.</p>
+        <p><b>zero value.</b> Go에는 초기화하지 않은 변수가 없습니다. 값을 주지 않으면 타입별 기본값이 들어갑니다: 숫자 <code>0</code>, 문자열 <code>""</code>, 불리언 <code>false</code>, 포인터·슬라이스·맵·함수·인터페이스는 <code>nil</code>. Kotlin의 null 안전성이 "값이 없음"을 타입으로 표시한다면, Go는 "항상 쓸 수 있는 기본값"을 줍니다.</p>
+        <p><b>상수와 iota.</b> <code>const</code>는 컴파일 시점 상수입니다. <code>iota</code>는 상수 묶음 안에서 0부터 1씩 늘어나는 값으로, 열거형(enum) 비슷한 값을 만들 때 씁니다.</p>
+        <p><b>타입과 변환.</b> 숫자 타입 사이에는 암묵적 변환이 없습니다. <code>int</code>와 <code>float64</code>를 섞으면 컴파일 오류이고, <code>float64(count)</code>처럼 직접 변환합니다. 문자열은 UTF-8 <b>바이트</b>의 나열이라 <code>len("한글")</code>은 글자 수가 아니라 바이트 수(6)를 돌려줍니다. 글자 단위는 <code>[]rune(문자열)</code>로 바꿔 셉니다(rune은 유니코드 한 글자).</p>
+        <p><b>제어문.</b> <code>if</code> 조건에는 괄호를 쓰지 않고 중괄호는 필수입니다. <code>if n := 계산(); n &gt; 1 {</code>처럼 조건 앞에 초기화문을 둘 수 있고, 그 변수는 <code>if</code> 블록 안에서만 보입니다. 반복문은 <code>for</code> 하나뿐이며 세 가지 모양(<code>for 초기화; 조건; 증감</code>, <code>for 조건</code>, <code>for i := range 3</code>)으로 for와 while을 모두 대신합니다. <code>switch</code>는 case가 끝나면 자동으로 빠져나옵니다(<code>break</code> 불필요). 한 case에 값을 여러 개 쓸 수 있고, 조건 없는 <code>switch { case ...: }</code>는 if-else 사슬을 읽기 좋게 씁니다.</p>
+        <p><b>함수.</b> 값을 여러 개 돌려줄 수 있고(<code>(int, error)</code>), 반환값이 필요 없으면 <code>_</code>로 버립니다. 가변 인자는 <code>nums ...int</code>로 받고 슬라이스를 넘길 때는 <code>values...</code>로 펼칩니다. 함수는 값이라서 변수에 담거나 돌려줄 수 있고(클로저, closure), 바깥 변수를 기억합니다. 예외(exception) 대신 <code>error</code> 값을 돌려주는 방식은 레슨 05에서 자세히 다룹니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>완성 코드가 <span class="file">lab/lesson03</span> 아래에 있고, 직접 입력하는 코드는 <span class="file">lab/lesson03/mine</span> 아래 같은 이름의 폴더에 둡니다. 코드 블록 위쪽의 파일 이름은 비교용 완성본의 위치입니다. 터미널은 모두 <span class="file">lab</span> 폴더에서 실행하고, 각 단계는 앞 단계에서 만든 폴더를 이어서 씁니다.</p>
+        <ol class="steps">
+          <li>
+            <strong>변수 프로그램 폴더와 파일 만들기</strong>
+            <p>탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson03</span> 폴더를 우클릭해 <b>새 폴더</b>를 고르고 <code>mine/variables</code>를 입력합니다(슬래시로 쓰면 중간 폴더가 함께 만들어집니다). 그 폴더를 우클릭해 새 파일 <code>main.go</code>를 만듭니다.</p>
+            <p>아래 코드를 직접 입력하세요. <code>fmt.Printf(</code>를 입력하는 순간 <kbd class="key">Ctrl+Shift+Space</kbd>를 누르면 매개변수 안내가 나타나고, <code>fmt.</code> 뒤에서 <kbd class="key">Ctrl+Space</kbd>를 누르면 사용할 수 있는 이름의 자동 완성 목록이 열립니다. 목록에서 위·아래 방향키로 고르고 Tab 키나 엔터 키로 확정합니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson03/variables/main.go">package main
+
+import "fmt"
+
+const appName = "golab"
+
+const (
+	statusTodo = iota
+	statusDoing
+	statusDone
+)
+
+func main() {
+	var count int = 3
+	var title string
+	name := "Go"
+	ratio := 1.5
+	done := false
+
+	fmt.Println(count, title == "", name, ratio, done)
+	fmt.Printf("타입: %T %T %T %T\n", count, name, ratio, done)
+
+	var (
+		zeroInt    int
+		zeroFloat  float64
+		zeroBool   bool
+		zeroString string
+		zeroPtr    *int
+	)
+	fmt.Printf("zero value: %d %v %t %q %v\n", zeroInt, zeroFloat, zeroBool, zeroString, zeroPtr)
+
+	fmt.Println("상수:", appName, statusTodo, statusDoing, statusDone)
+
+	scaled := float64(count) * ratio
+	fmt.Println("변환:", scaled)
+
+	word := "한글"
+	fmt.Println("바이트 수:", len(word), "글자 수:", len([]rune(word)))
+}</pre>
+          </li>
+          <li>
+            <strong>실행하고 출력 읽기</strong>
+            <p>1단계에서 저장(<kbd class="key">Ctrl+S</kbd>)한 파일을 실행합니다. 터미널(<kbd class="key">Ctrl+`</kbd>)의 현재 폴더가 <span class="file">D:\study\go\lab</span>인지 확인하세요.</p>
+<pre class="code" data-lang="text">go run ./lesson03/mine/variables</pre>
+<pre class="output" data-src="lab/lesson03/expected/variables.txt">3 true Go 1.5 false
+타입: int string float64 bool
+zero value: 0 0 false "" &lt;nil&gt;
+상수: golab 0 1 2
+변환: 4.5
+바이트 수: 6 글자 수: 2</pre>
+            <p>한 줄씩 읽어 봅니다. 1번째 줄의 <code>true</code>는 <code>var title string</code>이 <code>""</code>이기 때문입니다. 2번째 줄에서 <code>name := "Go"</code>는 <code>string</code>, <code>ratio := 1.5</code>는 <code>float64</code>로 추론된 것을 <code>%T</code>가 보여 줍니다. 3번째 줄이 zero value이고, 4번째 줄의 <code>iota</code>는 0, 1, 2를 만들었습니다. 6번째 줄은 <code>"한글"</code>이 6바이트, 2글자라는 뜻입니다.</p>
+          </li>
+          <li>
+            <strong>제어문 프로그램 만들기</strong>
+            <p>같은 방법으로 <span class="file">lesson03/mine/control</span> 폴더와 <code>main.go</code>를 만들고 입력합니다. <code>if</code>와 <code>for</code> 블록을 입력할 때는 중괄호를 연 뒤 엔터 키를 눌러 자동 들여쓰기를 확인하세요. 들여쓰기는 탭입니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson03/control/main.go">package main
+
+import "fmt"
+
+func main() {
+	score := 82
+	if score &gt;= 90 {
+		fmt.Println("등급 A")
+	} else if score &gt;= 80 {
+		fmt.Println("등급 B")
+	} else {
+		fmt.Println("등급 C 이하")
+	}
+
+	if n := len("Go"); n &gt; 1 {
+		fmt.Println("if 안에서만 보이는 n =", n)
+	}
+
+	level := "바깥"
+	if score &gt; 0 {
+		level := "안쪽"
+		fmt.Println("블록 안:", level)
+	}
+	fmt.Println("블록 밖:", level)
+
+	sum := 0
+	for i := 1; i &lt;= 5; i++ {
+		sum += i
+	}
+	fmt.Println("1부터 5까지 합:", sum)
+
+	n := 1
+	for n &lt; 100 {
+		n *= 2
+	}
+	fmt.Println("100을 넘는 첫 2의 거듭제곱:", n)
+
+	fmt.Print("range 3:")
+	for i := range 3 {
+		fmt.Print(" ", i)
+	}
+	fmt.Println()
+
+	day := "토"
+	switch day {
+	case "토", "일":
+		fmt.Println("주말")
+	default:
+		fmt.Println("평일")
+	}
+
+	switch {
+	case score &gt;= 90:
+		fmt.Println("우수")
+	case score &gt;= 70:
+		fmt.Println("보통")
+	default:
+		fmt.Println("노력 필요")
+	}
+}</pre>
+<pre class="code" data-lang="text">go run ./lesson03/mine/control</pre>
+<pre class="output" data-src="lab/lesson03/expected/control.txt">등급 B
+if 안에서만 보이는 n = 2
+블록 안: 안쪽
+블록 밖: 바깥
+1부터 5까지 합: 15
+100을 넘는 첫 2의 거듭제곱: 128
+range 3: 0 1 2
+주말
+보통</pre>
+            <p>"블록 안: 안쪽", "블록 밖: 바깥" 두 줄을 주목하세요. 블록 안의 <code>level := "안쪽"</code>은 바깥 변수를 바꾸는 것이 아니라 <b>같은 이름의 새 변수</b>를 만듭니다. 이것을 가리기(shadowing)라고 합니다.</p>
+          </li>
+          <li>
+            <strong>줄 편집 단축키로 코드 다듬기</strong>
+            <p>3단계에서 만든 <span class="file">mine/control/main.go</span>에서 마우스 없이 다음을 해 봅니다. <code>switch day</code> 블록의 <code>case "토", "일":</code> 줄을 클릭하고 <kbd class="key">Shift+Alt+↓</kbd>로 줄을 아래에 복사합니다. 복사된 줄에서 <kbd class="key">Alt+↑</kbd> <kbd class="key">Alt+↓</kbd>로 줄을 위아래로 옮겨 보고, <kbd class="key">Ctrl+Shift+K</kbd>로 복사본 줄을 지웁니다. 복사본이 남아 있는 동안에는 같은 <code>case</code>가 두 번 있어 컴파일 오류(<code>duplicate case</code>)가 나므로 그 상태에서는 실행하지 않습니다. 마지막으로 <code>fmt.Println("주말")</code> 줄에서 <kbd class="key">Ctrl+/</kbd>를 눌러 주석 처리한 뒤 다시 눌러 해제합니다.</p>
+            <p>확인: 모든 연습이 끝난 뒤 파일 내용이 입력했던 코드와 같고, 다시 실행한 출력이 위 예상 출력과 같아야 합니다. 마음대로 되돌릴 수 있게 <kbd class="key">Ctrl+Z</kbd>(실행 취소)도 눌러 보세요.</p>
+          </li>
+          <li>
+            <strong>함수 프로그램 만들기</strong>
+            <p><span class="file">lesson03/mine/functions</span> 폴더와 <code>main.go</code>를 만들어 입력합니다. 함수 이름 <code>divide</code>를 입력하다가 자동 완성이 같은 파일 안의 함수를 보여 주는 것을 확인하세요.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson03/functions/main.go">package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+func add(a, b int) int {
+	return a + b
+}
+
+func divide(a, b int) (int, error) {
+	if b == 0 {
+		return 0, errors.New("0으로 나눌 수 없습니다")
+	}
+	return a / b, nil
+}
+
+func sum(nums ...int) int {
+	total := 0
+	for _, n := range nums {
+		total += n
+	}
+	return total
+}
+
+func minMax(nums ...int) (lowest, highest int) {
+	lowest, highest = nums[0], nums[0]
+	for _, n := range nums {
+		if n &lt; lowest {
+			lowest = n
+		}
+		if n &gt; highest {
+			highest = n
+		}
+	}
+	return
+}
+
+func makeCounter() func() int {
+	count := 0
+	return func() int {
+		count++
+		return count
+	}
+}
+
+func main() {
+	fmt.Println("add(2, 3) =", add(2, 3))
+
+	quotient, err := divide(7, 2)
+	fmt.Println("7 / 2 =", quotient, err)
+
+	_, err = divide(1, 0)
+	fmt.Println("오류:", err)
+
+	values := []int{4, 5, 6}
+	fmt.Println("합계:", sum(), sum(1, 2, 3), sum(values...))
+
+	lowest, highest := minMax(3, 9, 1)
+	fmt.Println("최소/최대:", lowest, highest)
+
+	next := makeCounter()
+	fmt.Println("카운터:", next(), next(), next())
+}</pre>
+<pre class="code" data-lang="text">go run ./lesson03/mine/functions</pre>
+<pre class="output" data-src="lab/lesson03/expected/functions.txt">add(2, 3) = 5
+7 / 2 = 3 &lt;nil&gt;
+오류: 0으로 나눌 수 없습니다
+합계: 0 6 15
+최소/최대: 1 9
+카운터: 1 2 3</pre>
+            <p><code>quotient, err := divide(7, 2)</code>처럼 값과 오류를 함께 받고, 쓰지 않을 값은 <code>_, err = divide(1, 0)</code>에서처럼 <code>_</code>로 버렸습니다. <code>sum(values...)</code>의 <code>...</code>는 슬라이스를 가변 인자로 펼치는 문법입니다. 마지막 줄 <code>카운터: 1 2 3</code>은 <code>makeCounter</code>가 돌려준 함수가 바깥 변수 <code>count</code>를 기억하기 때문입니다.</p>
+          </li>
+          <li>
+            <strong>일부러 컴파일 오류 만들고 읽기</strong>
+            <p>2단계의 <span class="file">mine/variables/main.go</span>에서 <code>main</code> 함수의 맨 아래(닫는 중괄호 <code>}</code> 바로 위)에 쓰이지 않는 변수 <code>unused := 1</code> 한 줄을 추가하고 저장한 뒤 <code>go run ./lesson03/mine/variables</code>를 실행합니다. 편집기에서는 그 줄에 빨간 밑줄이 생기고, 터미널에서는 컴파일러가 아래 메시지를 냅니다. 실행하지 않아도 <kbd class="key">Ctrl+Shift+M</kbd>으로 문제 패널을 열면 같은 문장이 보입니다. 확인 후 그 줄을 지웁니다.</p>
+<pre class="output" data-src="lab/lesson03/expected/err-unused.txt"># golab/lesson03/mine/variables
+lesson03\mine\variables\main.go:39:2: declared and not used: unused</pre>
+            <p>이번에는 같은 위치(<code>main</code> 함수의 맨 아래)에 <code>fmt.Println(count * ratio)</code> 한 줄을 추가하고 실행하면 <code>int</code>와 <code>float64</code>를 곱할 수 없다는 오류가 납니다. 두 값이 다른 숫자 타입이면 <code>float64(count) * ratio</code>처럼 한쪽을 변환해야 합니다. 확인 후 줄을 지웁니다. 위 두 출력은 맨 아래에 추가했을 때의 값이고, 다른 위치에 넣었다면 줄 번호만 달라집니다.</p>
+<pre class="output" data-src="lab/lesson03/expected/err-mismatch.txt"># golab/lesson03/mine/variables
+lesson03\mine\variables\main.go:39:14: invalid operation: count * ratio (mismatched types int and float64)</pre>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong>같은 레슨의 "자주 나는 오류"를 먼저 확인하세요. 그래도 안 되면 <span class="file">lab/lesson03</span>의 완성 코드와 비교해 보세요.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Go</th></tr></thead>
+            <tbody>
+              <tr><td>변수 선언</td><td><code>val x = 1</code>, <code>var y = 2</code></td><td><code>x = 1</code></td><td><code>x := 1</code>, <code>var x int = 1</code></td></tr>
+              <tr><td>불변</td><td><code>val</code>은 재대입 불가</td><td>언어 차원의 불변 없음(관례)</td><td><code>:=</code>도 재대입 가능. <code>const</code>는 컴파일 시점 상수만</td></tr>
+              <tr><td>값 없음 표현</td><td><code>String?</code>, <code>?.</code>, <code>?:</code></td><td><code>None</code>, <code>Optional[str]</code></td><td>null 안전성 대신 <b>zero value</b>. 포인터·슬라이스·맵은 <code>nil</code></td></tr>
+              <tr><td>숫자 변환</td><td><code>count.toDouble()</code></td><td>암묵적 변환(<code>int * float</code> 가능)</td><td><code>float64(count)</code> 명시적 변환 필수</td></tr>
+              <tr><td>분기</td><td><code>when</code>(값을 돌려주는 표현식)</td><td><code>if/elif</code>, <code>match</code></td><td><code>switch</code>는 문장, case 끝에서 자동 종료</td></tr>
+              <tr><td>반복</td><td><code>for (i in 1..5)</code>, <code>while</code></td><td><code>for i in range(5)</code>, <code>while</code></td><td><code>for</code> 하나로 모두 표현</td></tr>
+              <tr><td>오류 전달</td><td><code>throw</code> / <code>try-catch</code></td><td><code>raise</code> / <code>try-except</code></td><td><code>(값, error)</code> 반환, 호출자가 확인</td></tr>
+              <tr><td>가변 인자</td><td><code>vararg</code>, 펼치기 <code>*list</code></td><td><code>*args</code>, 펼치기 <code>*list</code></td><td><code>nums ...int</code>, 펼치기 <code>values...</code></td></tr>
+              <tr><td>함수 타입</td><td><code>() -&gt; Int</code></td><td><code>Callable[[], int]</code></td><td><code>func() int</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정</strong>첫째, Kotlin의 <code>if</code>/<code>when</code>은 값을 돌려주는 표현식(<code>val grade = if (score &gt;= 80) "B" else "C"</code>)이지만, Go의 <code>if</code>와 <code>switch</code>는 문장이라 이렇게 쓸 수 없습니다. 변수를 먼저 선언하고 안에서 대입합니다. 둘째, <code>val</code>을 떠올리며 <code>:=</code>가 불변이라고 오해하기 쉽지만 <code>:=</code>는 단지 선언과 대입을 한 번에 하는 문법입니다. 셋째, zero value는 편하지만 "값이 없다"와 "0이다"가 구별되지 않습니다. 구별이 필요하면 다음 레슨의 포인터나 <code>ok</code> 패턴을 씁니다. 넷째, 블록 안에서 <code>:=</code>를 쓰면 바깥 변수가 아니라 <b>새 변수</b>가 만들어져, 코드가 컴파일되는데도 엉뚱한 변수를 바꾸는 실수가 생깁니다(100 Go Mistakes #1).</div>
+<pre class="code" data-lang="kotlin">val grade = if (score &gt;= 80) "B" else "C"   // Kotlin: if 가 값을 돌려줍니다</pre>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 자동 완성과 줄 편집, 인레이 힌트</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>자동 완성 열기</td><td><kbd class="key">Ctrl+Space</kbd></td><td>패키지·함수·필드 이름을 목록에서 고를 때</td></tr>
+                <tr><td>매개변수 힌트</td><td><kbd class="key">Ctrl+Shift+Space</kbd></td><td>함수 인자의 이름과 타입을 확인할 때</td></tr>
+                <tr><td>줄 위/아래로 이동</td><td><kbd class="key">Alt+↑</kbd> <kbd class="key">Alt+↓</kbd></td><td><code>case</code>나 함수 순서를 바꿀 때</td></tr>
+                <tr><td>줄 복사</td><td><kbd class="key">Shift+Alt+↓</kbd> <kbd class="key">Shift+Alt+↑</kbd></td><td>비슷한 줄을 만들 때</td></tr>
+                <tr><td>줄 삭제</td><td><kbd class="key">Ctrl+Shift+K</kbd></td><td>한 줄을 통째로 지울 때</td></tr>
+                <tr><td>줄 주석 토글</td><td><kbd class="key">Ctrl+/</kbd></td><td>코드를 잠깐 꺼 둘 때</td></tr>
+                <tr><td>설정 열기</td><td><kbd class="key">Ctrl+,</kbd></td><td>인레이 힌트 설정 확인</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p><b>인레이 힌트(Inlay Hints)</b>는 코드에 없는 정보를 에디터가 흐린 글씨로 끼워 보여 주는 기능입니다. 파일 내용은 바뀌지 않습니다. 이 코스의 <span class="file">.vscode/settings.json</span>은 변수 타입, 호출 인자의 매개변수 이름, <code>range</code> 변수 타입 힌트를 켜 두었습니다. <span class="file">lesson03/variables/main.go</span>에서는 <code>name := "Go"</code> 뒤에 <code>string</code>, <code>ratio := 1.5</code> 뒤에 <code>float64</code>가 보이고(<code>var count int = 3</code>처럼 타입을 직접 쓴 줄은 힌트가 없습니다), <code>functions/main.go</code>에서는 <code>add(2, 3)</code>의 인자 앞에 <code>a:</code>, <code>b:</code>가 보입니다(gopls로 같은 설정의 힌트를 조회해 확인한 내용입니다).</p>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>인레이 힌트를 끄고 켜 보기</strong>
+            <p><span class="file">mine/functions/main.go</span>를 열어 둔 상태에서 <kbd class="key">Ctrl+,</kbd>로 설정을 열고 검색창에 <code>editor.inlayHints.enabled</code>를 입력합니다. <b>작업 영역</b> 탭에서 값이 <code>on</code>인 것을 확인하고 <code>off</code>로 바꿉니다. 에디터에서 흐린 힌트가 모두 사라집니다. 다시 <code>on</code>으로 되돌립니다. 값은 <code>on</code>, <code>off</code>, <code>onUnlessPressed</code>, <code>offUnlessPressed</code> 중에서 고릅니다(뒤의 둘은 Ctrl+Alt 키를 누르고 있는 동안만 반대로 동작합니다).</p>
+            <p><span class="file">.vscode/settings.json</span>을 열어 <code>"editor.inlayHints.enabled"</code>가 어떻게 기록되어 있는지 보세요. 어떤 힌트를 보일지는 같은 파일의 <code>"gopls"</code> 항목 안 <code>"ui.inlayhint.hints"</code>에 적혀 있고, 이 값은 gopls의 실험적 설정이라 설정 화면이 아니라 JSON 파일에서 직접 고칩니다. 값을 <code>true</code>에서 <code>false</code>로 바꾸고 저장해 힌트 종류가 달라지는 것을 확인한 뒤 원래대로 돌려놓으세요.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <p>풀이는 <span class="file">lab/lesson03/mine/practice</span> 폴더에 <code>main.go</code>로 만드세요. 완성본은 <span class="file">lab/lesson03/practice/main.go</span>이고, 같은 폴더에 정답 확인용 테스트 파일이 있습니다(테스트는 레슨 06에서 배웁니다).</p>
+        <h3>문제 1. 평균 구하기</h3>
+        <p>숫자를 여러 개 받아 평균을 돌려주는 함수 <code>average(nums ...float64) (float64, error)</code>를 작성하세요. 값이 하나도 없으면 <code>0</code>과 오류를 돌려줍니다. <b>완료 조건</b>: <code>average(1, 2, 3, 4)</code>는 <code>2.5 &lt;nil&gt;</code>을, <code>average()</code>는 오류 메시지를 출력한다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>가변 인자 <code>nums</code>는 함수 안에서 슬라이스처럼 <code>len(nums)</code>와 <code>for _, n := range nums</code>로 다룹니다. 합계를 개수로 나눌 때 <code>int</code>인 <code>len(nums)</code>를 <code>float64(len(nums))</code>로 변환해야 합니다. 오류는 <code>errors.New("메시지")</code>로 만들고 <code>import "errors"</code>가 필요합니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="go" data-src="lab/lesson03/practice/main.go" data-lines="9-18">func average(nums ...float64) (float64, error) {
+	if len(nums) == 0 {
+		return 0, errors.New("평균을 구할 값이 없습니다")
+	}
+	total := 0.0
+	for _, n := range nums {
+		total += n
+	}
+	return total / float64(len(nums)), nil
+}</pre>
+          </div>
+        </details>
+
+        <h3>문제 2. FizzBuzz</h3>
+        <p>1부터 15까지 숫자를 한 줄에 하나씩 출력하되, 3의 배수는 <code>Fizz</code>, 5의 배수는 <code>Buzz</code>, 15의 배수는 <code>FizzBuzz</code>로 출력하세요. <b>완료 조건</b>: 정수 하나를 받아 문자열을 돌려주는 함수 <code>fizzBuzz(n int) string</code>을 만들고 <code>switch</code>(조건 없는 형태)를 사용한다. 출력 15줄이 아래 예상 출력과 같다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>15의 배수 검사를 <b>가장 먼저</b> 해야 합니다. 3의 배수와 5의 배수 검사가 먼저 오면 15가 <code>Fizz</code>로 끝납니다. 정수를 문자열로 바꿀 때는 <code>strconv.Itoa(n)</code>을 씁니다(<code>import "strconv"</code>). 나머지는 <code>n%3 == 0</code>으로 검사합니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="go" data-src="lab/lesson03/practice/main.go" data-lines="20-31">func fizzBuzz(n int) string {
+	switch {
+	case n%15 == 0:
+		return "FizzBuzz"
+	case n%3 == 0:
+		return "Fizz"
+	case n%5 == 0:
+		return "Buzz"
+	default:
+		return strconv.Itoa(n)
+	}
+}</pre>
+            <p>전체 프로그램(<code>main</code> 함수 포함)의 실행 결과입니다.</p>
+<pre class="output" data-src="lab/lesson03/expected/practice.txt">평균: 2.5 &lt;nil&gt;
+오류: 평균을 구할 값이 없습니다
+1
+2
+Fizz
+4
+Buzz
+Fizz
+7
+8
+Fizz
+Buzz
+11
+Fizz
+13
+14
+FizzBuzz</pre>
+          </div>
+        </details>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="go-03-run"><span>세 프로그램(<code>variables</code>, <code>control</code>, <code>functions</code>)을 직접 입력해 <code>go run</code>으로 실행하고 출력이 예상과 같음을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-03-zero"><span>zero value 출력 줄을 보고 타입별 기본값을 내 말로 설명할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-03-shadow"><span>"블록 안/밖" 두 줄의 출력이 다른 이유(가리기)를 설명할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-03-error"><span><code>declared and not used</code> 오류를 직접 만들어 터미널과 문제 패널에서 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-03-shortcut"><span>줄 이동·복사·삭제·주석 단축키를 4개 모두 마우스 없이 사용했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-03-intellisense"><span><kbd class="key">Ctrl+Space</kbd>와 <kbd class="key">Ctrl+Shift+Space</kbd>를 사용해 보았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-03-setting"><span><code>editor.inlayHints.enabled</code>를 껐다 켜고 <code>.vscode/settings.json</code>의 기록을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-03-practice"><span>연습 문제 두 개를 힌트 없이 먼저 시도했다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <p>첫 번째와 세 번째 오류 출력은 위 6단계에서 <code>mine/variables/main.go</code>를 고친 결과와 같습니다. 나머지 세 개(함수 밖 <code>:=</code>, 반환값 개수, <code>else</code> 위치)는 설명용으로 만든 짧은 예제 코드에서 실행한 출력이라 파일 경로의 폴더 이름과 줄·열 번호가 내 파일과 다를 수 있습니다. 메시지 문장을 중심으로 읽으세요.</p>
+        <h3>증상: 변수를 선언만 하고 쓰지 않았다</h3>
+        <p>선언한 변수나 import를 쓰지 않으면 컴파일 오류입니다. 변수를 지우거나, 일부러 쓰지 않을 값이라면 <code>_</code>로 받습니다. 오류 줄 번호는 <code>파일:줄:열</code> 순서입니다.</p>
+<pre class="output" data-src="lab/lesson03/expected/err-unused.txt"># golab/lesson03/mine/variables
+lesson03\mine\variables\main.go:39:2: declared and not used: unused</pre>
+        <h3>증상: 함수 밖에서 :=를 썼다</h3>
+        <p><code>:=</code>는 함수 안에서만 쓸 수 있습니다. 함수 밖(패키지 수준)에서는 <code>var message = "안녕"</code>처럼 <code>var</code>로 선언합니다.</p>
+<pre class="output" data-src="lab/lesson03/expected/err-outside.txt"># golab/lesson03/mine/variables
+lesson03\mine\variables\main.go:5:1: syntax error: non-declaration statement outside function body</pre>
+        <h3>증상: 서로 다른 숫자 타입을 연산했다</h3>
+        <p>Go는 숫자 타입을 자동으로 변환하지 않습니다. <code>float64(count) * ratio</code>처럼 한쪽을 명시적으로 변환합니다.</p>
+<pre class="output" data-src="lab/lesson03/expected/err-mismatch.txt"># golab/lesson03/mine/variables
+lesson03\mine\variables\main.go:39:14: invalid operation: count * ratio (mismatched types int and float64)</pre>
+        <h3>증상: 반환값 개수가 맞지 않는다</h3>
+        <p><code>divide</code>가 값 두 개를 돌려주는데 변수 하나로 받았습니다. <code>result, err := divide(4, 2)</code>처럼 둘 다 받거나, 하나를 버리려면 <code>result, _ := divide(4, 2)</code>를 씁니다. 오류를 버리는 것은 정말 괜찮을 때만 하세요.</p>
+<pre class="output" data-src="lab/lesson03/expected/err-assign.txt"># golab/lesson03/mine/functions
+lesson03\mine\functions\main.go:16:12: assignment mismatch: 1 variable but divide returns 2 values</pre>
+        <h3>증상: else를 다음 줄에 썼다</h3>
+        <p>Go는 줄 끝에 세미콜론을 자동으로 넣기 때문에 <code>}</code> 다음 줄의 <code>else</code>가 앞 문장과 이어지지 않습니다. <code>} else {</code>처럼 같은 줄에 씁니다.</p>
+<pre class="output" data-src="lab/lesson03/expected/err-else.txt"># golab/lesson03/mine/control
+lesson03\mine\control\main.go:10:2: syntax error: unexpected keyword else, expected }</pre>
+      </section>
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨 04에서는 슬라이스(<code>len</code>/<code>cap</code>/<code>append</code>), 맵, 구조체와 메서드, 포인터를 배웁니다. 값 복사와 참조의 차이가 Go에서 어떻게 드러나는지 직접 실행해 보고, <kbd class="key">F12</kbd>와 <kbd class="key">F2</kbd> 같은 코드 탐색 단축키를 연습합니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="02-hello-go.html"><small>← 이전 레슨</small>02 · 첫 프로그램과 go 명령어</a>
+          <a class="next" rel="next" href="04-collections-structs.html"><small>다음 레슨 →</small>04 · 슬라이스·맵·구조체·포인터</a>
+        </nav>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Go 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

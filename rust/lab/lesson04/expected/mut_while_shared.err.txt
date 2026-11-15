@@ -1,0 +1,12 @@
+error[E0502]: cannot borrow `log` as mutable because it is also borrowed as immutable
+ --> lesson04\src\bin\scratch.rs:4:5
+  |
+3 |     let first = &log;
+  |                 ---- immutable borrow occurs here
+4 |     log.push_str(" -> 진행");
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+5 |     println!("{first}");
+  |                ----- immutable borrow later used here
+
+For more information about this error, try `rustc --explain E0502`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error

@@ -1,0 +1,4 @@
+# golab/lesson05/mine/errors
+lesson05\mine\errors\main.go:10:10: not enough return values
+	have (error)
+	want (string, error)

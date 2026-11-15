@@ -1,0 +1,6 @@
+3 true Go 1.5 false
+타입: int string float64 bool
+zero value: 0 0 false "" <nil>
+상수: golab 0 1 2
+변환: 4.5
+바이트 수: 6 글자 수: 2

@@ -1,0 +1,14 @@
+error[E0423]: cannot find function `println` in this scope
+ --> lesson02\src\bin\scratch.rs:2:5
+  |
+2 |     println("안녕");
+  |     ^^^^^^^ not found in this scope
+  |
+  = note: a macro named `println` exists in another namespace
+help: use `!` to invoke the macro
+  |
+2 |     println!("안녕");
+  |            +
+
+For more information about this error, try `rustc --explain E0423`.
+error: could not compile `lesson02` (bin "scratch") due to 1 previous error

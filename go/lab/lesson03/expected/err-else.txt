@@ -1,0 +1,2 @@
+# golab/lesson03/mine/control
+lesson03\mine\control\main.go:10:2: syntax error: unexpected keyword else, expected }

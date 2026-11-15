@@ -1,0 +1,69 @@
+use std::fs;
+
+use crate::codec::{decode_task, encode_task};
+
+/// 과제 3 정답 예시: 줄 단위 텍스트 파일에 저장하는 저장소입니다.
+/// id는 현재 파일에서 가장 큰 id + 1이라, 마지막 Task를 지운 뒤에는 id가 다시 쓰일 수 있습니다.
+pub struct FileRepository {
+    path: PathBuf,
+}
+
+impl FileRepository {
+    pub fn open(path: impl Into<PathBuf>) -> Self {
+        FileRepository { path: path.into() }
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    fn read_all(&self) -> Vec<Task> {
+        match fs::read_to_string(&self.path) {
+            Ok(text) => text
+                .lines()
+                .filter_map(|line| decode_task(line).ok())
+                .collect(),
+            Err(_) => Vec::new(),
+        }
+    }
+
+    fn write_all(&self, tasks: &[Task]) {
+        let mut text = String::new();
+        for task in tasks {
+            text.push_str(&encode_task(task));
+            text.push('\n');
+        }
+        fs::write(&self.path, text).expect("파일에 쓸 수 없습니다");
+    }
+}
+
+impl TaskRepository for FileRepository {
+    fn list(&self) -> Vec<Task> {
+        self.read_all()
+    }
+
+    fn insert(&mut self, title: &str) -> Task {
+        let mut tasks = self.read_all();
+        let id = tasks.iter().map(|task| task.id).max().unwrap_or(0) + 1;
+        let task = Task {
+            id,
+            title: title.to_string(),
+            done: false,
+        };
+        tasks.push(task.clone());
+        self.write_all(&tasks);
+        task
+    }
+
+    fn find(&self, id: u64) -> Option<Task> {
+        self.read_all().into_iter().find(|task| task.id == id)
+    }
+
+    fn remove(&mut self, id: u64) -> bool {
+        let mut tasks = self.read_all();
+        let before = tasks.len();
+        tasks.retain(|task| task.id != id);
+        self.write_all(&tasks);
+        tasks.len() < before
+    }
+}

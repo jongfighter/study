@@ -1,0 +1,8 @@
+thread '<unnamed>' (...) panicked at lesson10\examples\scratch.rs:9:9:
+락을 잡은 채로 패닉
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+스레드 결과는 Err인가? true
+
+thread 'main' (...) panicked at lesson10\examples\scratch.rs:13:32:
+called `Result::unwrap()` on an `Err` value: PoisonError { .. }
+error: process didn't exit successfully: `...\scratch.exe` (exit code: 101)

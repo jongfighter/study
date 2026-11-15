@@ -1,0 +1,4 @@
+
+thread 'main' (...) panicked at lesson06\src\bin\scratch.rs:3:22:
+end byte index 1 is not a char boundary; it is inside '안' (bytes 0..3 of string)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

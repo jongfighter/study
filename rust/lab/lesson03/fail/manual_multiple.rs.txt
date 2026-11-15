@@ -1,0 +1,7 @@
+fn is_fizzbuzz(n: u32) -> bool {
+    n % 15 == 0
+}
+
+fn main() {
+    println!("{}", is_fizzbuzz(15));
+}

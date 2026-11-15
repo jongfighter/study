@@ -1,0 +1,21 @@
+error[E0382]: use of moved value: `take_owner`
+ --> lesson08\examples\scratch.rs:6:20
+  |
+5 |     println!("{}", take_owner());
+  |                    ------------ `take_owner` moved due to this call
+6 |     println!("{}", take_owner());
+  |                    ^^^^^^^^^^ value used here after move
+  |
+note: closure cannot be invoked more than once because it moves the variable `owner` out of its environment
+ --> lesson08\examples\scratch.rs:3:30
+  |
+3 |     let take_owner = move || owner;
+  |                              ^^^^^
+note: this value implements `FnOnce`, which causes it to be moved when called
+ --> lesson08\examples\scratch.rs:5:20
+  |
+5 |     println!("{}", take_owner());
+  |                    ^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0382`.
+error: could not compile `lesson08` (example "scratch") due to 1 previous error

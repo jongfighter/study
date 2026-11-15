@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="go" data-lesson="04">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="슬라이스·맵·구조체·포인터 수신자를 직접 실행하며 값과 참조의 차이를 익힙니다.">
+  <title>04 · 슬라이스·맵·구조체·포인터 — Go 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Go 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Go</span>
+      <span>Go 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 04 · 컬렉션과 구조체</p>
+        <h1>슬라이스·맵·구조체·포인터</h1>
+        <p class="lead">슬라이스, 맵, 구조체와 메서드, 포인터를 직접 실행하며 Go에서 값이 복사되는 때와 공유되는 때를 구분합니다. 코드 사이를 오가는 VS Code 탐색 단축키(<kbd class="key">F12</kbd>, <kbd class="key">F2</kbd> 등)도 함께 익힙니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 120분</li>
+          <li><b>난이도</b> ★★★☆☆</li>
+          <li><b>선행</b> <a href="03-basics.html">레슨 03</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson04/mine</span> (완성 코드: <span class="file">lab/lesson04</span>)</li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li>슬라이스의 <code>len</code>, <code>cap</code>, <code>append</code>를 설명하고, 슬라이스를 잘라 쓸 때 원본과 메모리를 공유하는 것을 실행 결과로 확인할 수 있다.</li>
+          <li>맵을 만들고 읽고 지우며, <code>v, ok := m[k]</code> 패턴과 nil 맵에 쓰면 패닉이 난다는 사실을 설명할 수 있다.</li>
+          <li>구조체와 값 수신자·포인터 수신자 메서드를 작성하고, 값이 복사되는 경우와 원본이 바뀌는 경우를 구분할 수 있다.</li>
+          <li><code>for ... range</code>가 요소의 복사본을 준다는 점을 알고, 요소를 바꾸려면 인덱스를 쓴다.</li>
+          <li><kbd class="key">F12</kbd>, <kbd class="key">Shift+F12</kbd>, <kbd class="key">F2</kbd>, <kbd class="key">Ctrl+Shift+O</kbd>로 코드를 탐색하고 이름을 안전하게 바꿀 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>영문 원문은 한국어 요약을 먼저 읽은 뒤 확인하세요. 로컬 파일은 VS Code에서 <kbd class="key">Ctrl+P</kbd>로 파일 이름을 입력해 열 수 있습니다. 클론한 자료 폴더는 읽기용이라 그 안에서 <code>go</code> 명령을 실행하지 않고, 따라 해 보고 싶은 예제는 <span class="file">lab/lesson04/mine</span>에 직접 입력합니다.</p>
+        <ul>
+          <li><a href="https://go.dev/tour/moretypes/1">A Tour of Go · More types (영문)</a>, <a href="https://go.dev/tour/methods/1">Methods and interfaces (영문)</a> — 웹 페이지가 원문입니다. 로컬 폴더의 연습 문제: <span class="file" data-local="tour-of-go/wc/wc.go">tour-of-go/wc/wc.go</span>(맵 연습인 Exercise: Maps의 검사 코드), <span class="file" data-local="tour-of-go/pic/pic.go">tour-of-go/pic/pic.go</span>(슬라이스 연습)</li>
+          <li>Go by Example: <a href="https://gobyexample.com/arrays">Arrays</a> · <a href="https://gobyexample.com/slices">Slices</a> · <a href="https://gobyexample.com/maps">Maps</a> · <a href="https://gobyexample.com/range-over-built-in-types">Range over Built-in Types</a> · <a href="https://gobyexample.com/pointers">Pointers</a> · <a href="https://gobyexample.com/structs">Structs</a> · <a href="https://gobyexample.com/methods">Methods</a> (모두 영문). 로컬 파일 예: <span class="file" data-local="go-by-example/examples/slices/slices.go">go-by-example/examples/slices/slices.go</span>, <span class="file" data-local="go-by-example/examples/pointers/pointers.go">go-by-example/examples/pointers/pointers.go</span></li>
+          <li>Learn Go with Tests: <span class="file" data-local="learn-go-with-tests/arrays-and-slices.md">learn-go-with-tests/arrays-and-slices.md</span>, <span class="file" data-local="learn-go-with-tests/structs-methods-and-interfaces.md">learn-go-with-tests/structs-methods-and-interfaces.md</span>, <span class="file" data-local="learn-go-with-tests/pointers-and-errors.md">learn-go-with-tests/pointers-and-errors.md</span>, <span class="file" data-local="learn-go-with-tests/maps.md">learn-go-with-tests/maps.md</span>. 각 장의 완성 코드는 <span class="file" data-local="learn-go-with-tests/arrays/v1/sum.go">learn-go-with-tests/arrays/v1/sum.go</span>, <span class="file" data-local="learn-go-with-tests/pointers/v1/wallet.go">learn-go-with-tests/pointers/v1/wallet.go</span> 같은 폴더에 있습니다.</li>
+          <li>100 Go Mistakes: <a href="https://100go.co/#not-understanding-slice-length-and-capacity-20">#20 슬라이스 길이와 용량</a>(로컬 <span class="file" data-local="100-go-mistakes/docs/20-slice.md">100-go-mistakes/docs/20-slice.md</span>), <a href="https://100go.co/#unexpected-side-effects-using-slice-append-25">#25 append의 부작용</a>, <a href="https://100go.co/#ignoring-that-elements-are-copied-in-range-loops-30">#30 range 요소 복사</a>, <a href="https://100go.co/#not-knowing-which-type-of-receiver-to-use-42">#42 수신자 종류 선택</a> (모두 영문)</li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>배열(array)과 슬라이스(slice).</b> 배열은 크기가 타입에 포함되고(<code>[3]int</code>) 대입하면 통째로 복사됩니다. 실무에서는 대부분 슬라이스를 씁니다. 슬라이스는 "배열 일부를 가리키는 창"으로, 내부적으로 (배열 위치, 길이 <code>len</code>, 용량 <code>cap</code>) 세 값을 가집니다. <code>append</code>는 용량이 모자라면 더 큰 배열을 새로 만들어 복사하므로 결과를 <b>반드시 다시 대입</b>해야 합니다(<code>numbers = append(numbers, 4)</code>). <code>base[1:3]</code>처럼 자른 슬라이스는 원본과 같은 배열을 공유합니다. 그래서 한쪽을 바꾸면 다른 쪽에도 보이고, 용량이 남아 있으면 <code>append</code>가 원본의 다음 칸을 덮어씁니다. 독립된 복사본이 필요하면 <code>append([]int(nil), s...)</code>나 <code>slices.Clone</code>을 씁니다. 초기화하지 않은 <code>var s []int</code>는 <code>nil</code> 슬라이스지만 길이가 0이고 <code>append</code>할 수 있습니다.</p>
+        <p><b>맵(map).</b> 해시 맵입니다. 없는 키를 읽으면 오류 대신 값 타입의 zero value가 나오므로, 키 존재 여부는 <code>v, ok := m["k"]</code>의 <code>ok</code>로 확인합니다. <code>delete(m, k)</code>로 지웁니다. nil 맵은 읽을 수 있지만 <b>쓰면 패닉</b>이 납니다. 순회 순서는 보장되지 않으므로, 정렬된 순서가 필요하면 키를 모아 정렬합니다(<code>slices.Sorted(maps.Keys(m))</code>).</p>
+        <p><b>구조체(struct)와 메서드.</b> 구조체는 필드를 묶은 값 타입입니다. 메서드는 클래스 안이 아니라 밖에서 <code>func (t *Task) Toggle()</code>처럼 <b>수신자(receiver)</b>를 앞에 적어 정의합니다. <code>(t Task)</code> 값 수신자는 복사본에서 일하므로 원본을 바꾸지 못하고, <code>(t *Task)</code> 포인터 수신자는 원본을 바꿉니다. 필드를 바꾸는 메서드는 포인터 수신자로 만듭니다. 구조체를 만드는 함수는 관례적으로 <code>NewTask</code>처럼 <code>New</code>로 시작합니다.</p>
+        <p><b>포인터(pointer).</b> <code>&amp;x</code>는 변수의 주소, <code>*p</code>는 주소가 가리키는 값입니다. Go의 포인터에는 산술 연산이 없고, <code>p.Field</code>처럼 쓰면 자동으로 역참조됩니다. Kotlin에서 객체 변수가 항상 참조인 것과 달리 Go의 구조체 변수는 <b>값 자체</b>이고, 참조처럼 쓰고 싶을 때 <code>*Task</code>를 명시합니다.</p>
+        <p><b>range의 복사.</b> <code>for _, t := range tasks</code>의 <code>t</code>는 요소의 <b>복사본</b>입니다. 요소를 바꾸려면 <code>tasks[i].Done = true</code>처럼 인덱스로 접근합니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>완성 코드가 <span class="file">lab/lesson04</span>에 있고, 직접 입력하는 코드는 <span class="file">lab/lesson04/mine</span> 아래 같은 이름의 폴더에 둡니다. 코드 블록 위쪽의 파일 이름은 비교용 완성본의 위치입니다. 터미널은 모두 <span class="file">lab</span> 폴더에서 실행하고, 각 단계는 앞 단계에서 만든 폴더를 이어서 씁니다.</p>
+        <ol class="steps">
+          <li>
+            <strong>슬라이스 프로그램 입력하고 실행하기</strong>
+            <p>탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson04</span> 폴더를 우클릭해 <b>새 폴더</b>로 <code>mine/slices</code>를 만들고, 그 안에 새 파일 <code>main.go</code>를 만들어 아래 코드를 직접 입력합니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson04/slices/main.go">package main
+
+import "fmt"
+
+func double(values []int) {
+	for i := range values {
+		values[i] *= 2
+	}
+}
+
+func main() {
+	numbers := []int{1, 2, 3}
+	fmt.Println(numbers, len(numbers), cap(numbers))
+
+	numbers = append(numbers, 4)
+	fmt.Println(numbers, len(numbers), cap(numbers))
+
+	base := []int{10, 20, 30, 40, 50}
+	part := base[1:3]
+	fmt.Println("part:", part, len(part), cap(part))
+
+	part[0] = 99
+	fmt.Println("base:", base)
+
+	part = append(part, 77)
+	fmt.Println("base:", base)
+
+	independent := append([]int(nil), base[1:3]...)
+	independent[0] = -1
+	fmt.Println("복사본:", independent, "원본:", base)
+
+	var empty []int
+	fmt.Println("nil 슬라이스:", empty == nil, len(empty))
+	empty = append(empty, 1)
+	fmt.Println(empty)
+
+	scores := []int{1, 2, 3}
+	double(scores)
+	fmt.Println("double 이후:", scores)
+
+	array := [3]int{1, 2, 3}
+	arrayCopy := array
+	arrayCopy[0] = 100
+	fmt.Println("배열:", array, arrayCopy)
+}</pre>
+            <p>저장한 뒤 터미널에서 실행합니다. 실행하기 전에 각 줄의 출력을 먼저 예측해 보세요.</p>
+<pre class="code" data-lang="text">go run ./lesson04/mine/slices</pre>
+<pre class="output" data-src="lab/lesson04/expected/slices.txt">[1 2 3] 3 3
+[1 2 3 4] 4 6
+part: [20 30] 2 4
+base: [10 99 30 40 50]
+base: [10 99 30 77 50]
+복사본: [-1 30] 원본: [10 99 30 77 50]
+nil 슬라이스: true 0
+[1]
+double 이후: [2 4 6]
+배열: [1 2 3] [100 2 3]</pre>
+          </li>
+          <li>
+            <strong>출력으로 슬라이스의 동작 읽기</strong>
+            <p>1단계의 출력을 줄 단위로 해석합니다.</p>
+            <ul>
+              <li>2번째 줄: 용량 3인 슬라이스에 <code>append</code>하면 길이는 4, 용량은 6이 됩니다. 새 배열이 만들어졌다는 뜻입니다.</li>
+              <li>3~5번째 줄: <code>part := base[1:3]</code>은 <code>[20 30]</code>, 길이 2, 용량 4입니다(원본 배열의 인덱스 1부터 끝까지가 용량). <code>part[0] = 99</code>로 <code>base</code>도 바뀌었고, 용량이 남은 <code>part</code>에 <code>append(part, 77)</code>하자 <code>base[3]</code>이 40에서 77로 덮어써졌습니다.</li>
+              <li>6번째 줄: <code>append([]int(nil), base[1:3]...)</code>로 만든 복사본은 원본과 독립이라 <code>-1</code>로 바꿔도 원본에 영향이 없습니다.</li>
+              <li>7~8번째 줄: nil 슬라이스도 길이 0이고 <code>append</code>할 수 있습니다.</li>
+              <li>9번째 줄: 슬라이스를 함수에 넘기면 요소가 공유되어 <code>double</code>이 원본 값을 바꿨습니다.</li>
+              <li>10번째 줄: 배열은 대입하면 복사되어 <code>arrayCopy</code>만 바뀝니다.</li>
+            </ul>
+          </li>
+          <li>
+            <strong>맵 프로그램 입력하고 실행하기</strong>
+            <p><span class="file">lab/lesson04/mine</span> 아래에 <code>maps</code> 폴더와 <code>main.go</code>를 만들어 입력합니다. <code>import</code> 블록은 직접 쓰지 않아도 됩니다. <code>slices.Sorted</code>를 입력하고 저장하면 필요한 import가 자동으로 추가되는지 확인해 보세요(레슨 02의 저장 시 import 정리).</p>
+<pre class="code" data-lang="go" data-src="lab/lesson04/maps/main.go">package main
+
+import (
+	"fmt"
+	"maps"
+	"slices"
+)
+
+func main() {
+	stock := map[string]int{"apple": 3, "pear": 0}
+	stock["kiwi"] = 5
+	fmt.Println(stock, len(stock))
+
+	count, ok := stock["banana"]
+	fmt.Println("banana:", count, ok)
+
+	if count, ok := stock["apple"]; ok {
+		fmt.Println("apple 재고:", count)
+	}
+
+	delete(stock, "pear")
+
+	for _, name := range slices.Sorted(maps.Keys(stock)) {
+		fmt.Println(name, stock[name])
+	}
+
+	tags := map[string][]string{}
+	tags["go"] = append(tags["go"], "backend")
+	tags["go"] = append(tags["go"], "cli")
+	fmt.Println(tags)
+
+	var missing map[string]int
+	fmt.Println("nil 맵 읽기:", missing["x"], len(missing))
+}</pre>
+<pre class="code" data-lang="text">go run ./lesson04/mine/maps</pre>
+<pre class="output" data-src="lab/lesson04/expected/maps.txt">map[apple:3 kiwi:5 pear:0] 3
+banana: 0 false
+apple 재고: 3
+apple 3
+kiwi 5
+map[go:[backend cli]]
+nil 맵 읽기: 0 0</pre>
+            <p>첫 줄에서 <code>fmt.Println</code>이 맵을 키 순서로 정렬해 출력했습니다. <code>banana</code>는 없는 키이므로 <code>0 false</code>가 나왔습니다. 키를 정렬해서 순회했기 때문에 실행할 때마다 순서가 같습니다(맵 자체의 순회 순서는 보장되지 않습니다). 마지막 줄처럼 nil 맵은 읽기만 가능합니다.</p>
+          </li>
+          <li>
+            <strong>구조체와 메서드 프로그램 입력하고 실행하기</strong>
+            <p><code>structs</code> 폴더와 <code>main.go</code>를 만들어 입력합니다. 이 파일을 이후 탐색 단계에서 계속 사용합니다. <code>BrokenToggle</code>은 일부러 만든 잘못된 메서드입니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson04/structs/main.go">package main
+
+import "fmt"
+
+type Task struct {
+	ID    int
+	Title string
+	Done  bool
+}
+
+func NewTask(id int, title string) *Task {
+	return &amp;Task{ID: id, Title: title}
+}
+
+func (t Task) Describe() string {
+	mark := " "
+	if t.Done {
+		mark = "x"
+	}
+	return fmt.Sprintf("[%s] #%d %s", mark, t.ID, t.Title)
+}
+
+func (t *Task) Toggle() {
+	t.Done = !t.Done
+}
+
+func (t Task) BrokenToggle() {
+	t.Done = !t.Done
+}
+
+func main() {
+	task := Task{ID: 1, Title: "Go 공부하기"}
+	fmt.Println(task.Describe())
+	fmt.Printf("%v\n%+v\n", task, task)
+
+	task.BrokenToggle()
+	fmt.Println("BrokenToggle 이후:", task.Done)
+
+	task.Toggle()
+	fmt.Println("Toggle 이후:", task.Done)
+
+	copied := task
+	copied.Title = "복사본"
+	fmt.Println(task.Title, "/", copied.Title)
+
+	pointer := &amp;task
+	pointer.Title = "포인터로 수정"
+	fmt.Println(task.Title)
+
+	created := NewTask(2, "테스트 작성")
+	created.Toggle()
+	fmt.Println(created.Describe())
+
+	tasks := []Task{{ID: 3, Title: "배포하기"}, {ID: 4, Title: "회고하기"}}
+	for _, t := range tasks {
+		t.Done = true
+	}
+	fmt.Println("range 복사본을 바꾼 뒤:", tasks[0].Done, tasks[1].Done)
+
+	for i := range tasks {
+		tasks[i].Done = true
+	}
+	fmt.Println("인덱스로 바꾼 뒤:", tasks[0].Done, tasks[1].Done)
+
+	var zero Task
+	fmt.Printf("zero value: %+v\n", zero)
+	fmt.Println(task == Task{ID: 1, Title: "포인터로 수정", Done: true})
+}</pre>
+<pre class="code" data-lang="text">go run ./lesson04/mine/structs</pre>
+<pre class="output" data-src="lab/lesson04/expected/structs.txt">[ ] #1 Go 공부하기
+{1 Go 공부하기 false}
+{ID:1 Title:Go 공부하기 Done:false}
+BrokenToggle 이후: false
+Toggle 이후: true
+Go 공부하기 / 복사본
+포인터로 수정
+[x] #2 테스트 작성
+range 복사본을 바꾼 뒤: false false
+인덱스로 바꾼 뒤: true true
+zero value: {ID:0 Title: Done:false}
+true</pre>
+            <p><code>BrokenToggle 이후: false</code>와 <code>Toggle 이후: true</code>의 차이가 값 수신자와 포인터 수신자의 차이입니다. <code>BrokenToggle</code>은 복사본의 <code>Done</code>을 바꿨기 때문에 원본이 그대로입니다. <code>range 복사본을 바꾼 뒤: false false</code>와 <code>인덱스로 바꾼 뒤: true true</code>도 같은 원리입니다. <code>task.Toggle()</code>처럼 변수에 포인터 메서드를 호출하면 Go가 <code>(&amp;task).Toggle()</code>로 바꿔 줍니다.</p>
+          </li>
+          <li>
+            <strong>정의로 이동, 미리 보기, 참조 찾기</strong>
+            <p>4단계의 <span class="file">mine/structs/main.go</span>에서 <code>main</code> 함수 안의 <code>task.Toggle()</code>의 <code>Toggle</code> 위에 커서를 놓고 <kbd class="key">F12</kbd>를 누릅니다. 커서가 <code>func (t *Task) Toggle()</code> 선언으로 이동합니다. <kbd class="key">Alt+←</kbd>로 방금 있던 호출 위치로 돌아오고 <kbd class="key">Alt+→</kbd>로 다시 앞으로 갑니다.</p>
+            <p>이번에는 같은 <code>Toggle</code> 위에서 <kbd class="key">Alt+F12</kbd>를 눌러 현재 위치를 떠나지 않고 정의를 작은 창으로 미리 봅니다(Esc 키로 닫습니다). 이어서 <code>Task</code> 구조체의 <code>Done</code> 필드 위에서 <kbd class="key">Shift+F12</kbd>를 누르면 <code>Done</code>을 쓰는 모든 곳의 목록이 열립니다. 이 단계의 코드로 gopls가 찾은 참조는 선언 1곳과 사용 14곳, 모두 15곳입니다.</p>
+          </li>
+          <li>
+            <strong>심볼 목록과 이름 바꾸기</strong>
+            <p>5단계에 이어 <kbd class="key">Ctrl+Shift+O</kbd>를 누르면 현재 파일의 심볼(타입, 함수, 메서드, 필드) 목록이 열립니다. <code>Toggle</code>이라고 입력해 걸러 보세요. 목록에는 <code>(*Task).Toggle</code>처럼 수신자가 함께 보입니다. Esc 키로 닫고, <kbd class="key">Ctrl+T</kbd>로 작업 영역 전체에서 심볼을 찾아 <code>Toggle</code>을 입력해 봅니다. 완성 코드와 내 코드 두 곳이 모두 나올 수 있습니다.</p>
+            <p>이제 <code>Task</code> 구조체의 <code>Done</code> 필드 위에서 <kbd class="key">F2</kbd>(이름 바꾸기)를 누르고 <code>Completed</code>를 입력한 뒤 엔터 키를 누릅니다. 이 파일 안의 <code>Done</code>이 모두 한 번에 바뀝니다(문자열 안의 글자는 바뀌지 않습니다). 저장(<kbd class="key">Ctrl+S</kbd>)하면 필드 정렬이 gofmt 서식으로 정리됩니다. 다시 실행하면 출력 대부분은 4단계와 같지만, <code>%+v</code>로 필드 이름까지 찍는 3번째 줄과 11번째 줄은 <code>Done</code> 대신 <code>Completed</code>가 나옵니다. 필드 이름도 출력의 일부이기 때문입니다(아래 출력 참고). 확인한 뒤 같은 방법으로 <code>Completed</code>를 <code>Done</code>으로 되돌립니다. 이름만 바꾸는 단순 검색·바꾸기와 달리, <code>F2</code>는 코드의 의미를 이해하고 같은 필드만 바꿉니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/structs-renamed.txt">[ ] #1 Go 공부하기
+{1 Go 공부하기 false}
+{ID:1 Title:Go 공부하기 Completed:false}
+BrokenToggle 이후: false
+Toggle 이후: true
+Go 공부하기 / 복사본
+포인터로 수정
+[x] #2 테스트 작성
+range 복사본을 바꾼 뒤: false false
+인덱스로 바꾼 뒤: true true
+zero value: {ID:0 Title: Completed:false}
+true</pre>
+          </li>
+          <li>
+            <strong>패닉 메시지 읽기</strong>
+            <p>이번에는 일부러 패닉을 내는 짧은 프로그램을 새로 만듭니다. 기존 파일에 줄을 덧붙이면 <code>stock</code> 같은 이름이 이미 쓰이고 있어 컴파일 오류가 날 수 있으므로, 새 폴더에서 따로 실습합니다. <span class="file">lab/lesson04/mine</span> 아래에 <code>nilmap</code> 폴더와 <code>main.go</code>를 만들고 입력해 실행합니다. 읽기는 되지만 쓰기에서 프로그램이 멈춥니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson04/nilmap/main.go">package main
+
+import "fmt"
+
+func main() {
+	var stock map[string]int
+	fmt.Println(stock["apple"])
+	stock["apple"] = 3
+}</pre>
+<pre class="code" data-lang="text">go run ./lesson04/mine/nilmap</pre>
+<pre class="output" data-src="lab/lesson04/expected/err-nilmap.txt">0
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+main.main()
+	.../lesson04/mine/nilmap/main.go:8 +0x...
+exit status 2</pre>
+            <p>패닉 메시지 아래의 <code>goroutine 1 [running]</code> 이후는 호출 스택(call stack)이고, 파일 경로와 주소(<code>+0x...</code>)는 PC마다 다르게 나옵니다. <code>main.go:8</code>은 8번째 줄, 즉 <code>stock["apple"] = 3</code>이 패닉을 냈다는 뜻입니다. 마지막 줄의 <code>exit status 2</code>는 <code>go run</code>이 알려 주는 프로그램의 종료 코드입니다.</p>
+            <p>같은 방식으로 <code>mine</code> 아래에 <code>outofrange</code> 폴더와 <code>main.go</code>를 만들어 범위를 벗어난 접근을 일으켜 봅니다. 이 오류는 컴파일할 때가 아니라 실행 중에 납니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson04/outofrange/main.go">package main
+
+import "fmt"
+
+func main() {
+	numbers := []int{1, 2, 3}
+	index := 5
+	fmt.Println(numbers[index])
+}</pre>
+<pre class="code" data-lang="text">go run ./lesson04/mine/outofrange</pre>
+<pre class="output" data-src="lab/lesson04/expected/err-index.txt">panic: runtime error: index out of range [5] with length 3
+
+goroutine 1 [running]:
+main.main()
+	.../lesson04/mine/outofrange/main.go:8 +0x...
+exit status 2</pre>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong>같은 레슨의 "자주 나는 오류"를 먼저 확인하세요. 코드가 안 맞으면 <span class="file">lab/lesson04</span>의 완성 코드와 비교해 보세요.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Go</th></tr></thead>
+            <tbody>
+              <tr><td>목록</td><td><code>listOf</code>, <code>mutableListOf</code>, <code>List&lt;Int&gt;</code></td><td><code>list</code></td><td><code>[]int</code> 슬라이스, <code>append</code> 결과를 다시 대입</td></tr>
+              <tr><td>맵과 없는 키</td><td><code>map["k"]</code>는 <code>Int?</code></td><td><code>d.get("k")</code>는 <code>None</code></td><td><code>v, ok := m["k"]</code>, 없으면 zero value와 <code>false</code></td></tr>
+              <tr><td>데이터 객체</td><td><code>data class Task(val id: Int, val title: String)</code> (equals, copy, toString 자동)</td><td><code>@dataclass</code>, pydantic <code>BaseModel</code></td><td><code>type Task struct</code>. <code>==</code>와 <code>%+v</code> 출력은 쓸 수 있고 복사는 대입</td></tr>
+              <tr><td>메서드</td><td>클래스 안 <code>fun</code>, <code>this</code></td><td><code>def m(self)</code></td><td>구조체 밖 <code>func (t *Task) M()</code>, 수신자가 <code>this</code> 역할</td></tr>
+              <tr><td>값 없음</td><td><code>Task?</code></td><td><code>Optional[Task]</code></td><td><code>*Task</code>가 <code>nil</code> 일 수 있음</td></tr>
+              <tr><td>변수 대입</td><td>객체는 참조를 복사</td><td>객체는 참조를 복사</td><td>구조체는 <b>값을 복사</b>, 참조가 필요하면 <code>*T</code></td></tr>
+              <tr><td>생성자</td><td>주 생성자, <code>companion</code></td><td><code>__init__</code></td><td><code>NewTask()</code> 관례 함수</td></tr>
+              <tr><td>반복 중 요소 수정</td><td><code>for (t in list) t.done = true</code>는 원본 객체가 바뀜</td><td><code>for t in list: t.done = True</code>도 원본이 바뀜</td><td><code>for _, t := range</code>의 <code>t</code>는 복사본이라 원본이 안 바뀜</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정</strong>JVM에서는 객체 변수를 다른 변수에 대입하거나 함수에 넘겨도 같은 객체를 가리킵니다. Go의 구조체는 대입하는 순간 <b>복사</b>됩니다(이 레슨의 <code>copied := task</code> 결과가 그 증거입니다). 그래서 Kotlin의 <code>for (task in tasks) task.done = true</code>를 그대로 옮기면 아무것도 바뀌지 않습니다. 반대로 슬라이스와 맵은 내부 데이터를 공유하는 "헤더"만 복사되므로, 함수에 넘기면 요소 수정은 호출한 쪽에 보이지만 함수 안의 <code>append</code>는 호출한 쪽의 길이를 바꾸지 않습니다. 구조체 안에 슬라이스나 맵 필드가 있으면 복사해도 그 내부는 공유됩니다(얕은 복사). 이 세 가지를 직접 실행해서 확인한 적이 없으면 헷갈리기 쉬우니, 이 레슨 코드를 반드시 돌려 보세요.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 코드 탐색과 안전한 이름 바꾸기</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>정의로 이동</td><td><kbd class="key">F12</kbd></td><td>함수·타입 선언을 보고 싶을 때</td></tr>
+                <tr><td>정의 미리 보기(Peek)</td><td><kbd class="key">Alt+F12</kbd></td><td>현재 위치를 유지한 채 선언만 훑을 때</td></tr>
+                <tr><td>참조 찾기</td><td><kbd class="key">Shift+F12</kbd></td><td>필드·함수가 쓰이는 곳을 모두 볼 때</td></tr>
+                <tr><td>이름 바꾸기</td><td><kbd class="key">F2</kbd></td><td>변수·필드·함수 이름을 안전하게 바꿀 때</td></tr>
+                <tr><td>파일 안 심볼로 이동</td><td><kbd class="key">Ctrl+Shift+O</kbd></td><td>긴 파일에서 함수·메서드로 점프</td></tr>
+                <tr><td>작업 영역 심볼 검색</td><td><kbd class="key">Ctrl+T</kbd></td><td>어느 파일에 있는지 모르는 타입·함수 찾기</td></tr>
+                <tr><td>뒤로 / 앞으로</td><td><kbd class="key">Alt+←</kbd> <kbd class="key">Alt+→</kbd></td><td>이동하기 전 위치로 되돌아갈 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>이동 경로(Breadcrumbs) 켜고 끄기</strong>
+            <p><span class="file">mine/structs/main.go</span>를 열면 에디터 위쪽에 파일 경로와 현재 커서가 있는 심볼을 보여 주는 한 줄(이동 경로, Breadcrumbs)이 있습니다. <code>Done</code> 필드 위에 커서를 놓고 이 줄이 어떻게 바뀌는지 봅니다. <kbd class="key">Ctrl+,</kbd>로 설정을 열어 <code>breadcrumbs.enabled</code>를 검색하고 <b>작업 영역</b> 탭에서 체크를 끄면 이 줄이 사라집니다(기본값은 켜짐입니다). 확인한 뒤 다시 켭니다.</p>
+            <p><span class="file">.vscode/settings.json</span>을 열어 보면 끄는 순간 <code>"breadcrumbs.enabled": false</code>가 새로 기록되고, 다시 켜면 그 줄이 값만 바뀌거나 사라집니다. 설정 화면에서 바꾼 값이 파일에 어떻게 남는지 직접 확인해 보세요. 확인 후 이 줄은 원래 상태(없거나 <code>true</code>)로 돌려 두는 것을 권합니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <p>풀이는 <span class="file">lab/lesson04/mine/practice</span> 폴더에 <code>main.go</code>로 만드세요. 완성본은 <span class="file">lab/lesson04/practice/main.go</span>이고 같은 폴더에 정답 확인용 테스트가 있습니다(테스트는 레슨 06에서 배웁니다).</p>
+        <h3>문제 1. 단어 개수 세기</h3>
+        <p>문자열을 받아 단어별 등장 횟수를 맵으로 돌려주는 <code>wordCount(text string) map[string]int</code>를 작성하세요. 단어는 공백으로 나뉩니다. 이 문제는 A Tour of Go의 Maps 연습과 같습니다. <b>완료 조건</b>: <code>wordCount("I ate a donut. Then I ate another donut.")</code>의 결과를 키 순서로 출력하면 <code>I 2</code>, <code>Then 1</code>, <code>a 1</code>, <code>another 1</code>, <code>ate 2</code>, <code>donut. 2</code> 여섯 줄이 나온다(대문자가 소문자보다 앞에 정렬됩니다).</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>문자열을 공백 기준으로 자르는 함수가 <code>strings.Fields</code>입니다(<code>import "strings"</code>). 맵을 <code>make(map[string]int)</code>로 만들고 단어마다 <code>counts[word]++</code>를 합니다. 없는 키의 zero value가 0이라서 <code>if</code>로 확인하지 않아도 됩니다. 정렬해서 출력하려면 <code>slices.Sorted(maps.Keys(counts))</code>를 씁니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="go" data-src="lab/lesson04/practice/main.go" data-lines="16-22">func wordCount(text string) map[string]int {
+	counts := make(map[string]int)
+	for _, word := range strings.Fields(text) {
+		counts[word]++
+	}
+	return counts
+}</pre>
+          </div>
+        </details>
+
+        <h3>문제 2. 남은 일 모으기와 모두 완료하기</h3>
+        <p>아래 <code>Task</code>를 이용해, 완료하지 않은 일의 제목만 모아 돌려주는 <code>pendingTitles(tasks []Task) []string</code>과, 슬라이스의 모든 일을 완료로 바꾸는 <code>completeAll(tasks []Task)</code>를 작성하세요. <b>완료 조건</b>: <code>completeAll</code>을 호출한 뒤 <code>pendingTitles</code>가 빈 슬라이스를 돌려주고, <b>호출한 쪽의 슬라이스가 실제로 바뀐다</b>.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson04/practice/main.go" data-lines="10-14">type Task struct {
+	ID    int
+	Title string
+	Done  bool
+}</pre>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p><code>for _, task := range tasks</code>로 <code>task.Done = true</code>를 하면 복사본만 바뀝니다. <code>completeAll</code>은 <code>for i := range tasks</code>와 <code>tasks[i].Done = true</code>를 써야 합니다. <code>pendingTitles</code>는 <code>var titles []string</code>으로 시작해 <code>append</code>하고 마지막에 돌려줍니다. 비어 있으면 nil 슬라이스를 돌려줘도 길이는 0이므로 괜찮습니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="go" data-src="lab/lesson04/practice/main.go" data-lines="24-38">func pendingTitles(tasks []Task) []string {
+	var titles []string
+	for _, task := range tasks {
+		if !task.Done {
+			titles = append(titles, task.Title)
+		}
+	}
+	return titles
+}
+
+func completeAll(tasks []Task) {
+	for i := range tasks {
+		tasks[i].Done = true
+	}
+}</pre>
+            <p>완성 프로그램(<code>main</code> 함수 포함)의 전체 실행 결과입니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/practice.txt">I 2
+Then 1
+a 1
+another 1
+ate 2
+donut. 2
+남은 일: [빨래하기 운동하기]
+모두 끝낸 뒤: [] 0</pre>
+          </div>
+        </details>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="go-04-run"><span>세 프로그램(<code>slices</code>, <code>maps</code>, <code>structs</code>)을 직접 입력해 <code>go run</code>으로 실행하고 출력이 예상과 같음을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-04-slice"><span>슬라이스를 자르고 <code>append</code>했을 때 원본이 바뀐 줄을 찾아 이유를 설명할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-04-receiver"><span><code>BrokenToggle</code>과 <code>Toggle</code>의 출력 차이를 값 수신자와 포인터 수신자로 설명할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-04-panic"><span>nil 맵 쓰기와 인덱스 범위 초과 패닉을 직접 일으켜 메시지를 읽었다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-04-navigation"><span><kbd class="key">F12</kbd>, <kbd class="key">Alt+F12</kbd>, <kbd class="key">Shift+F12</kbd>, <kbd class="key">Alt+←</kbd>를 마우스 없이 사용했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-04-rename"><span><kbd class="key">F2</kbd>로 <code>Done</code>을 <code>Completed</code>로 바꾸고, 실행 출력에서 <code>%+v</code>로 찍는 두 줄만 달라지는 것을 확인한 뒤 되돌렸다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-04-setting"><span><code>breadcrumbs.enabled</code>를 껐다 켜 보고 <code>.vscode/settings.json</code>의 기록을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-04-practice"><span>연습 문제 두 개를 힌트 없이 먼저 시도했다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <p>앞의 두 오류(nil 맵, 인덱스 범위) 출력은 위 7단계에서 만든 <span class="file">mine/nilmap</span>, <span class="file">mine/outofrange</span>를 실행한 결과입니다. 나머지 세 개는 설명용으로 만든 짧은 예제 코드의 출력이라 파일 경로의 폴더 이름과 줄·열 번호가 내 파일과 다를 수 있습니다. 메시지 문장을 중심으로 읽으세요.</p>
+        <h3>증상: nil 맵에 쓰자 프로그램이 패닉으로 멈춘다</h3>
+        <p><code>var stock map[string]int</code>만 선언한 맵은 nil이라 읽기는 되지만 쓰기는 안 됩니다. <code>stock := make(map[string]int)</code>나 <code>map[string]int{}</code>로 만든 뒤 씁니다. 첫 줄의 <code>0</code>은 쓰기 전에 읽은 값입니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/err-nilmap.txt">0
+panic: assignment to entry in nil map
+
+goroutine 1 [running]:
+main.main()
+	.../lesson04/mine/nilmap/main.go:8 +0x...
+exit status 2</pre>
+        <h3>증상: 슬라이스 인덱스가 범위를 벗어났다</h3>
+        <p>길이 3인 슬라이스의 인덱스는 0~2입니다. 컴파일할 때는 알 수 없는 인덱스라 실행 중에 패닉이 납니다. 접근하기 전에 <code>len</code>으로 확인합니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/err-index.txt">panic: runtime error: index out of range [5] with length 3
+
+goroutine 1 [running]:
+main.main()
+	.../lesson04/mine/outofrange/main.go:8 +0x...
+exit status 2</pre>
+        <h3>증상: 배열 인덱스가 상수로 범위를 벗어났다</h3>
+        <p>배열은 크기가 타입에 들어 있어서, 상수 인덱스는 컴파일할 때 검사됩니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/err-array-index.txt"># golab/lesson04/mine/slices
+lesson04\mine\slices\main.go:7:19: invalid argument: index 5 out of bounds [0:3]</pre>
+        <h3>증상: 리터럴에 포인터 메서드를 호출했다</h3>
+        <p><code>Task{}.Toggle()</code>처럼 이름 없는 임시 값은 주소를 얻을 수 없어서 포인터 수신자 메서드를 부를 수 없습니다. 변수에 담은 뒤(<code>t := Task{}; t.Toggle()</code>) 호출하거나 <code>(&amp;Task{}).Toggle()</code>로 씁니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/err-pointer-method.txt"># golab/lesson04/mine/structs
+lesson04\mine\structs\main.go:14:9: cannot call pointer method Toggle on Task</pre>
+        <h3>증상: range에서 인덱스 변수를 쓰지 않았다</h3>
+        <p><code>for i, name := range names</code>에서 <code>i</code>를 쓰지 않으면 오류입니다. 필요 없으면 <code>for _, name := range names</code>처럼 <code>_</code>로 받습니다.</p>
+<pre class="output" data-src="lab/lesson04/expected/err-range-unused.txt"># golab/lesson04/mine/slices
+lesson04\mine\slices\main.go:7:6: declared and not used: i</pre>
+      </section>
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨 05에서는 인터페이스(암묵적 구현), 구조체 임베딩, <code>error</code> 값과 <code>errors.Is</code>/<code>errors.As</code>, <code>panic</code>과 <code>recover</code>를 배웁니다. VS Code의 문제 패널과 빠른 수정(Quick Fix)도 연습합니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="03-basics.html"><small>← 이전 레슨</small>03 · 변수·타입·제어문·함수</a>
+          <a class="next" rel="next" href="05-interfaces-errors.html"><small>다음 레슨 →</small>05 · 인터페이스와 에러 처리</a>
+        </nav>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Go 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

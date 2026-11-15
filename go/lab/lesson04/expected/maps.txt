@@ -1,0 +1,7 @@
+map[apple:3 kiwi:5 pear:0] 3
+banana: 0 false
+apple 재고: 3
+apple 3
+kiwi 5
+map[go:[backend cli]]
+nil 맵 읽기: 0 0

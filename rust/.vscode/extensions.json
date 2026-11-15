@@ -1,0 +1,14 @@
+// 권장 확장 목록입니다. 이 폴더를 처음 열면 VS Code가 "권장 확장을 설치할까요?"라고 묻습니다.
+// 확장 보기(Ctrl+Shift+X)에서 @recommended 를 검색해도 같은 목록이 나옵니다.
+{
+  "recommendations": [
+    // Rust 공식 언어 서버 확장: 자동 완성, 정의로 이동, 오류 표시, 테스트·실행 버튼을 제공합니다.
+    "rust-lang.rust-analyzer",
+    // Cargo.toml 같은 TOML 파일에 색상·자동 완성·서식 정리를 제공합니다.
+    "tamasfe.even-better-toml",
+    // Windows(MSVC 도구 체인)에서 Rust 프로그램을 디버그할 때 쓰는 Microsoft C/C++ 확장입니다(레슨 02, 09~11에서 사용).
+    "ms-vscode.cpptools",
+    // .http 파일에 적은 요청을 편집기 안에서 바로 보내 봅니다(레슨 11의 axum REST API 실습에서 사용).
+    "humao.rest-client"
+  ]
+}

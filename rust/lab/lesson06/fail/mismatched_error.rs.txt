@@ -1,0 +1,8 @@
+fn parse_age(text: &str) -> Result<u8, String> {
+    let age = text.parse::<u8>()?;
+    Ok(age)
+}
+
+fn main() {
+    println!("{:?}", parse_age("20"));
+}

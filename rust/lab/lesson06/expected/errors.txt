@@ -1,0 +1,7 @@
+Task { id: 1, title: "우유 사기", done: false }
+Task { id: 2, title: "보고서 쓰기", done: true }
+실패한 입력 "x, 제목, false" -> id가 숫자가 아닙니다: invalid digit found in string
+실패한 입력 "1, , false" -> 제목이 비어 있습니다
+실패한 입력 "1, 제목" -> 필드는 3개여야 하는데 2개입니다
+실패한 입력 "1, 제목, maybe" -> done은 true/false여야 하는데 'maybe'입니다
+전체 파싱 결과: Err(InvalidDone("3"))

@@ -1,0 +1,13 @@
+error[E0596]: cannot borrow `*s` as mutable, as it is behind a `&` reference
+ --> lesson04\src\bin\scratch.rs:2:5
+  |
+2 |     s.push('!');
+  |     ^ `s` is a `&` reference, so it cannot be borrowed as mutable
+  |
+help: consider changing this to be a mutable reference
+  |
+1 | fn add_exclamation(s: &mut String) {
+  |                        +++
+
+For more information about this error, try `rustc --explain E0596`.
+error: could not compile `lesson04` (bin "scratch") due to 1 previous error

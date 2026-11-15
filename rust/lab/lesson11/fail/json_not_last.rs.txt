@@ -1,0 +1,15 @@
+use axum::extract::State;
+use axum::routing::post;
+use axum::{Json, Router};
+use lesson11::{CreateTask, Task, TaskStore};
+
+async fn create(Json(input): Json<CreateTask>, State(store): State<TaskStore>) -> Json<Task> {
+    Json(store.create(input.title.unwrap_or_default()))
+}
+
+fn main() {
+    let app: Router = Router::new()
+        .route("/tasks", post(create))
+        .with_state(TaskStore::default());
+    let _ = app;
+}

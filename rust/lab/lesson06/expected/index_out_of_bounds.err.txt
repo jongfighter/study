@@ -1,0 +1,4 @@
+
+thread 'main' (...) panicked at lesson06\src\bin\scratch.rs:5:26:
+index out of bounds: the len is 4 but the index is 10
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

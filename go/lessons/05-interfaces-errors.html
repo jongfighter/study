@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="go" data-lesson="05">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="암묵적 인터페이스, 임베딩, error 래핑과 errors.Is·As, panic·recover를 익힙니다.">
+  <title>05 · 인터페이스와 에러 처리 — Go 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Go 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Go</span>
+      <span>Go 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 05 · 인터페이스와 에러</p>
+        <h1>인터페이스와 에러 처리</h1>
+        <p class="lead">선언 없이 만족하는 인터페이스, 상속 없이 기능을 합치는 임베딩, 예외 대신 값으로 다루는 <code>error</code>와 <code>errors.Is</code>/<code>errors.As</code>를 코드로 확인합니다. 컴파일 오류를 문제 패널과 빠른 수정으로 고치는 방법도 연습합니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 120분</li>
+          <li><b>난이도</b> ★★★☆☆</li>
+          <li><b>선행</b> <a href="04-collections-structs.html">레슨 04</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson05/mine</span> (완성 코드: <span class="file">lab/lesson05</span>)</li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li>인터페이스를 정의하고, <code>implements</code> 선언 없이 메서드만 갖춘 타입이 인터페이스를 만족하는 것을 컴파일러로 확인할 수 있다.</li>
+          <li>구조체 임베딩으로 다른 타입의 메서드를 승격(promote)받는 코드를 작성하고, 상속과 어떻게 다른지 설명할 수 있다.</li>
+          <li><code>fmt.Errorf("...: %w", err)</code>로 오류를 감싸고 <code>errors.Is</code>(값 비교)와 <code>errors.As</code>(타입 비교)로 구분할 수 있다.</li>
+          <li><code>defer</code>의 실행 순서와 <code>panic</code>/<code>recover</code>를 설명하고, <code>panic</code>을 일반 오류 처리에 쓰지 않는 이유를 말할 수 있다.</li>
+          <li>문제 패널, <code>F8</code>, 빠른 수정(<code>Ctrl+.</code>), 호버, 구현으로 이동(<code>Ctrl+F12</code>)으로 컴파일 오류를 읽고 고칠 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>영문 원문은 한국어 요약을 먼저 읽은 뒤 확인하세요. 로컬 파일은 VS Code에서 <kbd class="key">Ctrl+P</kbd>로 파일 이름을 입력해 열 수 있습니다. 클론한 자료 폴더는 읽기용이라 그 안에서 <code>go</code> 명령을 실행하지 않고, 따라 해 보고 싶은 예제는 <span class="file">lab/lesson05/mine</span>에 직접 입력합니다.</p>
+        <ul>
+          <li><a href="https://go.dev/tour/methods/1">A Tour of Go · Methods and interfaces (영문)</a>, <a href="https://go.dev/blog/go1.13-errors">Working with Errors in Go 1.13 (영문)</a></li>
+          <li>Go by Example: <a href="https://gobyexample.com/interfaces">Interfaces</a> · <a href="https://gobyexample.com/struct-embedding">Struct Embedding</a> · <a href="https://gobyexample.com/errors">Errors</a> · <a href="https://gobyexample.com/custom-errors">Custom Errors</a> · <a href="https://gobyexample.com/panic">Panic</a> · <a href="https://gobyexample.com/defer">Defer</a> · <a href="https://gobyexample.com/recover">Recover</a> (모두 영문). 로컬 파일 예: <span class="file" data-local="go-by-example/examples/interfaces/interfaces.go">go-by-example/examples/interfaces/interfaces.go</span>, <span class="file" data-local="go-by-example/examples/custom-errors/custom-errors.go">go-by-example/examples/custom-errors/custom-errors.go</span>, <span class="file" data-local="go-by-example/examples/recover/recover.go">go-by-example/examples/recover/recover.go</span></li>
+          <li>Learn Go with Tests: <span class="file" data-local="learn-go-with-tests/structs-methods-and-interfaces.md">learn-go-with-tests/structs-methods-and-interfaces.md</span>(인터페이스 부분, 완성 코드 <span class="file" data-local="learn-go-with-tests/structs/v5/shapes.go">learn-go-with-tests/structs/v5/shapes.go</span>), <span class="file" data-local="learn-go-with-tests/pointers-and-errors.md">learn-go-with-tests/pointers-and-errors.md</span>의 "Adding context with error wrapping"(완성 코드 <span class="file" data-local="learn-go-with-tests/pointers/v4/wallet.go">learn-go-with-tests/pointers/v4/wallet.go</span>), <span class="file" data-local="learn-go-with-tests/error-types.md">learn-go-with-tests/error-types.md</span></li>
+          <li>100 Go Mistakes: <a href="https://100go.co/#interface-pollution-5">#5 인터페이스 남발</a>, <a href="https://100go.co/#interface-on-the-producer-side-6">#6 제공하는 쪽에 인터페이스 두기</a>, <a href="https://100go.co/#not-being-aware-of-the-possible-problems-with-type-embedding-10">#10 임베딩의 문제점</a>, <a href="https://100go.co/#panicking-48">#48 panic</a>, <a href="https://100go.co/#ignoring-when-to-wrap-an-error-49">#49 오류 감싸기</a>, <a href="https://100go.co/#comparing-an-error-type-inaccurately-50">#50 오류 타입 비교</a>, <a href="https://100go.co/#comparing-an-error-value-inaccurately-51">#51 오류 값 비교</a>, <a href="https://100go.co/#handling-an-error-twice-52">#52 오류를 두 번 처리</a> (모두 영문). 로컬 코드: <span class="file" data-local="100-go-mistakes/src/07-error-management/49-error-wrapping/main.go">100-go-mistakes/src/07-error-management/49-error-wrapping/main.go</span>, <span class="file" data-local="100-go-mistakes/src/07-error-management/51-comparing-error-value/main.go">100-go-mistakes/src/07-error-management/51-comparing-error-value/main.go</span>, <span class="file" data-local="100-go-mistakes/src/07-error-management/48-panic/main.go">100-go-mistakes/src/07-error-management/48-panic/main.go</span></li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>인터페이스(interface)의 암묵적 구현.</b> 인터페이스는 메서드 시그니처의 모음입니다. Kotlin처럼 <code>class X : Notifier</code>라고 선언하지 않고, 타입이 인터페이스의 메서드를 모두 갖기만 하면 자동으로 만족합니다. 그래서 인터페이스는 <b>사용하는 쪽에서 필요한 만큼만 작게</b> 정의하는 것이 Go의 관례입니다(100 Go Mistakes #5, #6). 표준 라이브러리의 <code>fmt.Stringer</code>(<code>String() string</code> 메서드 하나)를 구현하면 <code>fmt.Println</code>이 그 메서드로 출력합니다. <code>any</code>는 메서드가 하나도 없는 인터페이스라 모든 값을 담을 수 있고, <code>value.(타입)</code>이나 <code>switch v := value.(type)</code>으로 실제 타입을 꺼냅니다.</p>
+        <p><b>임베딩(embedding).</b> 필드 이름 없이 타입만 적으면 그 타입의 필드와 메서드가 바깥 구조체로 <b>승격</b>됩니다. 상속이 아니라 조합이라, 바깥 타입이 안쪽 타입의 하위 타입이 되지는 않습니다. 인터페이스를 임베딩하면 바깥 구조체도 그 인터페이스를 만족합니다.</p>
+        <p><b>error 값.</b> <code>error</code>는 <code>Error() string</code> 메서드 하나뿐인 내장 인터페이스입니다. 실패할 수 있는 함수는 마지막 반환값으로 <code>error</code>를 돌려주고, 호출자가 <code>if err != nil</code>로 확인합니다. 호출자가 오류 종류를 구분해야 하면 미리 만든 값(sentinel error, <code>var ErrNotFound = errors.New(...)</code>)이나 커스텀 오류 타입을 씁니다. <code>fmt.Errorf("...: %w", err)</code>의 <code>%w</code>는 원래 오류를 감싸서 맥락을 덧붙이고, 감싼 뒤에는 <code>==</code> 비교가 실패하므로 <code>errors.Is(err, ErrNotFound)</code>(감싼 사슬을 풀며 값 비교)와 <code>errors.As(err, &amp;대상)</code>(사슬에서 해당 타입 찾기)를 씁니다.</p>
+        <p><b>defer, panic, recover.</b> <code>defer</code>는 함수가 끝날 때 실행할 호출을 예약하며 <b>나중에 예약한 것이 먼저</b>(LIFO) 실행됩니다. <code>panic</code>은 프로그램 흐름을 중단시키고, <code>defer</code> 안의 <code>recover()</code>가 그것을 붙잡아 일반 오류로 바꿀 수 있습니다. <code>panic</code>은 프로그래머의 실수나 시작 시점의 치명적 실패처럼 복구할 수 없는 경우에만 쓰고, 일반적인 실패는 <code>error</code>로 돌려주는 것이 Go의 원칙입니다(100 Go Mistakes #48). 오류는 한 번만 처리해야 하므로(로그를 남기거나 돌려주거나 둘 중 하나, #52) 감싸서 위로 돌려주는 방식을 흔히 씁니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>완성 코드가 <span class="file">lab/lesson05</span>에 있고, 직접 입력하는 코드는 <span class="file">lab/lesson05/mine</span> 아래 같은 이름의 폴더에 둡니다. 코드 블록 위쪽 파일 이름은 비교용 완성본의 위치입니다. 터미널은 모두 <span class="file">lab</span> 폴더에서 실행하고, 각 단계는 앞 단계의 파일을 이어서 씁니다.</p>
+        <ol class="steps">
+          <li>
+            <strong>인터페이스 프로그램 입력하고 실행하기</strong>
+            <p>탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson05</span>를 우클릭해 새 폴더 <code>mine/interfaces</code>를 만들고 그 안에 <code>main.go</code>를 만들어 아래 코드를 직접 입력합니다. <code>Notifier</code>를 구현했다는 선언이 어디에도 없다는 점을 눈여겨보세요.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson05/interfaces/main.go">package main
+
+import "fmt"
+
+type Notifier interface {
+	Notify(message string) string
+}
+
+type EmailNotifier struct {
+	Address string
+}
+
+func (e EmailNotifier) Notify(message string) string {
+	return "이메일(" + e.Address + "): " + message
+}
+
+type ConsoleNotifier struct{}
+
+func (ConsoleNotifier) Notify(message string) string {
+	return "콘솔: " + message
+}
+
+type Logger struct {
+	Prefix string
+}
+
+func (l Logger) Log(message string) {
+	fmt.Println(l.Prefix + message)
+}
+
+type Service struct {
+	Logger
+	Notifier
+}
+
+type Task struct {
+	ID    int
+	Title string
+}
+
+func (t Task) String() string {
+	return fmt.Sprintf("Task#%d(%s)", t.ID, t.Title)
+}
+
+func broadcast(notifiers []Notifier, message string) {
+	for _, n := range notifiers {
+		fmt.Println(n.Notify(message))
+	}
+}
+
+func describe(value any) string {
+	switch v := value.(type) {
+	case EmailNotifier:
+		return "이메일 알림, 주소=" + v.Address
+	case ConsoleNotifier:
+		return "콘솔 알림"
+	case nil:
+		return "nil"
+	default:
+		return fmt.Sprintf("알 수 없는 타입 %T", v)
+	}
+}
+
+func main() {
+	notifiers := []Notifier{
+		EmailNotifier{Address: "dev@example.com"},
+		ConsoleNotifier{},
+	}
+	broadcast(notifiers, "배포가 끝났습니다")
+
+	service := Service{
+		Logger:   Logger{Prefix: "[service] "},
+		Notifier: ConsoleNotifier{},
+	}
+	service.Log("시작")
+	fmt.Println(service.Notify("임베딩으로 메서드를 물려받습니다"))
+
+	fmt.Println(Task{ID: 1, Title: "인터페이스 익히기"})
+
+	fmt.Println(describe(EmailNotifier{Address: "a@b.c"}))
+	fmt.Println(describe(ConsoleNotifier{}))
+	fmt.Println(describe(42))
+}</pre>
+<pre class="code" data-lang="text">go run ./lesson05/mine/interfaces</pre>
+<pre class="output" data-src="lab/lesson05/expected/interfaces.txt">이메일(dev@example.com): 배포가 끝났습니다
+콘솔: 배포가 끝났습니다
+[service] 시작
+콘솔: 임베딩으로 메서드를 물려받습니다
+Task#1(인터페이스 익히기)
+이메일 알림, 주소=a@b.c
+콘솔 알림
+알 수 없는 타입 int</pre>
+            <p>1~2번째 줄은 <code>EmailNotifier</code>와 <code>ConsoleNotifier</code>가 같은 <code>Notifier</code> 슬라이스에 담겨 각자의 <code>Notify</code>를 호출한 결과입니다. 3~4번째 줄의 <code>Service</code>는 <code>Logger</code>와 <code>Notifier</code>를 임베딩해서 <code>service.Log</code>와 <code>service.Notify</code>를 직접 호출할 수 있습니다. 5번째 줄은 <code>Task</code>에 <code>String()</code> 메서드가 있어서 <code>fmt.Println</code>이 그 형식으로 출력한 것입니다. 마지막 세 줄은 타입 스위치의 결과입니다.</p>
+          </li>
+          <li>
+            <strong>구현체를 찾아 이동하기</strong>
+            <p>1단계의 <span class="file">mine/interfaces/main.go</span>에서 인터페이스 안의 <code>Notify(message string) string</code>의 <code>Notify</code> 위에 커서를 놓고 <kbd class="key">Ctrl+F12</kbd>(구현으로 이동)를 누릅니다. 내 파일(<span class="file">mine/interfaces</span>) 안의 구현이 2곳(<code>EmailNotifier</code>, <code>ConsoleNotifier</code>의 <code>Notify</code>)이라 목록이 열립니다. 이어서 <code>type Notifier interface</code>의 <code>Notifier</code> 위에서 <kbd class="key">Ctrl+F12</kbd>를 누르면 이번에는 내 파일 안에서 3곳(<code>EmailNotifier</code>, <code>ConsoleNotifier</code>, 그리고 <code>Notifier</code>를 임베딩한 <code>Service</code>)이 나옵니다(gopls로 조회한 결과입니다).</p>
+            <p>같은 workspace에 완성 코드 <span class="file">lab/lesson05/interfaces</span>가 함께 있어서, 같은 모양의 타입이 그쪽에도 있으면 그 항목이 목록에 함께 나옵니다. 그래서 전체 항목 수는 위 숫자보다 많을 수 있습니다. 파일 경로에 <code>mine</code>이 들어 있는 항목이 내 코드입니다.</p>
+            <p>선언이 없기 때문에 "이 인터페이스를 누가 구현하나?"는 코드를 읽어서는 알기 어렵고, 이 단축키가 그 답을 줍니다. 목록을 닫을 때는 Esc 키를 누르고, 돌아올 때는 <kbd class="key">Alt+←</kbd>를 씁니다.</p>
+          </li>
+          <li>
+            <strong>일부러 인터페이스를 어기고 문제 패널로 읽기</strong>
+            <p>1단계의 같은 파일에서 <code>type Logger struct {</code> 줄 바로 위에 <code>type SlackNotifier struct{}</code> 한 줄과 빈 줄 하나를 추가하고, <code>main</code> 함수의 맨 아래(닫는 중괄호 <code>}</code> 바로 위)에 다음 두 줄을 추가합니다.</p>
+<pre class="code" data-lang="go">var slack Notifier = SlackNotifier{}
+fmt.Println(slack.Notify("테스트"))</pre>
+            <p><code>SlackNotifier{}</code> 아래에 빨간 물결 밑줄이 생기고, 저장하면 <code>Notify</code> 메서드가 없다는 오류가 납니다. 컴파일러와 에디터가 같은 문장을 보여 줍니다. 터미널에서 <code>go run ./lesson05/mine/interfaces</code>를 실행하면 다음 출력이 나옵니다. 위 위치에 그대로 추가했다면 줄 번호도 같고, 다른 위치에 넣었다면 줄 번호만 달라집니다.</p>
+<pre class="output" data-src="lab/lesson05/expected/err-slack.txt"># golab/lesson05/mine/interfaces
+lesson05\mine\interfaces\main.go:85:23: cannot use SlackNotifier{} (value of struct type SlackNotifier) as Notifier value in variable declaration: SlackNotifier does not implement Notifier (missing method Notify)</pre>
+            <p>이 오류를 에디터에서 읽어 봅니다. <kbd class="key">Ctrl+Shift+M</kbd>으로 문제 패널을 열면 같은 오류가 목록에 있고, 항목을 클릭하면 그 줄로 이동합니다. 오류가 여러 개일 때는 <kbd class="key">F8</kbd>로 다음 문제, <kbd class="key">Shift+F8</kbd>로 이전 문제로 이동합니다. 빨간 밑줄 위에 마우스를 올리거나 커서를 놓고 <kbd class="key">Ctrl+K Ctrl+I</kbd>를 누르면 같은 설명이 호버로 열립니다.</p>
+          </li>
+          <li>
+            <strong>빠른 수정으로 메서드 뼈대 만들기</strong>
+            <p>3단계에서 오류가 난 <code>SlackNotifier{}</code> 위에 커서를 놓고 <kbd class="key">Ctrl+.</kbd>(빠른 수정)를 누릅니다. 목록에서 <b>Declare missing methods of Notifier</b>를 고르고 엔터 키를 누릅니다(문구는 gopls 버전에 따라 조금 다를 수 있습니다). gopls가 <code>SlackNotifier</code> 아래에 아래와 같은 메서드 뼈대를 만들어 줍니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson05/expected/slack-stub.txt">// Notify implements [Notifier].
+func (s SlackNotifier) Notify(message string) string {
+	panic("unimplemented")
+}</pre>
+            <p>본문의 <code>panic("unimplemented")</code>를 <code>return "슬랙: " + message</code>로 바꾸고 저장한 뒤 다시 실행하면 오류가 사라지고 출력 맨 끝에 <code>슬랙: 테스트</code>가 추가됩니다. 이 코드가 처음 만들어진 뼈대처럼 <code>panic</code>으로 남아 있으면 실행할 때 프로그램이 멈추니 반드시 채워 주세요. 이 실험이 끝나면 <code>SlackNotifier</code> 관련 코드는 지워도 됩니다.</p>
+            <p>다른 빠른 수정도 하나 써 봅니다. <code>main</code> 함수의 맨 아래에 쓰지 않을 변수 <code>count := 3</code>을 추가하면 <code>declared and not used: count</code> 오류가 납니다. 이 변수 위에서 <kbd class="key">Ctrl+.</kbd>를 누르면 <b>Remove variable count</b>가 나오고 고르면 그 줄이 지워집니다(gopls로 확인한 항목입니다).</p>
+          </li>
+          <li>
+            <strong>오류 값 프로그램 입력하고 실행하기</strong>
+            <p><span class="file">lab/lesson05/mine</span> 아래에 <code>errors</code> 폴더와 <code>main.go</code>를 만들어 입력합니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson05/errors/main.go">package main
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
+
+var ErrNotFound = errors.New("할 일을 찾을 수 없습니다")
+
+type ValidationError struct {
+	Field  string
+	Reason string
+}
+
+func (e *ValidationError) Error() string {
+	return e.Field + ": " + e.Reason
+}
+
+type Store struct {
+	tasks map[int]string
+}
+
+func NewStore() *Store {
+	return &amp;Store{tasks: make(map[int]string)}
+}
+
+func (s *Store) Add(id int, title string) error {
+	if strings.TrimSpace(title) == "" {
+		return &amp;ValidationError{Field: "title", Reason: "비어 있을 수 없습니다"}
+	}
+	s.tasks[id] = title
+	return nil
+}
+
+func (s *Store) Get(id int) (string, error) {
+	title, ok := s.tasks[id]
+	if !ok {
+		return "", fmt.Errorf("할 일 %d 조회: %w", id, ErrNotFound)
+	}
+	return title, nil
+}
+
+func main() {
+	store := NewStore()
+
+	if err := store.Add(1, "에러 처리 배우기"); err != nil {
+		fmt.Println("추가 실패:", err)
+	}
+
+	title, err := store.Get(1)
+	fmt.Println("조회:", title, err)
+
+	_, err = store.Get(99)
+	fmt.Println("오류:", err)
+	fmt.Println("== 로 비교:", err == ErrNotFound)
+	fmt.Println("errors.Is:", errors.Is(err, ErrNotFound))
+	fmt.Println("Unwrap:", errors.Unwrap(err))
+
+	err = store.Add(2, "   ")
+	wrapped := fmt.Errorf("할 일 추가: %w", err)
+	fmt.Println("오류:", wrapped)
+
+	var validationErr *ValidationError
+	if errors.As(wrapped, &amp;validationErr) {
+		fmt.Println("검증 실패 필드:", validationErr.Field)
+	}
+
+	switch {
+	case errors.Is(wrapped, ErrNotFound):
+		fmt.Println("404로 응답")
+	case errors.As(wrapped, &amp;validationErr):
+		fmt.Println("400으로 응답")
+	default:
+		fmt.Println("500으로 응답")
+	}
+}</pre>
+<pre class="code" data-lang="text">go run ./lesson05/mine/errors</pre>
+<pre class="output" data-src="lab/lesson05/expected/errors.txt">조회: 에러 처리 배우기 &lt;nil&gt;
+오류: 할 일 99 조회: 할 일을 찾을 수 없습니다
+== 로 비교: false
+errors.Is: true
+Unwrap: 할 일을 찾을 수 없습니다
+오류: 할 일 추가: title: 비어 있을 수 없습니다
+검증 실패 필드: title
+400으로 응답</pre>
+            <p>핵심은 4번째와 5번째 줄입니다. 감싼 오류(<code>할 일 99 조회: ...</code>)는 <code>== ErrNotFound</code>로 비교하면 <code>false</code>이지만, <code>errors.Is</code>는 감싼 사슬을 풀어 보고 <code>true</code>를 돌려줍니다. 7~8번째 줄에서는 <code>errors.As</code>가 감싼 오류 안에서 <code>*ValidationError</code>를 찾아 <code>Field</code>를 꺼냈습니다. 마지막 <code>switch</code>는 이 오류를 HTTP 상태 코드로 바꾸는 방식의 축소판이고, 레슨 08에서 실제로 씁니다. 직접 확인해 보려면 <code>fmt.Println("errors.Is:", errors.Is(err, ErrNotFound))</code> 줄의 <code>errors.Is(err, ErrNotFound)</code>를 <code>err == ErrNotFound</code>로 바꿔 실행하세요. 그 줄이 <code>errors.Is: false</code>로 바뀌고 나머지 줄은 그대로입니다. 확인한 뒤 원래대로 되돌립니다.</p>
+          </li>
+          <li>
+            <strong>defer와 recover 프로그램 입력하고 실행하기</strong>
+            <p><code>recovery</code> 폴더와 <code>main.go</code>를 만들어 입력합니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson05/recovery/main.go">package main
+
+import "fmt"
+
+func deferOrder() {
+	for i := 1; i &lt;= 3; i++ {
+		defer fmt.Println("defer", i)
+	}
+	fmt.Println("본문 끝")
+}
+
+func safeDivide(a, b int) (result int, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("복구했습니다: %v", r)
+		}
+	}()
+	return a / b, nil
+}
+
+func main() {
+	deferOrder()
+
+	result, err := safeDivide(10, 2)
+	fmt.Println(result, err)
+
+	result, err = safeDivide(1, 0)
+	fmt.Println(result, err)
+
+	fmt.Println("프로그램은 계속 실행됩니다")
+}</pre>
+<pre class="code" data-lang="text">go run ./lesson05/mine/recovery</pre>
+<pre class="output" data-src="lab/lesson05/expected/recovery.txt">본문 끝
+defer 3
+defer 2
+defer 1
+5 &lt;nil&gt;
+0 복구했습니다: runtime error: integer divide by zero
+프로그램은 계속 실행됩니다</pre>
+            <p><code>defer</code>가 <code>defer 3</code>, <code>defer 2</code>, <code>defer 1</code> 순서로 실행되었습니다. <code>safeDivide(1, 0)</code>은 정수를 0으로 나누는 런타임 패닉을 일으키지만, <code>defer</code> 안의 <code>recover()</code>가 그 패닉을 붙잡아 오류로 바꿨습니다. 그래서 마지막 줄이 출력됩니다. 반환값을 <code>(result int, err error)</code>처럼 이름 붙여 둔 이유는 <code>defer</code> 안에서 <code>err</code>를 바꿔야 하기 때문입니다.</p>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong>같은 레슨의 "자주 나는 오류"를 먼저 확인하세요. 코드가 안 맞으면 <span class="file">lab/lesson05</span>의 완성 코드와 비교해 보세요.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Go</th></tr></thead>
+            <tbody>
+              <tr><td>인터페이스 정의</td><td><code>interface Notifier { fun notify(m: String): String }</code></td><td><code>Protocol</code>, 추상 클래스(ABC)</td><td><code>type Notifier interface { Notify(message string) string }</code></td></tr>
+              <tr><td>구현 선언</td><td><code>class Email : Notifier</code> 명시</td><td>상속 또는 구조적 타입(Protocol)</td><td><b>선언 없음</b>. 메서드가 맞으면 자동 만족</td></tr>
+              <tr><td>인터페이스를 두는 위치</td><td>보통 제공하는 쪽이 정의</td><td>-</td><td>사용하는 쪽에서 필요한 메서드만 작게 정의하는 것이 관례</td></tr>
+              <tr><td>기능 재사용</td><td>상속(<code>open class</code>), 위임(<code>by</code>)</td><td>다중 상속, 믹스인</td><td>임베딩(조합), 상속 없음</td></tr>
+              <tr><td>오류 전달</td><td><code>throw</code> / <code>try-catch</code>, <code>Result</code>, <code>sealed class</code></td><td><code>raise</code> / <code>except</code>, <code>HTTPException</code></td><td><code>error</code> 값을 반환하고 호출자가 확인</td></tr>
+              <tr><td>오류 종류 구분</td><td>예외 클래스 계층, <code>catch (e: NotFoundException)</code></td><td>예외 클래스</td><td>sentinel 값 + <code>errors.Is</code>, 커스텀 타입 + <code>errors.As</code></td></tr>
+              <tr><td>HTTP 오류 변환</td><td><code>@ControllerAdvice</code> + <code>@ExceptionHandler</code></td><td><code>@app.exception_handler</code></td><td>핸들러에서 <code>errors.Is</code>로 분기해 상태 코드 결정</td></tr>
+              <tr><td>정리 코드</td><td><code>finally</code>, <code>use { }</code></td><td><code>finally</code>, <code>with</code></td><td><code>defer</code></td></tr>
+              <tr><td>타입 확인</td><td><code>is</code>, <code>when (x) { is A -&gt; }</code></td><td><code>isinstance</code>, <code>match</code></td><td><code>x.(Type)</code>, <code>switch v := x.(type)</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정</strong>첫째, 예외는 호출 스택을 타고 올라가 한곳에서 잡을 수 있지만 Go의 <code>error</code>는 값이라서 모든 호출 지점에서 <code>if err != nil</code>로 직접 확인하고 위로 돌려줘야 합니다. 번거롭지만 어디서 실패가 처리되는지 코드에 그대로 드러납니다. 둘째, <code>catch (e: NotFoundException)</code>에 대응하는 것은 <code>==</code>가 아니라 <code>errors.Is</code>/<code>errors.As</code>입니다. 오류를 <code>%w</code>로 감싸는 순간 <code>==</code>는 실패합니다(이 레슨 출력의 <code>== 로 비교: false</code>). 셋째, <code>panic</code>은 예외가 아닙니다. 일반적인 실패 처리에 <code>panic</code>과 <code>recover</code>를 <code>throw</code>/<code>catch</code>처럼 쓰지 마세요. 넷째, <code>implements</code>가 없으니 구현체를 코드 검색으로 찾기 어렵습니다. <kbd class="key">Ctrl+F12</kbd>를 쓰세요.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 문제 패널, 빠른 수정, 호버, 구현으로 이동</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>문제 패널 열기</td><td><kbd class="key">Ctrl+Shift+M</kbd></td><td>현재 파일과 작업 영역의 오류·경고 목록을 볼 때</td></tr>
+                <tr><td>다음 문제로 이동</td><td><kbd class="key">F8</kbd></td><td>오류를 하나씩 따라가며 고칠 때</td></tr>
+                <tr><td>이전 문제로 이동</td><td><kbd class="key">Shift+F8</kbd></td><td>방금 지나간 오류로 돌아갈 때</td></tr>
+                <tr><td>빠른 수정</td><td><kbd class="key">Ctrl+.</kbd></td><td>오류 위에서 자동 수정 후보를 볼 때</td></tr>
+                <tr><td>호버(설명 보기)</td><td><kbd class="key">Ctrl+K Ctrl+I</kbd></td><td>마우스 없이 타입·오류 설명을 볼 때</td></tr>
+                <tr><td>구현으로 이동</td><td><kbd class="key">Ctrl+F12</kbd></td><td>인터페이스를 구현한 타입을 찾을 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>빠른 수정 전구 아이콘 끄고 켜 보기</strong>
+            <p>3단계처럼 오류가 있는 줄에 커서를 두면 왼쪽에 전구 아이콘이 나타나 빠른 수정이 있음을 알려 줍니다. <kbd class="key">Ctrl+,</kbd>로 설정을 열고 <code>editor.lightbulb.enabled</code>를 검색해 <b>작업 영역</b> 탭에서 값을 <code>off</code>로 바꿉니다(선택지는 <code>off</code>, <code>onCode</code>, <code>on</code>이고 기본값은 <code>onCode</code>입니다). 아이콘이 사라지는지 보고, 같은 줄에서 <kbd class="key">Ctrl+.</kbd>가 여전히 동작하는지도 직접 확인해 보세요.</p>
+            <p><span class="file">.vscode/settings.json</span>에 <code>"editor.lightbulb.enabled": "off"</code>가 추가된 것을 확인한 뒤, 값을 <code>onCode</code>로 되돌리거나 그 줄을 지웁니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <p>풀이는 <span class="file">lab/lesson05/mine/practice</span> 폴더에 <code>main.go</code>로 만드세요. 완성본은 <span class="file">lab/lesson05/practice/main.go</span>이고 같은 폴더에 정답 확인용 테스트가 있습니다(테스트는 레슨 06에서 배웁니다).</p>
+        <h3>문제 1. 도형 인터페이스</h3>
+        <p><code>Area() float64</code> 메서드 하나를 가진 <code>Shape</code> 인터페이스와 이를 만족하는 <code>Rectangle</code>(가로, 세로), <code>Circle</code>(반지름)을 만들고, <code>[]Shape</code>의 넓이 합을 돌려주는 <code>totalArea</code>를 작성하세요. 이 문제는 Learn Go with Tests의 구조체·메서드·인터페이스 장과 같은 주제입니다. <b>완료 조건</b>: 가로 3, 세로 4인 사각형과 반지름 1인 원의 합이 <code>도형 넓이 합: 15.14</code>로 출력된다(<code>%.2f</code>로 출력). <code>implements</code>에 해당하는 선언을 쓰지 않는다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>원주율은 <code>math.Pi</code>입니다(<code>import "math"</code>). 두 타입 모두 <code>func (r Rectangle) Area() float64</code>처럼 값 수신자로 만들면 <code>Rectangle{Width: 3, Height: 4}</code> 그대로 <code>Shape</code> 슬라이스에 넣을 수 있습니다. <code>totalArea</code>는 슬라이스를 돌며 <code>shape.Area()</code>를 더합니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="go" data-src="lab/lesson05/practice/main.go" data-lines="10-36">type Shape interface {
+	Area() float64
+}
+
+type Rectangle struct {
+	Width, Height float64
+}
+
+func (r Rectangle) Area() float64 {
+	return r.Width * r.Height
+}
+
+type Circle struct {
+	Radius float64
+}
+
+func (c Circle) Area() float64 {
+	return math.Pi * c.Radius * c.Radius
+}
+
+func totalArea(shapes []Shape) float64 {
+	total := 0.0
+	for _, shape := range shapes {
+		total += shape.Area()
+	}
+	return total
+}</pre>
+          </div>
+        </details>
+
+        <h3>문제 2. 포트 번호 파싱과 오류 감싸기</h3>
+        <p>문자열을 포트 번호로 바꾸는 <code>parsePort(text string) (int, error)</code>를 작성하세요. 숫자가 아니거나 1~65535 범위를 벗어나면 미리 만든 <code>ErrInvalidPort</code>를 <code>%w</code>로 감싸 돌려줍니다. <b>완료 조건</b>: <code>"8080"</code>은 성공이고, <code>"abc"</code>와 <code>"70000"</code>은 <code>errors.Is(err, ErrInvalidPort)</code>가 <code>true</code>이다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>문자열을 정수로 바꾸는 함수는 <code>strconv.Atoi</code>입니다(<code>(int, error)</code> 반환). 그 오류를 그대로 돌려주지 말고 <code>fmt.Errorf("포트 %q: %w", text, ErrInvalidPort)</code>처럼 <code>ErrInvalidPort</code>를 감싸야 <code>errors.Is</code>가 통과합니다. 범위 검사는 <code>if port &lt; 1 || port &gt; 65535</code>입니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="go" data-src="lab/lesson05/practice/main.go" data-lines="38-49">var ErrInvalidPort = errors.New("잘못된 포트 번호")
+
+func parsePort(text string) (int, error) {
+	port, err := strconv.Atoi(text)
+	if err != nil {
+		return 0, fmt.Errorf("포트 %q: %w", text, ErrInvalidPort)
+	}
+	if port &lt; 1 || port &gt; 65535 {
+		return 0, fmt.Errorf("포트 %d: %w", port, ErrInvalidPort)
+	}
+	return port, nil
+}</pre>
+            <p>완성 프로그램의 전체 실행 결과입니다. 두 번째 열의 <code>&lt;nil&gt;</code>은 오류가 없다는 뜻이고, 마지막 열은 <code>errors.Is</code>의 결과입니다.</p>
+<pre class="output" data-src="lab/lesson05/expected/practice.txt">도형 넓이 합: 15.14
+8080 &lt;nil&gt; false
+0 포트 "abc": 잘못된 포트 번호 true
+0 포트 70000: 잘못된 포트 번호 true</pre>
+          </div>
+        </details>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="go-05-run"><span>세 프로그램(<code>interfaces</code>, <code>errors</code>, <code>recovery</code>)을 직접 입력해 실행하고 출력이 예상과 같음을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-05-implicit"><span><code>implements</code> 선언 없이 인터페이스가 만족되는 것과, 메서드를 빼면 컴파일 오류가 나는 것을 직접 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-05-errors-is"><span><code>==</code> 비교는 <code>false</code>, <code>errors.Is</code>는 <code>true</code>가 나오는 이유를 내 말로 설명할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-05-defer"><span><code>defer</code>가 거꾸로 실행되는 출력과 <code>recover</code>가 패닉을 오류로 바꾸는 출력을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-05-problems"><span><kbd class="key">Ctrl+Shift+M</kbd>, <kbd class="key">F8</kbd>, <kbd class="key">Ctrl+.</kbd>를 마우스 없이 사용해 오류를 고쳤다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-05-implementation"><span><kbd class="key">Ctrl+F12</kbd>로 <code>Notifier</code>의 구현 목록을 열어 보았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-05-setting"><span><code>editor.lightbulb.enabled</code>를 바꿔 보고 <code>.vscode/settings.json</code>의 기록을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-05-practice"><span>연습 문제 두 개를 힌트 없이 먼저 시도했다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <p>첫 두 오류(메서드 없음, 포인터 수신자)의 출력은 <span class="file">mine/interfaces/main.go</span>를 각 항목에 적힌 대로 고친 결과입니다. 나머지 네 개는 설명용으로 만든 짧은 예제 코드의 출력이라 파일 경로의 폴더 이름과 줄·열 번호가 내 파일과 다를 수 있습니다. 오류가 나는 위치의 개수도 코드에 따라 달라질 수 있으니 메시지 문장을 중심으로 읽으세요.</p>
+        <h3>증상: 타입이 인터페이스를 구현하지 않는다고 한다 (메서드 없음)</h3>
+        <p>인터페이스가 요구하는 메서드가 타입에 없는 경우입니다. 아래는 위 3단계처럼 <code>SlackNotifier</code>를 추가한 <span class="file">mine/interfaces/main.go</span>를 실행한 출력입니다. 메서드를 추가하거나 빠른 수정(<kbd class="key">Ctrl+.</kbd>)의 <b>Declare missing methods</b>를 씁니다. 메서드 이름의 대소문자나 시그니처(매개변수, 반환값)가 하나라도 다르면 같은 오류가 납니다.</p>
+<pre class="output" data-src="lab/lesson05/expected/err-slack.txt"># golab/lesson05/mine/interfaces
+lesson05\mine\interfaces\main.go:85:23: cannot use SlackNotifier{} (value of struct type SlackNotifier) as Notifier value in variable declaration: SlackNotifier does not implement Notifier (missing method Notify)</pre>
+        <h3>증상: 포인터 수신자 메서드 때문에 인터페이스를 만족하지 않는다</h3>
+        <p><code>func (c *ConsoleNotifier) Notify</code>처럼 포인터 수신자로 만들었다면 <code>ConsoleNotifier{}</code>(값)가 아니라 <code>&amp;ConsoleNotifier{}</code>(포인터)가 인터페이스를 만족합니다. 아래는 1단계 상태의 <span class="file">mine/interfaces/main.go</span>에서 <code>func (ConsoleNotifier) Notify(</code>를 <code>func (*ConsoleNotifier) Notify(</code>로 바꿔 실행한 출력입니다. <code>ConsoleNotifier{}</code>를 쓰는 곳(슬라이스 안, <code>Service</code> 필드)이 두 군데라 오류도 두 줄 나옵니다. 수신자를 값으로 되돌리거나 두 곳 모두 포인터를 넣습니다.</p>
+<pre class="output" data-src="lab/lesson05/expected/err-pointer-receiver.txt"># golab/lesson05/mine/interfaces
+lesson05\mine\interfaces\main.go:67:3: cannot use ConsoleNotifier{} (value of struct type ConsoleNotifier) as Notifier value in array or slice literal: ConsoleNotifier does not implement Notifier (method Notify has pointer receiver)
+lesson05\mine\interfaces\main.go:73:13: cannot use ConsoleNotifier{} (value of struct type ConsoleNotifier) as Notifier value in struct literal: ConsoleNotifier does not implement Notifier (method Notify has pointer receiver)</pre>
+        <h3>증상: 반환값 개수가 맞지 않는다</h3>
+        <p>함수가 <code>(string, error)</code>를 돌려주도록 선언했는데 <code>return errors.New("없음")</code>처럼 하나만 돌려줬습니다. <code>return "", errors.New("없음")</code>처럼 모두 적습니다. 빠른 수정 <b>Fill in return values</b>가 도와줍니다.</p>
+<pre class="output" data-src="lab/lesson05/expected/err-return-count.txt"># golab/lesson05/mine/errors
+lesson05\mine\errors\main.go:10:10: not enough return values
+	have (error)
+	want (string, error)</pre>
+        <h3>증상: 잘못된 타입 단언으로 패닉이 난다</h3>
+        <p><code>value.(int)</code>는 <code>value</code>가 <code>int</code>가 아니면 패닉입니다. 안전하게 쓰려면 <code>number, ok := value.(int)</code>처럼 두 값으로 받아 <code>ok</code>를 확인하거나 타입 스위치를 씁니다.</p>
+<pre class="output" data-src="lab/lesson05/expected/err-assert.txt">panic: interface conversion: interface {} is string, not int
+
+goroutine 1 [running]:
+main.main()
+	.../lesson05/mine/interfaces/main.go:7 +0x...
+exit status 2</pre>
+        <h3>증상: go vet이 errors.As 호출이 잘못됐다고 한다</h3>
+        <p><code>errors.As</code>의 두 번째 인자는 오류 타입을 가리키는 <b>포인터</b>여야 합니다. 여기서는 <code>*ValidationError</code> 타입의 변수를 선언하고 그 주소(<code>&amp;target</code>)를 넘겨야 합니다. <code>var target *ValidationError</code>로 선언하세요.</p>
+<pre class="output" data-src="lab/lesson05/expected/err-vet-as.txt">lesson05\mine\errors\main.go:15:5: second argument to errors.As must be a non-nil pointer to either a type that implements error, or to any interface type</pre>
+        <h3>증상: 직접 panic을 호출하면 프로그램이 종료된다</h3>
+        <p><code>recover</code>하지 않은 <code>panic</code>은 프로그램을 종료시키고 종료 코드 2를 돌려줍니다. 패닉 위의 <code>시작</code>은 패닉 전에 출력된 내용입니다. 설정 파일이 없는 것 같은 일반적인 실패는 <code>panic</code> 대신 <code>error</code>로 돌려주세요.</p>
+<pre class="output" data-src="lab/lesson05/expected/err-panic.txt">시작
+panic: 설정 파일이 없습니다
+
+goroutine 1 [running]:
+main.main()
+	.../lesson05/mine/recovery/main.go:7 +0x...
+exit status 2</pre>
+      </section>
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨 06에서는 <code>go test</code>, <code>testing.T</code>, table-driven 테스트, 서브테스트, 커버리지와 벤치마크를 배웁니다. 여러 줄을 한 번에 고치는 멀티 커서와 찾기/바꾸기도 연습합니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="04-collections-structs.html"><small>← 이전 레슨</small>04 · 슬라이스·맵·구조체·포인터</a>
+          <a class="next" rel="next" href="06-testing.html"><small>다음 레슨 →</small>06 · 테스트와 table-driven 패턴</a>
+        </nav>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Go 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

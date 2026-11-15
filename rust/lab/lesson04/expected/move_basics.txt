@@ -1,0 +1,8 @@
+s2 = hello
+s2 = hello, s3 = hello
+n = 5, m = 5
+함수 안: 5
+makes_copy 뒤에도 n = 5
+함수 안: hello
+돌려받은 s4 = hello
+String 값 하나의 크기: 24바이트

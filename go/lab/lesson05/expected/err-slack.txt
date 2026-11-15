@@ -1,0 +1,2 @@
+# golab/lesson05/mine/interfaces
+lesson05\mine\interfaces\main.go:85:23: cannot use SlackNotifier{} (value of struct type SlackNotifier) as Notifier value in variable declaration: SlackNotifier does not implement Notifier (missing method Notify)

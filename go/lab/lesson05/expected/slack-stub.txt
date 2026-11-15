@@ -1,0 +1,4 @@
+// Notify implements [Notifier].
+func (s SlackNotifier) Notify(message string) string {
+	panic("unimplemented")
+}

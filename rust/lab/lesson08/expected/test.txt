@@ -1,0 +1,9 @@
+running 6 tests
+test tests::countdown_counts_down_to_one ... ok
+test tests::fibonacci_starts_with_zero_and_one ... ok
+test tests::fibonacci_even_sum_of_first_five ... ok
+test tests::counter_remembers_its_state ... ok
+test tests::open_titles_are_sorted_by_minutes ... ok
+test tests::parse_minutes_collects_result ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

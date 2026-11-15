@@ -1,0 +1,9 @@
+fn print_it(s: String) {
+    println!("{s}");
+}
+
+fn main() {
+    let name = String::from("Rust");
+    print_it(name);
+    print_it(name);
+}

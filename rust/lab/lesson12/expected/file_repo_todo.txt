@@ -1,0 +1,20 @@
+     Running unittests src\lib.rs (...)
+
+running 1 test
+test repo::tests::file_repository_follows_the_contract ... FAILED
+
+failures:
+
+---- repo::tests::file_repository_follows_the_contract stdout ----
+
+thread 'repo::tests::file_repository_follows_the_contract' (...) panicked at lesson12\src\repo.rs:66:9:
+not yet implemented: 과제 3: 새 id를 정하고 encode_task한 줄을 파일 끝에 덧붙입니다
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    repo::tests::file_repository_follows_the_contract
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p lesson12 --lib`

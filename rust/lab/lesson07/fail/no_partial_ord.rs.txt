@@ -1,0 +1,20 @@
+fn largest<T: PartialOrd>(items: &[T]) -> Option<&T> {
+    let mut iter = items.iter();
+    let mut max = iter.next()?;
+    for item in iter {
+        if item > max {
+            max = item;
+        }
+    }
+    Some(max)
+}
+
+struct Task {
+    minutes: u32,
+}
+
+fn main() {
+    let tasks = [Task { minutes: 30 }, Task { minutes: 90 }];
+    let longest = largest(&tasks);
+    println!("{}", longest.is_some());
+}

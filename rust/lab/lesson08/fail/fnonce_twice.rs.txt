@@ -1,0 +1,7 @@
+fn main() {
+    let owner = String::from("소유권을 가져가는 클로저");
+    let take_owner = move || owner;
+
+    println!("{}", take_owner());
+    println!("{}", take_owner());
+}

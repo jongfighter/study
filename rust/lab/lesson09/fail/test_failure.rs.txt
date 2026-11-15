@@ -1,0 +1,6 @@
+use lesson09::text::slugify;
+
+#[test]
+fn slug_keeps_korean() {
+    assert_eq!(slugify("보고서 작성"), "보고서-작성");
+}

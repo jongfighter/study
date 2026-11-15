@@ -1,0 +1,47 @@
+# Task API 요청 모음 (VS Code REST Client 확장: humao.rest-client)
+# 요청 안에 커서를 두고 Ctrl+Alt+R 을 누르거나, 요청 위의 Send Request 링크를 클릭합니다.
+
+@host = http://localhost:8080
+
+### 서버 상태 확인
+GET {{host}}/health
+
+### 할 일 목록
+GET {{host}}/tasks
+
+### 할 일 만들기 (응답의 id를 아래 요청들이 사용합니다)
+# @name created
+POST {{host}}/tasks
+Content-Type: application/json
+
+{
+  "title": "Go 공부하기"
+}
+
+### 방금 만든 할 일 한 개 조회
+GET {{host}}/tasks/{{created.response.body.$.id}}
+
+### 완료로 표시
+PATCH {{host}}/tasks/{{created.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "done": true
+}
+
+### 삭제
+DELETE {{host}}/tasks/{{created.response.body.$.id}}
+
+### 오류 확인: 제목이 공백뿐인 요청
+POST {{host}}/tasks
+Content-Type: application/json
+
+{
+  "title": "   "
+}
+
+### 오류 확인: 없는 id
+GET {{host}}/tasks/9999
+
+### 오류 확인: 숫자가 아닌 id
+GET {{host}}/tasks/abc

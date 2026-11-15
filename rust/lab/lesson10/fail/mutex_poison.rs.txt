@@ -1,0 +1,14 @@
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() {
+    let data = Arc::new(Mutex::new(0));
+    let worker = Arc::clone(&data);
+    let result = thread::spawn(move || {
+        let _guard = worker.lock().unwrap();
+        panic!("락을 잡은 채로 패닉");
+    })
+    .join();
+    println!("스레드 결과는 Err인가? {}", result.is_err());
+    println!("{}", data.lock().unwrap());
+}

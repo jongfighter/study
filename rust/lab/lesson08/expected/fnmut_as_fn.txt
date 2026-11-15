@@ -1,0 +1,17 @@
+error[E0594]: cannot assign to `calls`, as it is a captured variable in a `Fn` closure
+ --> lesson08\examples\scratch.rs:9:13
+  |
+1 | fn apply_twice<F: Fn(i32) -> i32>(f: F, x: i32) -> i32 {
+  |                                      - change this to accept `FnMut` instead of `Fn`
+...
+6 |     let mut calls = 0;
+  |         --------- `calls` declared here, outside the closure
+7 |     let result = apply_twice(
+  |                  ----------- expects `Fn` instead of `FnMut`
+8 |         |n| {
+  |         --- in this closure
+9 |             calls += 1;
+  |             ^^^^^^^^^^ cannot assign
+
+For more information about this error, try `rustc --explain E0594`.
+error: could not compile `lesson08` (example "scratch") due to 1 previous error

@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="go" data-lesson="10">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="slog 로그, 환경변수 설정, 안전한 종료, 크로스 컴파일로 Task API를 운영 형태로 만듭니다.">
+  <title>10 · 운영 습관: slog·설정·종료 처리 — Go 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Go 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Go</span>
+      <span>Go 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 10 · 운영 습관</p>
+        <h1>운영 습관: slog·설정·종료 처리</h1>
+        <p class="lead">레슨 09의 서버를 운영에 가깝게 고칩니다. 구조화 로그(slog)와 요청 ID, 환경변수 설정, 서버 타임아웃, Ctrl+C(종료 신호)를 받았을 때 진행 중인 요청을 마무리하고 끝나는 안전한 종료, 다른 OS용 실행 파일 만들기를 다룹니다. VS Code에서는 연습용 프로필 안에서 설정 JSON과 단축키 파일을, 프로젝트 폴더에서 스니펫을 직접 만져 봅니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 150분</li>
+          <li><b>난이도</b> ★★★★☆</li>
+          <li><b>선행</b> <a href="09-taskapi-layers.html">레슨 09</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson10</span> (최종 Task API, 실행 진입점 <span class="file">lab/lesson10/cmd/taskapi</span>)</li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li><code>log/slog</code>로 key=value 로그와 JSON 로그를 남기고, 로그 레벨과 요청 ID(<code>X-Request-Id</code>)로 로그 한 줄을 요청과 연결할 수 있다.</li>
+          <li>환경변수(<code>PORT</code>, <code>LOG_LEVEL</code>, <code>LOG_FORMAT</code>, <code>SHUTDOWN_TIMEOUT</code>)를 검증해서 읽는 설정 코드를 읽고 테스트할 수 있다.</li>
+          <li><code>signal.NotifyContext</code>와 <code>http.Server.Shutdown</code>으로 Ctrl+C를 받으면 진행 중인 요청을 마무리하고 종료하는 흐름을 설명하고 실행해 확인할 수 있다.</li>
+          <li>서버 타임아웃, <code>go vet</code>, <code>gofmt -l</code>, <code>go mod tidy -diff</code>를 점검 습관으로 쓰고, <code>GOOS</code>/<code>GOARCH</code>로 다른 OS용 실행 파일을 만들 수 있다.</li>
+          <li>기본 프로필에서 복사한 연습용 프로필 안에서 설정 JSON과 <code>keybindings.json</code>을 고쳐 사용자/워크스페이스 우선순위를 확인하고, 프로젝트 스니펫을 만들었다 지우고, 끝나면 기본 프로필로 돌아와 프로필을 삭제할 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>영문 원문은 이 페이지의 한국어 요약을 먼저 읽은 뒤 확인하세요. 로컬 파일은 <kbd class="key">Ctrl+P</kbd>로 이름 일부를 입력해 열 수 있습니다.</p>
+        <ul>
+          <li>Go by Example (영문): <a href="https://gobyexample.com/logging">Logging</a>, <a href="https://gobyexample.com/environment-variables">Environment Variables</a>, <a href="https://gobyexample.com/signals">Signals</a> — 로컬 파일: <span class="file" data-local="go-by-example/examples/logging/logging.go">go-by-example/examples/logging/logging.go</span>, <span class="file" data-local="go-by-example/examples/environment-variables/environment-variables.go">environment-variables/environment-variables.go</span>, <span class="file" data-local="go-by-example/examples/signals/signals.go">signals/signals.go</span>(<code>signal.NotifyContext</code> 예제)</li>
+          <li>Learn Go with Tests: <span class="file" data-local="learn-go-with-tests/context.md">learn-go-with-tests/context.md</span>의 "What about context.Value ?" 절(<code>context</code>에 값을 담는 것에 대한 주의), <span class="file" data-local="learn-go-with-tests/http-server.md">http-server.md</span></li>
+          <li>100 Go Mistakes: <span class="file" data-local="100-go-mistakes/docs/index.md">100-go-mistakes/docs/index.md</span>의 #81(기본 HTTP 클라이언트·서버는 타임아웃이 없음), #16(린터·포매터), #60~#62(<code>context</code>와 고루틴 종료). 예제: <span class="file" data-local="100-go-mistakes/src/10-standard-lib/81-default-http-client-server">100-go-mistakes/src/10-standard-lib/81-default-http-client-server</span></li>
+          <li>공식 문서(영문): <a href="https://pkg.go.dev/log/slog">log/slog</a>(패키지 문서), <a href="https://go.dev/blog/slog">Structured Logging with slog</a>(공식 블로그), <a href="https://pkg.go.dev/os/signal#NotifyContext">signal.NotifyContext</a>(함수 문서), <a href="https://pkg.go.dev/net/http#Server.Shutdown">http.Server.Shutdown</a>(메서드 문서), <a href="https://go.dev/ref/mod">Go Modules Reference</a>(모듈 레퍼런스)</li>
+          <li>VS Code 문서(영문): <a href="https://code.visualstudio.com/docs/configure/settings">User and workspace settings</a>(설정), <a href="https://code.visualstudio.com/docs/configure/profiles">Profiles</a>(프로필), <a href="https://code.visualstudio.com/docs/editing/userdefinedsnippets">Snippets</a>(스니펫), <a href="https://code.visualstudio.com/docs/configure/keybindings">Keyboard shortcuts</a>(단축키)</li>
+        </ul>
+        <div class="callout warn"><strong>클론한 자료 폴더에서는 go 명령을 실행하지 마세요</strong><span class="file">go-by-example</span>, <span class="file">learn-go-with-tests</span>, <span class="file">100-go-mistakes</span>는 읽기 전용 자료입니다. 예를 들어 <span class="file">go-by-example/go.mod</span>는 <code>go 1.27.1</code>을 요구하는데 이 PC의 Go는 1.27.0이라, 그 폴더 안에서 <code>go</code> 명령을 실행하면 오류가 나거나 도구 체인을 내려받으려 할 수 있습니다. 파일은 VS Code로 열어 읽기만 하고, 실행은 항상 <span class="file">lab</span> 폴더에서 합니다.</div>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>구조화 로그(structured logging).</b> <code>log.Printf("처리 완료 id=%d", id)</code>처럼 문장 속에 값을 섞으면 나중에 기계가 읽기 어렵습니다. <code>slog</code>는 메시지와 <b>key-value 쌍</b>을 따로 받습니다: <code>logger.Info("request", "method", "GET", "status", 200)</code>. 같은 호출이 어떤 핸들러(handler)를 쓰느냐에 따라 사람이 읽기 좋은 <code>key=value</code> 텍스트(<code>slog.NewTextHandler</code>)나 한 줄 JSON(<code>slog.NewJSONHandler</code>)으로 출력됩니다. 레벨은 <code>Debug &lt; Info &lt; Warn &lt; Error</code>이고 기본 최소 레벨은 <code>Info</code>입니다. <code>HandlerOptions.Level</code>로 바꿉니다.</p>
+        <p><b>환경변수 설정.</b> 포트, 로그 레벨 같은 실행 환경에 따라 달라지는 값은 코드에 박지 않고 환경변수로 받는 것이 서버 운영의 오랜 관례입니다(Go by Example의 environment-variables 예제가 인용한 12-Factor App의 설정 원칙). 이 코스는 <code>config.Load(getenv)</code> 한 곳에서 읽고, <b>값이 잘못되면 서버를 시작하기 전에 설명이 있는 에러로 끝냅니다.</b> <code>getenv</code> 함수를 인자로 받아서 테스트는 <code>os.Getenv</code> 대신 맵으로 만든 가짜 환경을 넘깁니다.</p>
+        <p><b>안전한 종료(graceful shutdown).</b> 서버를 그냥 죽이면 처리 중이던 요청이 끊깁니다. 순서는 이렇습니다. ① <code>signal.NotifyContext</code>가 종료 신호(<code>os.Interrupt</code>, <code>SIGTERM</code>)를 받으면 취소되는 <code>context</code>를 줍니다. ② 그 <code>ctx</code>가 취소되면 <code>srv.Shutdown(ctx2)</code>를 부릅니다. <code>Shutdown</code>은 새 연결을 받지 않고, 놀고 있는 연결을 닫고, 진행 중인 요청이 끝나기를 기다립니다. 기다리다가 <code>ctx2</code>가 만료되면 그 에러를 돌려줍니다. ③ <code>Shutdown</code>이 불리면 <code>ListenAndServe</code>/<code>Serve</code>는 즉시 <code>http.ErrServerClosed</code>를 돌려주므로, <b>프로그램이 그 시점에 끝나지 않고 <code>Shutdown</code>이 돌아올 때까지 기다려야 합니다.</b>(공식 문서) Windows에서는 <code>os.Interrupt</code>(Ctrl+C, Ctrl+Break)만 쓸 수 있고 <code>SIGTERM</code>은 콘솔 닫기·로그오프·시스템 종료 때만 전달되지만, 서버를 Linux 컨테이너에 올리면 종료할 때 <code>SIGTERM</code>이 오므로 둘 다 등록합니다.</p>
+        <p><b>타임아웃과 점검 습관.</b> <code>http.ListenAndServe</code>가 만드는 기본 서버에는 타임아웃이 없어서, 느리게 보내는 클라이언트 하나가 연결을 오래 붙잡을 수 있습니다(100 Go Mistakes #81). 운영 서버는 <code>http.Server</code>를 직접 만들어 <code>ReadHeaderTimeout</code> 등을 정합니다. 코드 점검은 <code>gofmt -l</code>(서식이 다른 파일 목록), <code>go vet</code>(의심스러운 코드), <code>go mod tidy</code>(쓰지 않는 의존성 정리, <code>-diff</code>를 붙이면 파일을 고치지 않고 바뀔 내용만 보여 줌)입니다.</p>
+        <p><b>크로스 컴파일(cross compile).</b> Go는 환경변수 <code>GOOS</code>(운영체제)와 <code>GOARCH</code>(CPU 구조)만 바꿔 다른 플랫폼용 실행 파일을 만들 수 있습니다. 지원 목록은 <code>go tool dist list</code>로 봅니다. 이 코스의 서버는 표준 라이브러리만 쓰므로 별도 런타임 없이 실행 파일 하나로 배포됩니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>레슨 10은 코스의 <b>최종 Task API</b>입니다. 코드는 <span class="file">lab/lesson10</span>에 완성되어 있고, 이 레슨은 새로 입력하기보다 <b>실행하고, 설정을 바꿔 보고, 종료를 확인하는</b> 단계로 구성했습니다. VS Code 기능(스니펫, 프로필, 단축키, 설정)은 6~10단계에서 직접 만집니다. 내 PC 전체에 적용되는 사용자 설정 파일은 고치지 않고, 7단계에서 만드는 연습용 프로필 안에서만 실험합니다. 모든 명령은 <span class="file">lab</span> 폴더의 터미널에서 실행하고, 서버를 띄운 터미널을 계속 쓰지 않으려면 <kbd class="key">Ctrl+Shift+5</kbd>로 터미널을 나눕니다.</p>
+        <div class="callout tip"><strong>터미널 종류별 차이</strong>서버 실행과 <code>curl.exe</code> 사용법은 PowerShell과 bash(MSYS2)에서 같습니다. 다른 곳은 <b>환경변수 지정</b>입니다. bash는 <code>PORT=9090 go run ./lesson10/cmd/taskapi</code>처럼 명령 앞에 쓰면 그 명령에만 적용됩니다. PowerShell은 <code>$env:PORT='9090'</code>을 먼저 실행하고 이어서 <code>go run</code>을 하며, <b>값이 터미널을 닫을 때까지 남으므로</b> 끝나면 <code>Remove-Item Env:PORT</code>로 지웁니다. 5단계의 <code>GOOS</code>도 같은 규칙이니 특히 주의하세요(남겨 두면 다음 <code>go run</code>이 실패합니다). bash에서 <code>go</code>를 찾지 못하면 <a href="01-environment.html">레슨 01</a>의 PATH 설정을 먼저 적용하세요. 이 코스는 PowerShell 터미널만으로도 끝까지 진행할 수 있습니다.</div>
+        <ol class="steps">
+          <li>
+            <strong>서버를 실행하고 slog 로그와 요청 ID 읽기</strong>
+            <p>VS Code 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)에서 <b>Tasks: Run Task</b>를 실행해 <code>go: run task api</code>를 고르거나, 터미널에서 직접 실행합니다. 이 코스의 <span class="file">.vscode/tasks.json</span>에 있는 <code>go: run task api</code>는 <span class="file">lab</span> 폴더에서 <code>go run ./lesson10/cmd/taskapi</code>를 <code>PORT=8080</code> 환경변수와 함께 실행하고, 서버 전용 터미널 패널을 씁니다. 처음 서버를 실행할 때 Windows 방화벽 창이 뜨면 <a href="08-http-server.html#firewall">레슨 08의 안내</a>대로 취소하고 계속합니다. 터미널에서 직접 하려면 다음과 같습니다.</p>
+<pre class="code" data-lang="text">go run ./lesson10/cmd/taskapi</pre>
+            <p>옆의 분할 터미널(<kbd class="key">Ctrl+Shift+5</kbd>)에서 요청을 보냅니다. 응답 헤더에 <code>X-Request-Id</code>가 붙은 것을 봅니다.</p>
+<pre class="code" data-lang="text">curl.exe -si http://localhost:8080/health
+curl.exe -s -X POST http://localhost:8080/tasks -H "Content-Type: application/json" -d '{"title":"   "}'
+curl.exe -s http://localhost:8080/tasks/9999</pre>
+<pre class="output">HTTP/1.1 200 OK
+Content-Type: application/json
+X-Request-Id: 1a251369a6c02460
+Date: Sun, 15 Nov 2026 14:57:19 GMT
+Content-Length: 16
+
+{"status":"ok"}
+{"error":"title은 비어 있을 수 없습니다"}
+{"error":"할 일을 찾을 수 없습니다"}</pre>
+            <p>서버 터미널에는 이렇게 찍힙니다. 시각, <code>request_id</code>, 요청 처리 시간 값은 실행마다 다릅니다.</p>
+<pre class="output">time=2026-11-15T23:57:19.441+09:00 level=INFO msg="서버 시작" addr=[::]:8080
+time=2026-11-15T23:57:19.474+09:00 level=INFO msg=request method=GET path=/health status=200 duration=0s request_id=1a251369a6c02460
+time=2026-11-15T23:57:19.500+09:00 level=WARN msg=request method=POST path=/tasks status=400 duration=0s request_id=be1295909ca467fb
+time=2026-11-15T23:57:19.513+09:00 level=WARN msg=request method=GET path=/tasks/9999 status=404 duration=0s request_id=bc9acec7a4114537</pre>
+            <p>세 가지를 읽어 냅니다. ① 응답 헤더의 <code>X-Request-Id</code>(<code>1a251369a6c02460</code>)가 첫 로그 줄의 <code>request_id</code>와 같습니다. 사용자가 "이 요청이 이상해요"라며 ID를 알려 주면 로그에서 그 요청만 찾을 수 있습니다. ② 상태 코드에 따라 레벨이 달라집니다: 200은 <code>INFO</code>, 4xx는 <code>WARN</code>, 5xx는 <code>ERROR</code>입니다. ③ <code>"서버 시작"</code> 로그는 포트를 연 <b>뒤에</b> 찍힙니다. 레슨 08의 서버는 로그를 먼저 찍고 포트를 열어서, 포트가 막혀 있어도 "서버 시작"이 보이는 문제가 있었습니다. 코드는 <span class="file">internal/handler/middleware.go</span>의 <code>Logging</code>입니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson10/internal/handler/middleware.go" data-lines="60-84">// Logging은 요청마다 구조화된 로그 한 줄을 남깁니다. 5xx는 ERROR, 4xx는 WARN, 나머지는 INFO입니다.
+func Logging(logger *slog.Logger) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			rec := &amp;statusRecorder{ResponseWriter: w, status: http.StatusOK}
+			next.ServeHTTP(rec, r)
+
+			level := slog.LevelInfo
+			switch {
+			case rec.status &gt;= 500:
+				level = slog.LevelError
+			case rec.status &gt;= 400:
+				level = slog.LevelWarn
+			}
+			logger.Log(r.Context(), level, "request",
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", rec.status,
+				"duration", time.Since(start),
+				"request_id", RequestIDFrom(r.Context()),
+			)
+		})
+	}
+}</pre>
+            <p>요청 ID는 <code>RequestID</code> 미들웨어가 만들어 <code>context</code>에 넣습니다. <code>context.WithValue</code>의 키는 다른 패키지의 키와 겹치지 않도록 <b>이 패키지 안에서만 쓰는 타입</b>(<code>requestIDKey</code>)으로 만들었습니다. <code>context</code>에 값을 담는 것은 요청 ID처럼 "정보를 알리는" 용도에 한하고, 함수가 꼭 필요한 값은 타입이 있는 매개변수로 받는 것이 좋습니다(Learn Go with Tests의 context 장).</p>
+<pre class="code" data-lang="go" data-src="lab/lesson10/internal/handler/middleware.go" data-lines="23-43">// requestIDKey는 context 키로만 쓰는 비공개 타입입니다. 다른 패키지의 키와 겹치지 않습니다.
+type requestIDKey struct{}
+
+// RequestIDFrom은 RequestID 미들웨어가 context에 넣어 둔 요청 ID를 꺼냅니다.
+func RequestIDFrom(ctx context.Context) string {
+	id, _ := ctx.Value(requestIDKey{}).(string)
+	return id
+}
+
+// RequestID는 요청마다 무작위 ID를 만들어 context와 X-Request-Id 응답 헤더에 넣습니다.
+func RequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, 8)
+		_, _ = rand.Read(buf)
+		id := hex.EncodeToString(buf)
+
+		w.Header().Set("X-Request-Id", id)
+		ctx := context.WithValue(r.Context(), requestIDKey{}, id)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}</pre>
+          </li>
+          <li>
+            <strong>환경변수로 설정 바꾸고, 설정 코드와 테스트 읽기</strong>
+            <p>서버를 <kbd class="key">Ctrl+C</kbd>로 끝내고 다른 설정으로 시작합니다. 포트를 9090으로 바꾸고 로그를 JSON으로 출력합니다. bash와 PowerShell의 지정 방식이 다릅니다.</p>
+<pre class="code" data-lang="bash">PORT=9090 LOG_FORMAT=json LOG_LEVEL=debug go run ./lesson10/cmd/taskapi</pre>
+<pre class="code" data-lang="powershell">$env:PORT='9090'; $env:LOG_FORMAT='json'; $env:LOG_LEVEL='debug'
+go run ./lesson10/cmd/taskapi</pre>
+            <p>다른 터미널에서 <code>curl.exe -s http://localhost:9090/health</code>를 보내면 서버 로그가 한 줄 JSON으로 나옵니다. 필드는 텍스트 형식과 같고 형식만 다릅니다. PowerShell로 실행했다면 확인 뒤 <code>Remove-Item Env:PORT, Env:LOG_FORMAT, Env:LOG_LEVEL</code>로 지우세요.</p>
+<pre class="output">{"time":"2026-11-15T23:57:19.6916031+09:00","level":"INFO","msg":"서버 시작","addr":"[::]:9090"}
+{"time":"2026-11-15T23:57:20.2145516+09:00","level":"INFO","msg":"request","method":"GET","path":"/health","status":200,"duration":0,"request_id":"0bf5b274fa97e7d1"}</pre>
+            <p>JSON에서 <code>duration</code>은 나노초 정수이고 값이 <code>0</code>입니다. 텍스트 형식에서 <code>0s</code>가 찍혔던 것과 같은 값입니다(이 PC에서는 아주 빠른 요청의 처리 시간이 0으로 측정되는 경우가 많았습니다). 값이 잘못되면 서버는 뜨지 않고 이유를 알려 주며 종료 코드 1로 끝납니다. 아래는 bash와 PowerShell에서 각각 실행한 실제 결과입니다. 두 쉘의 출력은 같습니다.</p>
+<pre class="code" data-lang="bash">PORT=abc go run ./lesson10/cmd/taskapi
+SHUTDOWN_TIMEOUT=0s go run ./lesson10/cmd/taskapi</pre>
+<pre class="output">오류: PORT는 1~65535 사이의 숫자여야 합니다: "abc"
+exit status 1
+오류: SHUTDOWN_TIMEOUT은 0보다 큰 시간이어야 합니다(예: 15s): "0s"
+exit status 1</pre>
+            <p>설정 코드는 <span class="file">internal/config/config.go</span>입니다. 기본값을 먼저 채우고, 환경변수가 있으면 검증해서 덮어씁니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson10/internal/config/config.go" data-lines="23-62">func Load(getenv func(string) string) (Config, error) {
+	cfg := Config{
+		Port:            "8080",
+		LogLevel:        slog.LevelInfo,
+		LogFormat:       "text",
+		ShutdownTimeout: 10 * time.Second,
+	}
+
+	if v := getenv("PORT"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n &lt; 1 || n &gt; 65535 {
+			return Config{}, fmt.Errorf("PORT는 1~65535 사이의 숫자여야 합니다: %q", v)
+		}
+		cfg.Port = v
+	}
+
+	if v := getenv("LOG_LEVEL"); v != "" {
+		if err := cfg.LogLevel.UnmarshalText([]byte(v)); err != nil {
+			return Config{}, fmt.Errorf("LOG_LEVEL이 올바르지 않습니다: %q (debug, info, warn, error 중 하나)", v)
+		}
+	}
+
+	if v := getenv("LOG_FORMAT"); v != "" {
+		format := strings.ToLower(v)
+		if format != "text" &amp;&amp; format != "json" {
+			return Config{}, fmt.Errorf("LOG_FORMAT은 text 또는 json이어야 합니다: %q", v)
+		}
+		cfg.LogFormat = format
+	}
+
+	if v := getenv("SHUTDOWN_TIMEOUT"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil || d &lt;= 0 {
+			return Config{}, fmt.Errorf("SHUTDOWN_TIMEOUT은 0보다 큰 시간이어야 합니다(예: 15s): %q", v)
+		}
+		cfg.ShutdownTimeout = d
+	}
+
+	return cfg, nil
+}</pre>
+            <p>테스트는 <code>fakeEnv</code>로 만든 맵을 <code>Load</code>에 넘깁니다. 진짜 환경변수를 건드리지 않아 병렬로 돌려도 서로 영향이 없습니다. 실행해 결과를 읽습니다.</p>
+<pre class="code" data-lang="text">go test -v ./lesson10/internal/config</pre>
+<pre class="output">=== RUN   TestLoadDefaults
+--- PASS: TestLoadDefaults (0.00s)
+=== RUN   TestLoadOverrides
+--- PASS: TestLoadOverrides (0.00s)
+=== RUN   TestLoadRejectsInvalidValues
+=== RUN   TestLoadRejectsInvalidValues/PORT가_숫자가_아님
+=== RUN   TestLoadRejectsInvalidValues/PORT가_범위_밖
+=== RUN   TestLoadRejectsInvalidValues/LOG_LEVEL이_알_수_없는_값
+=== RUN   TestLoadRejectsInvalidValues/LOG_FORMAT이_알_수_없는_값
+=== RUN   TestLoadRejectsInvalidValues/SHUTDOWN_TIMEOUT_형식_오류
+=== RUN   TestLoadRejectsInvalidValues/SHUTDOWN_TIMEOUT이_0_이하
+--- PASS: TestLoadRejectsInvalidValues (0.00s)
+    --- PASS: TestLoadRejectsInvalidValues/PORT가_숫자가_아님 (0.00s)
+    --- PASS: TestLoadRejectsInvalidValues/PORT가_범위_밖 (0.00s)
+    --- PASS: TestLoadRejectsInvalidValues/LOG_LEVEL이_알_수_없는_값 (0.00s)
+    --- PASS: TestLoadRejectsInvalidValues/LOG_FORMAT이_알_수_없는_값 (0.00s)
+    --- PASS: TestLoadRejectsInvalidValues/SHUTDOWN_TIMEOUT_형식_오류 (0.00s)
+    --- PASS: TestLoadRejectsInvalidValues/SHUTDOWN_TIMEOUT이_0_이하 (0.00s)
+PASS
+ok  	golab/lesson10/internal/config	0.245s</pre>
+            <p>VS Code로 실행하는 쪽의 환경변수도 파일에 있습니다. 이 코스의 <span class="file">.vscode/launch.json</span> <b>Go: Task API 디버그</b> 구성은 <code>"env": { "PORT": "8080" }</code>를 갖고 있고 <code>program</code>이 <code>lab/lesson10/cmd/taskapi</code>입니다. 이 구성에는 <code>cwd</code>가 없으므로 디버그 실행의 작업 폴더는 <code>program</code> 폴더(<span class="file">lab/lesson10/cmd/taskapi</span>)입니다. 상대 경로 파일을 읽는 코드를 디버깅할 때 헷갈릴 수 있는 점입니다.</p>
+          </li>
+          <li>
+            <strong>안전한 종료: Ctrl+C로 종료 로그 확인하고 테스트로 보증하기</strong>
+            <p>기본 설정으로 서버를 다시 시작하고 요청 한두 개를 보낸 뒤, <b>서버가 실행 중인 터미널을 클릭하고 <kbd class="key">Ctrl+C</kbd></b>를 누릅니다. 바로 죽는 대신 로그 두 줄이 찍히고 끝나야 합니다. 이 PC에서 Windows 콘솔의 Ctrl+C 이벤트를 실제로 보내 확인한 결과입니다(<code>go run</code>으로 실행하든 빌드한 실행 파일을 쓰든 같았습니다).</p>
+<pre class="output">time=2026-11-15T23:58:19.194+09:00 level=INFO msg="종료 신호를 받았습니다. 진행 중인 요청을 마무리합니다" timeout=10s
+time=2026-11-15T23:58:19.194+09:00 level=INFO msg="서버가 정상 종료되었습니다"</pre>
+            <p><code>go run</code>으로 실행한 경우 <code>go run</code> 자체의 종료 코드는 1로 보일 수 있습니다(이 PC에서 관찰). 정상 종료인지는 종료 코드보다 위 두 줄로 확인하세요. 이제 코드를 읽습니다. 조립하는 <span class="file">cmd/taskapi/main.go</span>의 <code>run</code> 함수에서 신호 대기 <code>context</code>를 만들고 <code>app.Run</code>에 넘깁니다. 종료 신호는 <code>os.Interrupt</code>와 <code>SIGTERM</code> 두 개를 등록했습니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson10/cmd/taskapi/main.go" data-lines="25-49">func run() error {
+	cfg, err := config.Load(os.Getenv)
+	if err != nil {
+		return err
+	}
+	logger := newLogger(os.Stderr, cfg)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	repo := repository.NewMemory()
+	svc := service.New(repo)
+	h := handler.New(svc, logger)
+	root := handler.Chain(h.Routes(),
+		handler.RequestID,
+		handler.Logging(logger),
+		handler.Recover(logger),
+	)
+
+	ln, err := net.Listen("tcp", ":"+cfg.Port)
+	if err != nil {
+		return fmt.Errorf("포트 %s를 열 수 없습니다: %w", cfg.Port, err)
+	}
+	return app.Run(ctx, app.NewServer(root), ln, cfg.ShutdownTimeout, logger)
+}</pre>
+            <p>핵심은 <span class="file">internal/app/app.go</span>의 <code>Run</code>입니다. 서버는 고루틴에서 돌리고, <code>select</code>로 "서버가 스스로 실패했다"와 "종료 신호가 왔다" 중 먼저 오는 쪽을 기다립니다. 신호가 오면 <code>Shutdown</code>을 부르는데, <b>이미 취소된 <code>ctx</code>에서 타임아웃 <code>context</code>를 만들면 안 됩니다</b>. 취소된 부모에서 만든 자식은 처음부터 취소되어 있어서 <code>Shutdown</code>이 기다리지 않고 바로 실패합니다. 그래서 <code>context.WithoutCancel(ctx)</code>(Go 1.21)로 취소 신호만 떼어 낸 <code>context</code>에 타임아웃을 겁니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson10/internal/app/app.go" data-lines="26-60">// Run은 ln에서 srv를 실행합니다. ctx가 취소되면 새 연결을 받지 않고,
+// 진행 중인 요청이 끝나기를 shutdownTimeout까지 기다린 뒤 돌아옵니다.
+func Run(ctx context.Context, srv *http.Server, ln net.Listener, shutdownTimeout time.Duration, logger *slog.Logger) error {
+	serveErr := make(chan error, 1)
+	go func() {
+		logger.Info("서버 시작", "addr", ln.Addr().String())
+		err := srv.Serve(ln)
+		if errors.Is(err, http.ErrServerClosed) {
+			err = nil
+		}
+		serveErr &lt;- err
+	}()
+
+	select {
+	case err := &lt;-serveErr:
+		return err
+	case &lt;-ctx.Done():
+	}
+
+	logger.Info("종료 신호를 받았습니다. 진행 중인 요청을 마무리합니다", "timeout", shutdownTimeout)
+
+	// ctx는 이미 취소되었으므로 그대로 쓰면 Shutdown이 기다리지 않고 바로 실패합니다.
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		_ = srv.Close()
+		return fmt.Errorf("graceful shutdown 실패: %w", err)
+	}
+	if err := &lt;-serveErr; err != nil {
+		return err
+	}
+	logger.Info("서버가 정상 종료되었습니다")
+	return nil
+}</pre>
+            <p>이 흐름을 사람이 Ctrl+C를 누르지 않아도 검증하는 테스트가 <span class="file">internal/app/app_test.go</span>에 있습니다. <code>TestRunFinishesInFlightRequestBeforeReturning</code>은 "요청을 처리하는 도중에 <code>ctx</code>를 취소했을 때 ① <code>Run</code>이 요청이 끝나기 전에는 돌아오지 않고 ② 요청이 정상 응답을 받으며 ③ 종료 뒤에는 새 연결이 거부되는지"를 확인합니다. <code>TestRunReturnsErrorWhenShutdownTimesOut</code>은 요청이 끝나지 않을 때 타임아웃이 지나면 에러로 돌아오는지를 봅니다. 실행하고 하위 테스트 이름을 읽습니다.</p>
+<pre class="code" data-lang="text">go test -v ./lesson10/internal/app</pre>
+<pre class="output">=== RUN   TestNewServerHasTimeouts
+--- PASS: TestNewServerHasTimeouts (0.00s)
+=== RUN   TestRunFinishesInFlightRequestBeforeReturning
+--- PASS: TestRunFinishesInFlightRequestBeforeReturning (0.14s)
+=== RUN   TestRunReturnsErrorWhenShutdownTimesOut
+--- PASS: TestRunReturnsErrorWhenShutdownTimesOut (0.05s)
+=== RUN   TestRunReturnsServeError
+--- PASS: TestRunReturnsServeError (0.00s)
+PASS
+ok  	golab/lesson10/internal/app	0.843s</pre>
+          </li>
+          <li>
+            <strong>서버 타임아웃과 점검 명령 세 가지</strong>
+            <p><span class="file">internal/app/app.go</span> 위쪽의 <code>NewServer</code>가 기본 서버에 없는 타임아웃을 채웁니다. 헤더를 읽는 데 5초(<code>ReadHeaderTimeout</code>), 요청 전체를 읽는 데 10초, 응답을 쓰는 데 15초, 연결을 놀리는 데 60초가 한도입니다. 값은 예시이며 큰 파일을 내려보내거나 스트리밍하는 서버라면 <code>WriteTimeout</code>을 더 크게 잡아야 합니다. <code>0</code>은 "제한 없음"입니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson10/internal/app/app.go" data-lines="14-24">// NewServer는 운영에 쓸 만한 타임아웃을 설정한 http.Server를 만듭니다.
+// http.ListenAndServe가 쓰는 기본 서버에는 이런 타임아웃이 없습니다.
+func NewServer(h http.Handler) *http.Server {
+	return &amp;http.Server{
+		Handler:           h,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+}</pre>
+            <p>운영 코드를 내보내기 전에 습관으로 돌리는 점검 세 가지입니다. 문제가 없으면 <b>모두 아무것도 출력하지 않습니다.</b> <code>go mod tidy -diff</code>는 파일을 고치지 않고, 고쳐야 할 내용이 있을 때만 그 차이를 출력합니다. 이 코스의 모듈은 외부 의존성이 없어 비어 있는 것이 정상입니다. VS Code에서는 <b>go: vet all</b> 작업(<kbd class="key">Ctrl+Shift+B</kbd>)이 첫 번째에 해당합니다. <code>go mod tidy</code>를 <code>-diff</code> 없이 실행하면 <span class="file">go.mod</span>를 고칠 수 있으므로, 이 코스에서는 <span class="file">lab/go.mod</span>를 수정하지 않기 위해 <code>-diff</code>만 씁니다.</p>
+<pre class="code" data-lang="text">go vet ./lesson10/...
+gofmt -l lesson10
+go mod tidy -diff</pre>
+          </li>
+          <li>
+            <strong>크로스 컴파일: Windows에서 Linux용 실행 파일 만들기</strong>
+            <p>PowerShell에서는 환경변수를 지정하고 빌드한 뒤 <b>반드시 지웁니다</b>. bash에서는 명령 앞에 쓰면 그 빌드에만 적용됩니다. <code>-o</code>는 만들어질 파일 경로입니다(<span class="file">lab/bin</span> 폴더는 <span class="file">.gitignore</span>에 들어 있어 커밋되지 않고, 확인하면 바로 지웁니다).</p>
+<pre class="code" data-lang="powershell">$env:GOOS='linux'; $env:GOARCH='amd64'
+go build -o bin/taskapi-linux-amd64 ./lesson10/cmd/taskapi
+Remove-Item Env:GOOS, Env:GOARCH
+go build -o bin/taskapi.exe ./lesson10/cmd/taskapi</pre>
+<pre class="code" data-lang="bash">GOOS=linux GOARCH=amd64 go build -o bin/taskapi-linux-amd64 ./lesson10/cmd/taskapi
+go build -o bin/taskapi.exe ./lesson10/cmd/taskapi</pre>
+            <p>만든 파일이 정말 Linux용인지는 파일 맨 앞 4바이트(매직 넘버)로 확인합니다. Linux 실행 파일(ELF)은 <code>7F 45 4C 46</code>(<code>7F</code> 뒤에 글자 <code>ELF</code>), Windows 실행 파일은 <code>4D 5A</code>(글자 <code>MZ</code>)로 시작합니다. 확인 명령은 터미널이 <b>PowerShell 7</b>인지 <b>Windows PowerShell 5.1</b>인지에 따라 다릅니다. <code>Format-Hex</code>의 <code>-Count</code> 옵션은 PowerShell 7에만 있고, 5.1에서 쓰면 <code>A parameter cannot be found that matches parameter name 'Count'.</code> 오류가 납니다(이 PC에서 5.1로 확인했습니다). 버전은 <code>$PSVersionTable.PSVersion</code>으로 볼 수 있습니다. 먼저 <b>PowerShell 7</b>용입니다.</p>
+<pre class="code" data-lang="powershell">Format-Hex -Path bin/taskapi-linux-amd64 -Count 4</pre>
+<pre class="output">          Offset Bytes                                           Ascii
+                 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+          ------ ----------------------------------------------- -----
+0000000000000000 7F 45 4C 46                                     �ELF</pre>
+            <p><b>PowerShell 7과 Windows PowerShell 5.1 모두</b> 되는 방법은 파일을 읽어 앞 네 바이트만 16진수로 찍는 것입니다(두 버전에서 이 PC에서 실행해 확인했습니다). 파일 전체(약 10MB)를 읽지만 앞 네 개만 씁니다. <code>Resolve-Path</code>로 감싼 이유는 .NET 메서드가 PowerShell의 현재 폴더가 아니라 터미널을 시작한 폴더 기준으로 상대 경로를 해석하기 때문입니다(5.1에서 <code>Set-Location ..</code> 뒤에 상대 경로가 다른 폴더로 해석되어 "Could not find a part of the path" 오류가 나는 것을 확인했습니다). 아래 두 번째 줄은 파일 크기 확인입니다. 파일 크기는 Go 버전과 폴더에 따라 달라집니다.</p>
+<pre class="code" data-lang="powershell">([IO.File]::ReadAllBytes((Resolve-Path bin/taskapi-linux-amd64))[0..3] | ForEach-Object { '{0:X2}' -f $_ }) -join ' '
+Get-ChildItem bin | Select-Object Name, Length</pre>
+<pre class="output">7F 45 4C 46
+
+Name                  Length
+----                  ------
+taskapi-linux-amd64 10041639
+taskapi.exe         10172928</pre>
+            <p><b>bash</b>에서는 <code>od</code>를 씁니다.</p>
+<pre class="code" data-lang="bash">od -An -c -N4 bin/taskapi-linux-amd64
+od -An -c -N2 bin/taskapi.exe</pre>
+            <p>bash의 <code>od</code> 결과는 첫 줄이 <code>177   E   L   F</code>(8진수 <code>177</code>은 <code>7F</code>), 둘째 줄이 <code>M   Z</code>였습니다(이 PC에서 확인). PowerShell과 bash에서 같은 대상을 빌드한 파일의 크기는 같았습니다(10041639바이트). <code>go version -m 파일</code>은 그 실행 파일을 만든 Go 버전과 모듈 정보를 보여 줍니다. 리눅스용 파일은 Windows에서 실행되지 않으니 서버에 올려서 실행합니다. 실행 파일을 더 작게 만들고 싶으면 <code>-ldflags="-s -w"</code>를 붙이는데(디버그 정보를 뺍니다), 이 PC에서 Windows용 파일이 10172928바이트에서 7016448바이트로 줄었습니다. 디버거로 볼 때는 이 옵션을 빼야 합니다. 지원하는 플랫폼 목록은 <code>go tool dist list</code>입니다. 확인이 끝나면 <b>바로</b> <code>bin</code> 폴더를 지웁니다(<code>rm -r bin</code>은 bash, PowerShell 7, Windows PowerShell 5.1에서 모두 됩니다). 지운 뒤 <code>ls</code>에 <code>bin</code>이 없어야 합니다.</p>
+          </li>
+          <li>
+            <strong>프로젝트 스니펫 만들기: 자주 쓰는 로그 한 줄과 테스트 뼈대 (만들고 바로 지우기)</strong>
+            <p>스니펫(snippet)은 짧은 접두어를 입력하면 코드 조각이 삽입되는 기능입니다. 내 PC 전체에 적용되는 사용자 스니펫은 만들지 않고, 이 코스 폴더 안에만 두는 <b>프로젝트 스니펫</b>(VS Code 문서의 "Project snippet scope")을 만들어 쓰고 확인이 끝나면 바로 지웁니다. 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)에서 <b>Snippets: Configure Snippets</b>를 실행하고 목록에서 <b>New Snippets file for '...'</b>(열어 둔 폴더 이름이 들어간 항목)를 고릅니다. 이름 입력 칸에 <code>go-course</code>를 입력하면 <span class="file">.vscode/go-course.code-snippets</span> 파일이 만들어집니다. 파일을 열어 내용을 아래로 바꾸고 저장합니다.</p>
+<pre class="code" data-lang="json">{
+  "slog 에러 로그": {
+    "scope": "go",
+    "prefix": "slogerr",
+    "body": [
+      "logger.ErrorContext(${1:ctx}, \"${2:메시지}\", \"error\", ${3:err})"
+    ],
+    "description": "slog 에러 로그 한 줄(컨텍스트 포함)"
+  },
+  "table-driven 테스트": {
+    "scope": "go",
+    "prefix": "ttest",
+    "body": [
+      "func Test${1:Name}(t *testing.T) {",
+      "\ttests := []struct {",
+      "\t\tname string",
+      "\t\t$2",
+      "\t}{",
+      "\t\t{\"${3:케이스}\"},",
+      "\t}",
+      "\tfor _, tt := range tests {",
+      "\t\tt.Run(tt.name, func(t *testing.T) {",
+      "\t\t\t$0",
+      "\t\t})",
+      "\t}",
+      "}"
+    ],
+    "description": "table-driven 테스트 뼈대"
+  }
+}</pre>
+            <p>구조는 이렇습니다. 가장 바깥 키가 스니펫 이름, <code>scope</code>가 적용할 언어(<code>go</code>), <code>prefix</code>가 입력하면 목록에 뜨는 글자, <code>body</code>가 삽입될 줄들(배열의 각 원소가 한 줄, <code>\t</code>는 탭)입니다. <code>${1:ctx}</code>는 <b>첫 번째 자리표시자(placeholder)</b>로 기본값 <code>ctx</code>가 선택된 채 삽입되고, <code>Tab</code> 키를 누르면 <code>${2:...}</code>, <code>${3:...}</code> 순서로 이동하며, <code>$0</code>은 마지막에 커서가 놓일 자리입니다.</p>
+            <p>시험해 봅니다. 탐색기에서 <span class="file">lab</span> 아래에 새 폴더 <code>scratch</code>를 만들고 그 안에 새 파일 <code>scratch.go</code>를 만들어 <code>package scratch</code> 한 줄을 씁니다. 새 줄에서 <code>ttest</code>를 입력하면 자동 완성 목록에 스니펫이 나타나고 <kbd class="key">Ctrl+Space</kbd>로도 불러낼 수 있습니다. 항목을 고르면(<code>Enter</code>) 테스트 뼈대가 삽입되고 이름 자리가 선택된 상태가 됩니다. <code>Tab</code>으로 자리를 옮겨 가며 채워 보세요. 저장하면 이 코스의 import 정리 설정(레슨 02) 때문에 <code>testing</code> import가 자동으로 추가될 수도 있고, 추가되지 않아 빨간 줄이 남을 수도 있습니다. 어느 쪽이든 이 파일은 곧 지울 것이라 고치지 않아도 됩니다.</p>
+            <p><b>확인이 끝났으니 지금 바로 지웁니다.</b> 탐색기에서 <span class="file">lab/scratch</span> 폴더와 <span class="file">.vscode/go-course.code-snippets</span> 파일을 각각 우클릭해 <b>삭제(Delete)</b>합니다. 지우지 않으면 <code>go: test all</code>·<code>go: vet all</code> 작업이 이 미완성 파일 때문에 실패할 수 있습니다. 아래는 <code>testing</code> import가 없는 채로 남은 같은 내용의 임시 파일로 <code>go test ./...</code>를 실행한 이 PC의 실제 출력입니다(서식이 정리된 뒤의 줄 번호이고, 내 파일에서는 다를 수 있습니다).</p>
+<pre class="output"># golab/scratch
+scratch\scratch.go:3:18: undefined: testing
+scratch\scratch.go:10:26: undefined: testing
+FAIL	golab/scratch [build failed]
+FAIL</pre>
+            <p>삭제 확인: 터미널(<span class="file">lab</span> 폴더)에서 <code>ls</code>의 결과에 <code>scratch</code>가 없고, <code>ls ../.vscode</code>의 결과에 <span class="file">extensions.json</span>, <span class="file">launch.json</span>, <span class="file">settings.json</span>, <span class="file">tasks.json</span> 네 파일만 있어야 합니다(<code>.code-snippets</code>도 <code>.bak</code>도 없어야 합니다).</p>
+          </li>
+          <li>
+            <strong>연습용 프로필 만들기 (기본 프로필에서 복사)</strong>
+            <p>이 단계부터 10단계까지는 내 PC 전체에 적용되는 사용자 파일(<span class="file">keybindings.json</span>, 사용자 <span class="file">settings.json</span>)을 건드리는 실험이라, 모두 연습용 프로필 안에서 합니다. 절차는 <a href="07-concurrency.html#practice-profile">레슨 07의 연습용 프로필 절차</a>와 같고, 요점만 다시 적습니다(VS Code 공식 문서 Profiles 기준, 영문 UI 문구).</p>
+            <p>① 메뉴 <b>File &gt; Preferences &gt; Profiles</b>로 프로필 편집기를 열고 <b>New Profile</b>을 누릅니다. ② 이름에 <code>go-practice</code>를 입력하고, 복사 원본 드롭다운에서 <b>Default Profile</b>을 고릅니다. ③ <b>Contents</b>의 설정, 키보드 단축키, 스니펫, 작업, 확장 항목이 모두 체크되어 있는지 보고 <b>Create</b>를 누릅니다. ④ 제목 표시줄이나 관리 버튼에 <code>go-practice</code>가 보이는지 확인하고, 안 보이면 <kbd class="key">Ctrl+Shift+P</kbd> → <b>Profiles: Switch Profile</b>로 전환합니다. ⑤ <kbd class="key">Ctrl+Shift+X</kbd>로 Go 확장이 이 프로필에 있는지 확인합니다. 공식 문서에 따르면 프로필을 만들거나 고르면 지금 열린 폴더에 연결되어 이 폴더를 열 때마다 그 프로필이 켜지므로, 10단계에서 반드시 기본 프로필로 돌아와 지웁니다.</p>
+            <p>왜 "기본 프로필에서 복사"일까요? 프로필을 만드는 방법은 공식 문서 기준으로 세 가지이고 이 코스는 첫째만 씁니다.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>방법</th><th>내용</th><th>이 코스에서</th></tr></thead>
+                <tbody>
+                  <tr><td>기본 프로필(또는 다른 프로필)에서 복사</td><td>현재 설정의 사본을 새 프로필에 만듭니다. 원본과 연결은 유지되지 않습니다.</td><td><b>사용합니다.</b> Go 확장, 터미널 설정이 그대로라 이 코스의 실습이 됩니다.</td></tr>
+                  <tr><td>Empty Profile</td><td>설정, 확장, 스니펫이 하나도 없는 프로필입니다. 문서는 VS Code 문제를 신고할 때 확장과 바꾼 설정을 모두 끈 상태로 시험하는 용도로 소개합니다.</td><td>쓰지 않습니다. Go 확장이 없어 코드 이동과 디버그가 안 됩니다.</td></tr>
+                  <tr><td>임시 프로필(<b>Profiles: Create a Temporary Profile</b>)</td><td>빈 프로필로 시작하고 <code>Temp 1</code> 같은 이름이 자동으로 붙으며 VS Code를 닫으면 삭제됩니다.</td><td>쓰지 않습니다. 빈 프로필이라 Go 확장이 없습니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </li>
+          <li>
+            <strong>연습용 프로필 안에서 keybindings.json에 단축키 규칙 직접 추가하기</strong>
+            <p>먼저 제목 표시줄이나 관리 버튼에서 <code>go-practice</code> 프로필을 쓰는 중인지 확인합니다. <kbd class="key">Ctrl+K Ctrl+S</kbd>로 <b>키보드 바로 가기(Keyboard Shortcuts)</b> 편집기를 엽니다. 위쪽 검색창에 <code>Run Task</code>를 입력하면 명령 <b>Tasks: Run Task</b>가 보입니다. 이 명령에 단축키를 붙이면 매번 목록에서 작업을 골라야 하므로, 아래에서는 어떤 작업을 실행할지까지 JSON으로 정합니다. 편집기 제목 줄 오른쪽의 <b>키보드 바로 가기 열기(JSON)(Open Keyboard Shortcuts (JSON))</b> 버튼을 눌러 <span class="file">keybindings.json</span>을 열고 아래 규칙을 넣습니다. 공식 문서는 키보드 단축키가 프로필의 구성 요소라고 설명하므로, 프로필을 쓰는 동안 이 규칙은 연습용 프로필에 기록되어야 합니다. 문서에는 프로필 안의 <span class="file">keybindings.json</span> 위치가 적혀 있지 않으니, 파일 경로를 추측하는 대신 10단계에서 기본 프로필로 돌아가 같은 키를 눌러 아무 일도 없는지로 확인합니다.</p>
+<pre class="code" data-lang="json">[
+  {
+    "key": "ctrl+alt+t",
+    "command": "workbench.action.tasks.runTask",
+    "args": "go: run task api"
+  }
+]</pre>
+            <p>이 규칙은 "<code>ctrl+alt+t</code>를 누르면 <code>workbench.action.tasks.runTask</code> 명령을 <code>go: run task api</code>라는 인자와 함께 실행하라"는 뜻입니다. 이미 파일에 <code>[ ... ]</code>가 있다면 그 안에 항목만 추가합니다. 저장하면 바로 적용됩니다(문서: <code>keybindings.json</code>은 VS Code가 감시하고 있어 고치면 즉시 반영). <b>같은 키에 이미 다른 명령이 연결되어 있지 않은지</b> 먼저 확인하세요: 키보드 바로 가기 편집기 검색창에서 키 입력 기록 버튼을 눌러 그 키를 직접 눌러 보면 그 키에 연결된 명령이 나옵니다. 항목을 우클릭해 <b>같은 키 바인딩 표시(Show Same Keybindings)</b>를 고를 수도 있습니다. 이미 쓰이는 조합이면 다른 키로 바꾸세요. 확인: 코드 편집기를 클릭하고 방금 정한 키를 누르면 <code>go: run task api</code>가 서버 전용 터미널에서 시작됩니다. 서버는 <kbd class="key">Ctrl+C</kbd>로 끝냅니다.</p>
+            <p>이 규칙은 연습용 프로필과 함께 지울 것이라 따로 되돌리지 않습니다. 규칙 앞에 <code>-</code>를 붙인 <code>"command": "-명령"</code> 형태는 기본 단축키를 지우는 문법입니다.</p>
+          </li>
+          <li>
+            <strong>연습용 프로필 안에서 설정 JSON 고치기: 사용자 값과 워크스페이스 값의 우선순위</strong>
+            <p>화면에 세로 안내선을 표시하는 <code>editor.rulers</code> 설정으로 우선순위를 눈으로 봅니다. 이 설정은 <b>배열</b>입니다. ① <code>go-practice</code> 프로필을 쓰는 상태에서 <kbd class="key">Ctrl+,</kbd>로 설정을 열고 <b>User</b> 탭에서 <code>editor.rulers</code>를 검색합니다. 항목 아래의 <b>Edit in settings.json</b> 링크를 누르면 <code>"editor.rulers": []</code>가 들어간 설정 JSON이 열립니다(링크가 없으면 <kbd class="key">Ctrl+Shift+P</kbd> → <b>Preferences: Open User Settings (JSON)</b>으로 열고 첫 <code>{</code> 바로 아래에 <code>"editor.rulers": [],</code> 줄을 직접 넣습니다). 대괄호 안에 <code>100</code>을 입력해 <code>"editor.rulers": [100]</code>으로 만들고 저장합니다. 뒤에 다른 항목이 이어지면 줄 끝에 쉼표가 있어야 하고, 마지막 항목이면 쉼표를 붙이지 않습니다. 편집기 탭에 마우스를 올려 경로가 <code>...\Code\User\profiles\...\settings.json</code> 모양인지 확인합니다. <code>profiles</code>가 없는 경로면 기본 프로필의 파일이니 고치지 말고 닫습니다. 아무 <code>.go</code> 파일을 열면 100번째 글자 위치에 세로선이 보입니다.</p>
+            <p>② 설정 화면에서 <b>Workspace</b> 탭(한국어 UI의 작업 영역)을 선택하고 <code>editor.rulers</code>의 <b>Edit in settings.json</b>을 누르면 이 코스의 <span class="file">.vscode/settings.json</span>이 열립니다(<code>files.eol</code>, <code>[go]</code> 묶음, <code>gopls</code> 설정이 이미 들어 있습니다. 링크가 없으면 <b>Preferences: Open Workspace Settings (JSON)</b>). 새로 들어간 <code>"editor.rulers": []</code>를 <code>"editor.rulers": [60]</code>으로 고쳐 저장합니다. 이것은 프로필이 아니라 코스 폴더의 파일을 고치는 것이므로 ④에서 <b>바로</b> 되돌립니다.</p>
+            <p>③ 확인: 이제 세로선은 <b>60 위치에만</b> 있고 100 위치의 선은 사라집니다. VS Code 문서에서 설정은 "기본값 → 사용자 → 워크스페이스" 순서로 덮어쓰고(<b>나중 것이 이긴다</b>), 숫자·문자·<b>배열</b> 값은 합쳐지지 않고 통째로 바뀌기 때문입니다. 반대로 <code>search.exclude</code>처럼 <b>객체</b> 값은 합쳐집니다(레슨 09의 설정 체험). 설정 화면의 <b>User</b>와 <b>Workspace</b> 탭에서 <code>editor.rulers</code>를 보면 값이 따로 표시되고 바뀐 항목에는 표시가 붙습니다.</p>
+            <p>④ <b>확인이 끝났으니 지금 바로</b> <span class="file">.vscode/settings.json</span>을 원래대로 되돌립니다. 방금 넣은 <code>editor.rulers</code> 줄만 지우고(그 줄에 커서를 두고 <kbd class="key">Ctrl+Shift+K</kbd>) 저장합니다. 복원 확인: ㉠ 이 파일에서 <kbd class="key">Ctrl+F</kbd>로 <code>editor.rulers</code>를 찾으면 결과가 없습니다. ㉡ 세로선이 다시 100 위치에만 보입니다(연습용 프로필의 사용자 값이 남아 있는 동안). ㉢ 설정 화면 <b>Workspace</b> 탭의 <code>@modified</code> 검색 결과에 <code>editor.rulers</code>가 없습니다.</p>
+          </li>
+          <li>
+            <strong>기본 프로필로 돌아와 프로필 지우고, 기본 프로필이 그대로인지 확인하기</strong>
+            <p>실험을 끝내는 단계입니다. ① 켜져 있는 서버가 있으면 <kbd class="key">Ctrl+C</kbd>로 끝냅니다. ② <kbd class="key">Ctrl+Shift+P</kbd> → <b>Profiles: Switch Profile</b>에서 기본 프로필(<code>Default</code>)을 고릅니다. 제목 표시줄과 관리 버튼에 프로필 이름이 없어야 합니다. ③ <b>기본 프로필이 그대로인지 확인합니다.</b> 코드 편집기를 클릭하고 8단계의 <code>ctrl+alt+t</code>를 눌러 아무 작업도 시작되지 않는지 봅니다. 작업이 시작되면 규칙이 기본 프로필에 기록된 것이니 서버를 <kbd class="key">Ctrl+C</kbd>로 끝내고 <kbd class="key">Ctrl+K Ctrl+S</kbd> 편집기에서 그 항목을 우클릭해 <b>키 바인딩 제거(Remove Keybinding)</b>를 합니다. 이어서 <kbd class="key">Ctrl+,</kbd> → <b>User</b> 탭 → <code>@modified</code> 검색 결과에 이번 실험에서 바꾼 <code>editor.rulers</code>가 없어야 하고(평소 이 설정을 쓰고 있었다면 원래 값이어야 합니다), <code>.go</code> 파일에 100 위치의 세로선이 없어야 합니다.</p>
+            <p>④ 레슨 07 절차의 8번에 따라 프로필 편집기에서 <code>go-practice</code>의 더보기(<b>…</b>) 메뉴 → <b>Delete Profile</b>로 지우고, 9번으로 목록에서 사라진 것을 확인합니다. ⑤ 마지막으로 파일을 확인합니다. 터미널(<span class="file">lab</span> 폴더)에서 <code>ls</code>에 <code>bin</code>과 <code>scratch</code>가 없고, <code>ls ../.vscode</code>에 네 파일만 있어야 합니다. 이 상태가 이 레슨의 실험을 시작하기 전과 같은 상태입니다.</p>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong>같은 레슨의 "자주 나는 오류"를 먼저 확인하세요. 코드는 <span class="file">lab/lesson10</span>의 완성본이 기준입니다.</div>
+        <div class="callout warn"><strong>끝낼 때는 "정리하기"를 꼭 하세요</strong>연습 문제를 위해 만든 <span class="file">mine</span> 폴더에 미완성 코드가 남아 있으면 <span class="file">lab</span> 전체를 대상으로 하는 <code>go: test all</code>·<code>go: vet all</code> 작업이 실패합니다. 연습 문제까지 마친 뒤(또는 오늘 공부를 여기서 멈출 때) 연습 문제 절 끝의 <a href="#cleanup">정리하기</a>를 합니다.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Go</th></tr></thead>
+            <tbody>
+              <tr><td>로깅</td><td>SLF4J + Logback, <code>log.info("...")</code>, MDC</td><td>표준 <code>logging</code>, uvicorn 접근 로그</td><td><code>log/slog</code>: <code>logger.Info("msg", "key", val)</code>, 텍스트/JSON 핸들러</td></tr>
+              <tr><td>로그 레벨 설정</td><td><code>logging.level.root=DEBUG</code></td><td><code>uvicorn --log-level debug</code></td><td><code>LOG_LEVEL</code> 환경변수를 읽어 <code>HandlerOptions.Level</code>에 직접 연결</td></tr>
+              <tr><td>설정 파일</td><td><code>application.yml</code>, <code>@ConfigurationProperties</code>, 프로필</td><td>pydantic-settings, <code>.env</code></td><td>환경변수 → <code>Config</code> 구조체, <code>Load(getenv)</code>에서 검증</td></tr>
+              <tr><td>요청 ID</td><td>필터 + MDC에 <code>X-Request-Id</code></td><td>미들웨어 + contextvars</td><td>미들웨어 + <code>context.WithValue</code></td></tr>
+              <tr><td>안전한 종료</td><td><code>server.shutdown=graceful</code>, <code>@PreDestroy</code></td><td>uvicorn의 종료 처리와 lifespan 종료 이벤트</td><td><code>signal.NotifyContext</code> + <code>http.Server.Shutdown</code>을 직접 연결</td></tr>
+              <tr><td>상태 확인</td><td>Actuator <code>/actuator/health</code></td><td>직접 만든 <code>/health</code></td><td>직접 만든 <code>/health</code> (레슨 08)</td></tr>
+              <tr><td>배포 산출물</td><td>실행 가능한 JAR + JVM</td><td>가상환경·패키지·컨테이너</td><td>실행 파일 하나 (<code>go build</code>, <code>GOOS</code>/<code>GOARCH</code>)</td></tr>
+              <tr><td>의존성 정리</td><td>Gradle 의존성 선언 점검</td><td><code>pip freeze</code>, lock 파일</td><td><code>go mod tidy</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ①: 안전한 기본값이 없습니다</strong>Spring Boot에서는 프로퍼티 하나(<code>server.shutdown=graceful</code>)나 내장 서버 기본 설정으로 해결되던 것들을 Go에서는 코드로 직접 연결해야 합니다. <code>http.ListenAndServe</code>의 기본 서버는 타임아웃이 없고, 종료 신호를 받아도 요청을 기다려 주지 않습니다. "동작한다"와 "운영할 수 있다" 사이의 간격이 Go에서는 이 레슨의 코드만큼 있습니다.</div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ②: 프로파일 대신 환경변수 하나로 단순하게</strong><code>application-prod.yml</code> 같은 프로파일 파일 체계가 없습니다. 환경별 차이는 환경변수 값으로만 주고, 그 값을 읽고 검증하는 코드(<code>config.Load</code>)가 유일한 창구입니다. 환경변수를 <code>os.Getenv</code>로 코드 곳곳에서 읽으면 어떤 설정이 있는지 알 수 없게 되므로, 한 군데에서 읽어 구조체로 넘기는 것이 습관입니다. 그리고 <code>context</code>에 값을 담을 수 있다고 설정이나 DB 연결까지 담지 마세요. 요청 ID처럼 "알리는" 값에만 씁니다.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 설정 JSON, 우선순위, 프로필, 스니펫, keybindings.json</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 또는 명령 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>설정 화면 열기</td><td><kbd class="key">Ctrl+,</kbd></td><td>사용자/작업 영역 탭에서 값을 바꿔 볼 때</td></tr>
+                <tr><td>설정 JSON 열기</td><td><kbd class="key">Ctrl+Shift+P</kbd> → <b>Preferences: Open User/Workspace Settings (JSON)</b></td><td>설정 파일을 직접 고치고 주석을 달 때(사용자 쪽은 연습용 프로필 안에서만)</td></tr>
+                <tr><td>단축키 편집기 열기</td><td><kbd class="key">Ctrl+K Ctrl+S</kbd></td><td>명령에 단축키를 연결하고 충돌을 확인할 때</td></tr>
+                <tr><td>스니펫 파일 만들기</td><td><kbd class="key">Ctrl+Shift+P</kbd> → <b>Snippets: Configure Snippets</b></td><td>자주 쓰는 코드 조각을 입력 몇 글자로 삽입할 때(이 코스는 프로젝트 스니펫만)</td></tr>
+                <tr><td>자동 완성 불러내기</td><td><kbd class="key">Ctrl+Space</kbd></td><td>스니펫 접두어가 목록에 안 뜰 때</td></tr>
+                <tr><td>확장 보기</td><td><kbd class="key">Ctrl+Shift+X</kbd></td><td>프로필마다 확장이 다른 것을 확인할 때</td></tr>
+                <tr><td>프로필</td><td><b>File &gt; Preferences &gt; Profiles</b>(프로필 편집기), <kbd class="key">Ctrl+Shift+P</kbd> → <b>Profiles: Switch Profile</b>, <b>Delete Profile</b></td><td>설정·단축키·확장 묶음을 분리해서 실험하고, 끝나면 기본 프로필로 돌아와 지울 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>설정 우선순위는 낮은 쪽부터 <b>기본값 → 사용자 → 워크스페이스 → 언어별 설정</b>이고 나중 것이 이깁니다. 숫자·문자·배열은 통째로 덮어쓰고 객체는 합쳐집니다(VS Code 문서). 설정 값을 바꿨는데 반영되지 않는 것 같을 때는 <b>어느 범위의 값이 이기고 있는지</b>부터 의심하세요. 설정 화면에서 값이 바뀐 항목은 왼쪽에 표시가 붙고, 설정 화면의 검색창에 <code>@modified</code>를 입력하면 바꾼 설정만 모아 볼 수 있습니다. 프로필을 쓰면 "사용자" 단계가 프로필마다 따로 있어서, 프로필로 바꿀 때 그 프로필의 사용자 설정이 적용됩니다(공식 문서).</p>
+        </div>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>언어별 설정이 이기는 순서 확인하기</strong>
+            <p><kbd class="key">Ctrl+,</kbd>로 설정을 열고 검색창에 <code>@lang:go editor.insertSpaces</code>를 입력합니다. 이 코스의 <span class="file">.vscode/settings.json</span>이 <code>[go]</code> 묶음에서 이 값을 <code>false</code>(탭 문자 사용)로 정해 둔 것이 보입니다. 같은 설정을 일반(언어 구분 없는) 범위에서 바꿔도 Go 파일에서는 이 값이 이깁니다. VS Code 문서에서 "언어별 설정은 언어 구분 없는 설정보다 항상 우선한다"고 설명합니다. 값을 바꿔 보지 않고 <b>누가 이기는지 읽기</b>만 해도 충분합니다. 확인 뒤 설정 화면에서 아무것도 바꾸지 않았다면 <code>@modified</code> 검색 결과에 새로 생긴 항목이 없어야 합니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <h3>문제 1. 요청 본문 크기를 제한하는 미들웨어</h3>
+        <p><span class="file">lab/lesson10/mine/exercises</span> 폴더를 만들고 아래 테스트를 <code>maxbody_test.go</code>로 입력한 뒤(첫 줄은 <code>package exercises</code> 그대로), <code>maxbody.go</code>에 <code>MaxBody(limit int64) func(http.Handler) http.Handler</code>와 <code>IsTooLarge(err error) bool</code>을 구현하세요. <b>완료 조건</b>: <code>go test ./lesson10/mine/exercises</code>가 통과한다. 요청이 보낸 <code>Content-Length</code>가 한도보다 크면 다음 핸들러를 부르지 않고 413과 <code>{"error":"요청 본문이 너무 큽니다"}</code>를 돌려주고, 길이를 모르는(chunked) 요청은 본문을 읽는 도중에 한도를 넘으면 읽기 에러가 나게 합니다. 한도 없는 본문은 서버의 메모리를 마음대로 쓰게 해 주는 것이라 운영 서버의 흔한 보강 항목입니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson10/exercises/maxbody_test.go">package exercises
+
+import (
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestMaxBodyRejectsByContentLength(t *testing.T) {
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(strings.Repeat("x", 100)))
+	rec := httptest.NewRecorder()
+
+	MaxBody(10)(next).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("status = %d, want 413", rec.Code)
+	}
+	if called {
+		t.Error("제한을 넘으면 다음 핸들러를 부르면 안 됩니다")
+	}
+}
+
+func TestMaxBodyCutsUnknownLengthBody(t *testing.T) {
+	var readErr error
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, readErr = io.ReadAll(r.Body)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(strings.Repeat("x", 100)))
+	req.ContentLength = -1
+
+	MaxBody(10)(next).ServeHTTP(httptest.NewRecorder(), req)
+
+	if !IsTooLarge(readErr) {
+		t.Errorf("읽는 도중 MaxBytesError가 나와야 합니다: %v", readErr)
+	}
+}
+
+func TestMaxBodyAllowsSmallBody(t *testing.T) {
+	var got string
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		got = string(b)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader("작은 본문"))
+
+	MaxBody(1024)(next).ServeHTTP(httptest.NewRecorder(), req)
+
+	if got != "작은 본문" {
+		t.Errorf("got %q", got)
+	}
+}</pre>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p><code>r.ContentLength</code>는 길이를 모르면 <code>-1</code>입니다. 한도와 비교해 크면 바로 응답하고 <code>return</code>합니다(<code>return</code>을 잊지 마세요). 그렇지 않으면 <code>r.Body = http.MaxBytesReader(w, r.Body, limit)</code>로 본문을 감싼 뒤 <code>next.ServeHTTP(w, r)</code>를 부릅니다. 한도를 넘게 읽으려 할 때 돌아오는 에러의 타입은 <code>*http.MaxBytesError</code>이고, 이런 에러 타입은 <code>errors.As</code>로 확인합니다(레슨 05).</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="go" data-src="lab/lesson10/exercises/maxbody.go">// Package exercises는 레슨 10 연습 문제의 정답 예시입니다.
+package exercises
+
+import (
+	"errors"
+	"net/http"
+)
+
+// MaxBody는 요청 본문을 limit바이트까지만 읽도록 제한합니다.
+// Content-Length가 이미 limit보다 크면 핸들러를 부르지 않고 413으로 응답하고,
+// 길이를 모르는 요청은 http.MaxBytesReader로 감싸 읽는 도중에 끊습니다.
+func MaxBody(limit int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.ContentLength &gt; limit {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusRequestEntityTooLarge)
+				_, _ = w.Write([]byte(`{"error":"요청 본문이 너무 큽니다"}` + "\n"))
+				return
+			}
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// IsTooLarge는 body를 읽다가 난 에러가 크기 제한 때문인지 알려 줍니다.
+func IsTooLarge(err error) bool {
+	var tooLarge *http.MaxBytesError
+	return errors.As(err, &amp;tooLarge)
+}</pre>
+          </div>
+        </details>
+
+        <h3>문제 2. 로그에서 비밀 값 가리기</h3>
+        <p><span class="file">mine/exercises</span>에 <code>mask.go</code>를 만들어, <code>slog.HandlerOptions.ReplaceAttr</code>에 넘길 수 있는 함수 <code>MaskSecrets(groups []string, a slog.Attr) slog.Attr</code>를 구현하세요. 키가 <code>password</code>, <code>token</code>, <code>authorization</code>(대소문자 무시)인 속성의 값은 <code>***</code>로 바꾸고, 다른 속성은 그대로 둡니다. <b>완료 조건</b>: 아래 테스트를 <code>mask_test.go</code>로 입력해 <code>go test ./lesson10/mine/exercises</code>가 통과한다. 로그에 비밀번호가 남으면 로그 파일이 곧 유출 지점이 됩니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson10/exercises/mask_test.go">package exercises
+
+import (
+	"bytes"
+	"log/slog"
+	"strings"
+	"testing"
+)
+
+func newMaskedLogger(buf *bytes.Buffer) *slog.Logger {
+	return slog.New(slog.NewTextHandler(buf, &amp;slog.HandlerOptions{ReplaceAttr: MaskSecrets}))
+}
+
+func TestMaskSecretsHidesSensitiveValues(t *testing.T) {
+	var buf bytes.Buffer
+	logger := newMaskedLogger(&amp;buf)
+
+	logger.Info("로그인 시도", "user", "gopher", "Password", "p@ssw0rd", "token", "abc123")
+
+	out := buf.String()
+	for _, secret := range []string{"p@ssw0rd", "abc123"} {
+		if strings.Contains(out, secret) {
+			t.Errorf("로그에 비밀 값 %q가 그대로 남았습니다: %s", secret, out)
+		}
+	}
+	for _, want := range []string{"user=gopher", "Password=***", "token=***"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("로그에 %q가 있어야 합니다: %s", want, out)
+		}
+	}
+}
+
+func TestMaskSecretsKeepsOtherAttributes(t *testing.T) {
+	var buf bytes.Buffer
+	logger := newMaskedLogger(&amp;buf)
+
+	logger.Warn("요청", "path", "/tasks", "status", 404)
+
+	out := buf.String()
+	if !strings.Contains(out, "path=/tasks") || !strings.Contains(out, "status=404") {
+		t.Errorf("다른 속성은 그대로여야 합니다: %s", out)
+	}
+}</pre>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p><code>ReplaceAttr</code>는 로그 한 속성이 출력되기 직전에 불리는 함수이고, 돌려준 <code>slog.Attr</code>가 대신 출력됩니다. 키를 소문자로 바꿔(<code>strings.ToLower</code>) 비밀 키 목록(맵)에 있는지 보고, 있으면 <code>slog.String(a.Key, "***")</code>을, 아니면 받은 <code>a</code>를 그대로 돌려줍니다. 레슨 10의 <span class="file">middleware_test.go</span>에서 시간 속성을 지우는 <code>newBufferLogger</code>도 같은 <code>ReplaceAttr</code>를 씁니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="go" data-src="lab/lesson10/exercises/mask.go">package exercises
+
+import (
+	"log/slog"
+	"strings"
+)
+
+var secretKeys = map[string]bool{
+	"password":      true,
+	"token":         true,
+	"authorization": true,
+}
+
+// MaskSecrets는 slog.HandlerOptions.ReplaceAttr에 넘겨 쓰는 함수입니다.
+// 키가 password, token, authorization(대소문자 무시)인 속성의 값을 ***로 바꿉니다.
+func MaskSecrets(groups []string, a slog.Attr) slog.Attr {
+	if secretKeys[strings.ToLower(a.Key)] {
+		return slog.String(a.Key, "***")
+	}
+	return a
+}</pre>
+          </div>
+        </details>
+
+        <h3 id="cleanup">정리하기: 연습 파일 지우고 전체 점검이 통과하는지 확인</h3>
+        <p>연습 문제까지 마쳤거나 오늘 공부를 여기서 멈출 때 합니다. <code>go: test all</code>과 <code>go: vet all</code>은 <span class="file">lab</span> 안의 모든 폴더(<code>./...</code>)를 대상으로 하므로 <span class="file">mine</span>에 컴파일되지 않는 코드(테스트 파일만 있고 구현이 없는 연습 문제 폴더 등)나 6단계의 <span class="file">scratch</span> 같은 미완성 파일이 남아 있으면 레슨과 상관없이 실패합니다(레슨 07 "정리하기"와 6단계의 실제 출력 참고). 반대로 <span class="file">bin</span> 폴더의 실행 파일처럼 Go 코드가 아닌 파일은 <code>go test ./...</code>를 깨뜨리지 않지만(이 PC에서 확인), 쓸모없으니 함께 지웁니다.</p>
+        <ol class="steps">
+          <li>
+            <strong>mine 폴더 지우고 상태 확인하기</strong>
+            <p>① 서버가 켜져 있으면 해당 터미널에서 <kbd class="key">Ctrl+C</kbd>로 끝냅니다. ② 남기고 싶은 코드가 있으면 <span class="file">lab</span> 폴더 밖으로 복사해 둡니다. ③ 탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson10/mine</span> 폴더를 우클릭해 <b>삭제(Delete)</b>합니다. ④ 터미널(<span class="file">lab</span> 폴더)에서 <code>ls</code>와 <code>ls lesson10</code>을 실행해 <code>bin</code>, <code>scratch</code>, <code>lesson10/mine</code>이 목록에 없는 것을 확인합니다. <code>ls ../.vscode</code>에는 네 파일만 있어야 합니다. ⑤ 관리 버튼과 제목 표시줄에 프로필 이름이 없어야 합니다. ⑥ 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)의 <b>Tasks: Run Test Task</b>로 <code>go: test all</code>을 실행해 <code>FAIL</code> 줄이 없는 것을 확인합니다. <code>FAIL</code>이 나오면 패키지 이름으로 어느 폴더 때문인지 알 수 있습니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="go-10-slog"><span>서버를 실행해 응답 헤더의 <code>X-Request-Id</code>와 같은 값이 서버 로그의 <code>request_id</code>에 찍힌 것을 확인했고, 4xx 요청이 <code>level=WARN</code>인 것을 보았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-10-env"><span>내 터미널의 방식(bash의 <code>PORT=9090 go run</code> 또는 PowerShell의 <code>$env:PORT</code>)으로 포트와 <code>LOG_FORMAT=json</code>을 바꿔 서버를 실행했고, 잘못된 <code>PORT</code>가 설명 있는 에러로 끝나는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-10-shutdown"><span>서버 터미널에서 <kbd class="key">Ctrl+C</kbd>를 눌러 "종료 신호를 받았습니다"와 "서버가 정상 종료되었습니다" 두 줄이 찍히는 것을 보았고, <code>go test -v ./lesson10/internal/app</code>에서 진행 중인 요청을 기다렸다 끝나는 테스트가 통과하는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-10-check"><span><code>go vet ./lesson10/...</code>, <code>gofmt -l lesson10</code>, <code>go mod tidy -diff</code>가 모두 출력 없이 끝나는 것을 확인했고, <code>GOOS=linux</code>로 빌드한 파일의 첫 4바이트가 <code>7F 45 4C 46</code>인 것을 확인한 뒤 <code>GOOS</code>(PowerShell이라면)와 <code>bin</code> 폴더를 지웠다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-10-snippet"><span>프로젝트 스니펫 <code>.vscode/go-course.code-snippets</code>로 <code>ttest</code>를 입력해 테스트 뼈대가 삽입되는 것을 확인했고, 그 직후 <code>lab/scratch</code>와 스니펫 파일을 지웠다(<code>ls ../.vscode</code>에 네 파일만 있다).</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-10-keybinding"><span>기본 프로필에서 복사한 연습용 프로필 안에서 <code>keybindings.json</code> 규칙으로 <code>go: run task api</code>가 실행되는 것을 확인했고, 기본 프로필로 돌아와 같은 키를 눌렀을 때 아무 작업도 시작되지 않는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-10-rulers"><span>연습용 프로필의 사용자 <code>editor.rulers</code> 값(100)과 작업 영역 값(60) 중 60만 보이는 것을 확인했고(설정 JSON 탭의 경로에 <code>profiles</code>가 있었다), 작업 영역 <code>.vscode/settings.json</code>에서 <code>editor.rulers</code> 줄을 <b>바로</b> 지웠다(<kbd class="key">Ctrl+F</kbd> 결과 없음, 세로선이 100으로 돌아옴).</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-10-cleanup"><span>기본 프로필로 돌아와 <code>go-practice</code> 프로필을 지웠고(관리 버튼에 이름이 없고 목록에도 없다), <code>lesson10/mine</code>을 지운 뒤 <code>ls</code>에 <code>bin</code>·<code>scratch</code>가 없는 것과 <code>Tasks: Run Test Task</code>의 <code>go: test all</code>이 <code>FAIL</code> 없이 끝나는 것을 확인했다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <h3>증상: 종료할 때 진행 중인 요청이 끊긴다 (graceful shutdown 실패: context canceled)</h3>
+        <p><code>Shutdown</code>에 이미 취소된 <code>ctx</code>에서 만든 타임아웃을 넘긴 경우입니다. 취소된 부모에서 만든 자식은 시작부터 취소 상태라서 <code>Shutdown</code>이 요청을 기다리지 않고 바로 <code>context canceled</code>를 돌려주고, 프로그램이 끝나면서 처리 중이던 요청이 끊깁니다. <span class="file">app.go</span>의 <code>context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)</code>를 <code>context.WithTimeout(ctx, shutdownTimeout)</code>으로 바꾸고 <code>go test ./lesson10/internal/app</code>을 돌렸을 때의 실제 출력입니다. 테스트가 이런 실수를 잡아 주고, 이 한 줄 때문에 두 테스트가 함께 실패합니다. <b>완성본 <span class="file">lab/lesson10</span>은 고치지 말고 출력만 읽으세요.</b> 직접 해 보고 싶다면 레슨 11에서 만든 <span class="file">lesson11/mine/internal/app/app.go</span>의 같은 줄을 바꿔 보고(패키지 이름은 <code>golab/lesson11/mine/internal/app</code>으로 나옵니다) 확인한 뒤 되돌리세요.</p>
+<pre class="code" data-lang="text">go test ./lesson10/internal/app</pre>
+<pre class="output">--- FAIL: TestRunFinishesInFlightRequestBeforeReturning (0.01s)
+    app_test.go:75: 요청이 끝나기 전에 Run이 돌아왔습니다: graceful shutdown 실패: context canceled
+--- FAIL: TestRunReturnsErrorWhenShutdownTimesOut (0.00s)
+    app_test.go:121: got graceful shutdown 실패: context canceled, want context.DeadlineExceeded
+FAIL
+FAIL	golab/lesson10/internal/app	0.704s
+FAIL</pre>
+        <h3>증상: GOOS를 지정한 뒤 go run이 실행 파일을 찾을 수 없다고 한다</h3>
+        <p>PowerShell에서 <code>$env:GOOS='linux'</code>를 지정하고 지우지 않은 채 <code>go run</code>을 하면, <code>go</code>가 Linux용 파일을 만들어 Windows에서 실행하려다 실패합니다. 이 터미널에서는 <code>go env GOOS</code>가 계속 <code>linux</code>로 나옵니다. <code>Remove-Item Env:GOOS, Env:GOARCH</code>로 지우면 <code>windows</code>로 돌아옵니다(실제로 확인했습니다). bash에서 <code>GOOS=linux go build ...</code>처럼 명령 앞에 쓰면 이 문제가 없습니다.</p>
+<pre class="output">exec: "C:\\Users\\사용자\\AppData\\Local\\Temp\\go-build3009313902\\b001\\exe\\taskapi": executable file not found in %PATH%</pre>
+        <h3>증상: 오류: PORT는 1~65535 사이의 숫자여야 합니다 (서버가 뜨지 않는다)</h3>
+        <p>설정이 잘못되어 서버가 일부러 시작을 거부한 것입니다. 이전에 PowerShell에서 <code>$env:PORT='abc'</code> 같은 값을 지정했다가 지우지 않았을 가능성도 있습니다. <code>Get-ChildItem Env:PORT</code>(bash는 <code>echo $PORT</code>)로 현재 값을 보고 <code>Remove-Item Env:PORT</code>(bash는 <code>unset PORT</code>)로 지웁니다. 서버가 설정 오류를 시작 전에 알려 주는 것은 의도한 동작입니다. 아래는 PowerShell과 bash에서 같은 출력이 나온 것을 확인한 결과입니다.</p>
+<pre class="output">오류: PORT는 1~65535 사이의 숫자여야 합니다: "abc"
+exit status 1</pre>
+        <h3>증상: 존재하지 않는 폴더를 DATA_FILE로 지정하면 서버가 시작하자마자 끝난다 (레슨 11)</h3>
+        <p>레슨 11의 파일 저장소는 시작할 때 한 번 저장해 보아서, 폴더가 없거나 쓸 수 없으면 서버가 뜨기 전에 이렇게 알려 줍니다. 환경변수 방식으로 설정을 받는 코드는 이렇게 시작 전에 검증하는 것이 운영하기 편합니다. 폴더를 먼저 만들거나 경로를 고칩니다.</p>
+<pre class="output">오류: 데이터 파일을 쓸 수 없습니다: open nodir/tasks.json.tmp: The system cannot find the path specified.</pre>
+        <h3>증상: 같은 키를 눌러도 단축키가 동작하지 않는다 / 다른 동작이 된다</h3>
+        <p><code>keybindings.json</code>에서 쉼표나 대괄호가 틀렸거나, 같은 키에 이미 다른 명령이 연결되어 있기 때문입니다. 키보드 바로 가기 편집기에서 해당 키를 검색해 연결된 명령이 하나뿐인지 보고, JSON에 빨간 줄이 없는지 확인하세요. 규칙은 파일의 아래쪽에 있을수록 우선합니다(문서의 평가 규칙: 아래에서 위로 평가해 처음 맞는 것을 씁니다). 터미널에 입력 중일 때는 터미널이 키를 가져가므로 코드 편집기를 먼저 클릭하고 누릅니다. 키 입력이 어떻게 해석되는지 확인하는 명령 <b>Developer: Toggle Keyboard Shortcuts Troubleshooting</b>도 있습니다.</p>
+        <h3>증상: Windows 보안 경고(방화벽) 창이 뜬다</h3>
+        <p>서버를 처음 실행할 때(<code>go run</code>, <b>go: run task api</b> 작업, 디버그 모두) 뜰 수 있는 정상적인 창입니다. 이 코스의 서버는 포트만 적어(<code>net.Listen("tcp", ":8080")</code>) 이 PC의 모든 네트워크 주소에서 연결을 받는 상태로 열리기 때문입니다. 접속은 항상 <code>http://localhost:포트</code>(또는 <code>127.0.0.1</code>)로 하므로 허용이 필요하지 않고, <b>관리자 권한을 요구하는 창이 뜨면 "취소"를 누르고 계속 진행해도 됩니다.</b> Microsoft 문서는 취소하면 그 프로그램의 차단 규칙이 만들어진다고 설명하고, 같은 PC 안(loopback) 접속은 일반적으로 막히지 않는다는 분석이 있지만 이 PC에서 직접 확인하지는 못했습니다. 근거와 한계는 <a href="08-http-server.html#firewall">레슨 08의 방화벽 안내</a>에 적었습니다. 취소한 뒤 <code>localhost</code> 접속이 되지 않으면 서버 대신 <code>go test ./lesson10/...</code>로 같은 동작을 확인하세요. 테스트가 쓰는 임시 서버는 <code>127.0.0.1</code>에서만 열려 이 창이 뜨지 않습니다.</p>
+      </section>
+
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨 11은 캡스톤입니다. 이 서버에 필터·쪽 나누기·파일 저장 확장을 직접 붙여 보고, 평가표로 내 코드를 점검하고, 100 Go Mistakes를 주제별로 읽는 안내와 다음에 공부할 자료를 봅니다. VS Code로는 마우스 없이 5분 안에 끝내는 종합 미션을 합니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="09-taskapi-layers.html"><small>← 이전 레슨</small>09 · Task API 계층 구조와 httptest</a>
+          <a class="next" rel="next" href="11-capstone.html"><small>다음 레슨 →</small>11 · 캡스톤과 다음 단계</a>
+        </nav>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Go 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

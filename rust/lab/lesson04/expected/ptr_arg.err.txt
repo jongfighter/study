@@ -1,0 +1,15 @@
+warning: writing `&String` instead of `&str` involves a new object where a slice will do
+ --> lesson04\src\bin\scratch.rs:1:14
+  |
+1 | fn length(s: &String) -> usize {
+  |              ^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#ptr_arg
+  = note: `#[warn(clippy::ptr_arg)]` on by default
+help: change this to
+  |
+1 - fn length(s: &String) -> usize {
+1 + fn length(s: &str) -> usize {
+  |
+
+warning: `lesson04` (bin "scratch") generated 1 warning

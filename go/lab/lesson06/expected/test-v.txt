@@ -1,0 +1,20 @@
+=== RUN   TestNormalizeTrimsSpaces
+--- PASS: TestNormalizeTrimsSpaces (0.00s)
+=== RUN   TestNormalize
+=== RUN   TestNormalize/앞뒤_공백
+=== RUN   TestNormalize/연속_공백
+=== RUN   TestNormalize/탭과_줄바꿈
+=== RUN   TestNormalize/빈_문자열
+=== RUN   TestNormalize/공백만
+=== RUN   TestNormalize/최대_길이
+=== RUN   TestNormalize/너무_김
+--- PASS: TestNormalize (0.00s)
+    --- PASS: TestNormalize/앞뒤_공백 (0.00s)
+    --- PASS: TestNormalize/연속_공백 (0.00s)
+    --- PASS: TestNormalize/탭과_줄바꿈 (0.00s)
+    --- PASS: TestNormalize/빈_문자열 (0.00s)
+    --- PASS: TestNormalize/공백만 (0.00s)
+    --- PASS: TestNormalize/최대_길이 (0.00s)
+    --- PASS: TestNormalize/너무_김 (0.00s)
+PASS
+ok  	golab/lesson06/mine/titles	0.237s

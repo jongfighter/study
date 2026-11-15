@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="go" data-lesson="09">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Task API를 handler·service·repository로 나누고 httptest로 핸들러를 테스트합니다.">
+  <title>09 · Task API 계층 구조와 httptest — Go 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Go 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Go</span>
+      <span>Go 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 09 · 계층 구조와 테스트</p>
+        <h1>Task API 계층 구조와 httptest</h1>
+        <p class="lead">레슨 08의 서버를 동작은 그대로 두고 handler / service / repository 세 계층으로 나눕니다. 생성자로 의존성을 직접 넘기는 법, 미들웨어, httptest로 핸들러를 서버 없이 테스트하는 법을 익히고, VS Code의 전체 검색·바꾸기와 소스 제어 화면 읽는 법을 연습합니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 140분</li>
+          <li><b>난이도</b> ★★★☆☆</li>
+          <li><b>선행</b> <a href="08-http-server.html">레슨 08</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson09/mine</span> (완성 코드: <span class="file">lab/lesson09</span>)</li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li>handler / service / repository 계층이 각각 무엇을 맡고, 의존 방향이 어느 쪽인지 코드에서 짚을 수 있다.</li>
+          <li>인터페이스를 "사용하는 쪽"에서 정의하고 <code>main</code>에서 생성자로 직접 연결(수동 의존성 주입)하는 코드를 읽고 쓸 수 있다.</li>
+          <li><code>func(http.Handler) http.Handler</code> 모양의 미들웨어(로깅, 패닉 복구)를 이해하고 <code>Chain</code>으로 조합할 수 있다.</li>
+          <li><code>httptest.NewRecorder</code>와 직접 만든 가짜(fake) 서비스로 핸들러의 상태 코드와 본문을 table-driven 테스트로 검증할 수 있다.</li>
+          <li>VS Code의 전체 검색(정규식, 포함/제외 폴더)과 전체 바꾸기로 여러 파일의 import 경로를 안전하게 바꾸고, 소스 제어 화면의 변경 내용 보기 흐름을 읽을 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>영문 원문은 이 페이지의 한국어 요약을 먼저 읽은 뒤 확인하세요. 로컬 파일은 <kbd class="key">Ctrl+P</kbd>로 이름 일부를 입력해 열 수 있습니다.</p>
+        <ul>
+          <li>Learn Go with Tests: <span class="file" data-local="learn-go-with-tests/dependency-injection.md">learn-go-with-tests/dependency-injection.md</span>(<code>io.Writer</code>를 주입해 테스트하기), <span class="file" data-local="learn-go-with-tests/http-handlers-revisited.md">http-handlers-revisited.md</span>(핸들러가 서비스 인터페이스에 의존하게 만들어 테스트하기), <span class="file" data-local="learn-go-with-tests/http-server.md">http-server.md</span>. 완성 코드: <span class="file" data-local="learn-go-with-tests/di/v2/di.go">di/v2/di.go</span>, <span class="file" data-local="learn-go-with-tests/http-server/v5/server_test.go">http-server/v5/server_test.go</span></li>
+          <li>100 Go Mistakes: <span class="file" data-local="100-go-mistakes/docs/index.md">100-go-mistakes/docs/index.md</span>의 #5(인터페이스 남용), #6(인터페이스는 사용하는 쪽에), #12(프로젝트 구조), #88(<code>httptest</code>). 장문 해설: <span class="file" data-local="100-go-mistakes/docs/5-interface-pollution.md">100-go-mistakes/docs/5-interface-pollution.md</span></li>
+          <li>공식 문서(영문): <a href="https://pkg.go.dev/net/http/httptest">net/http/httptest</a>(패키지 문서), <a href="https://go.dev/doc/modules/layout">Organizing a Go module</a>(모듈 구성 안내), <a href="https://code.visualstudio.com/docs/editing/codebasics">VS Code Basic editing</a>(검색·바꾸기 절), <a href="https://code.visualstudio.com/docs/sourcecontrol/staging-commits">VS Code Staging and committing</a>(소스 제어 절)</li>
+        </ul>
+        <div class="callout warn"><strong>클론한 자료 폴더에서는 go 명령을 실행하지 마세요</strong><span class="file">go-by-example</span>, <span class="file">learn-go-with-tests</span>, <span class="file">100-go-mistakes</span>는 읽기 전용 자료입니다. 예를 들어 <span class="file">go-by-example/go.mod</span>는 <code>go 1.27.1</code>을 요구하는데 이 PC의 Go는 1.27.0이라, 그 폴더 안에서 <code>go</code> 명령을 실행하면 오류가 나거나 도구 체인을 내려받으려 할 수 있습니다. 파일은 VS Code로 열어 읽기만 하고, 실행은 항상 <span class="file">lab</span> 폴더에서 합니다.</div>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>계층(layer)과 책임.</b> <b>handler</b>는 HTTP를 아는 유일한 계층으로 요청을 읽고(경로 변수, JSON), 서비스를 호출하고, 결과를 상태 코드와 JSON으로 바꿉니다. <b>service</b>는 업무 규칙(제목 공백 제거, 100자 제한, 수정할 필드가 없으면 거부)을 담고 HTTP도 저장 방식도 모릅니다. <b>repository</b>는 저장과 조회만 합니다. 이렇게 나누면 handler 테스트는 가짜 서비스로, service 테스트는 메모리 저장소로 서버 없이 빠르게 돌릴 수 있습니다(Learn Go with Tests의 "핸들러가 하는 일은 파싱·서비스 호출·응답 세 가지"라는 정리).</p>
+        <p><b>의존성 주입(dependency injection).</b> Spring처럼 컨테이너가 객체 그래프를 만들어 주지 않습니다. <code>main</code>에서 <code>repository.NewMemory()</code> → <code>service.New(repo)</code> → <code>handler.New(svc)</code>처럼 <b>생성자 호출로 직접</b> 연결합니다. 모든 부품을 조립하는 이 자리를 composition root라고 부릅니다. 의존성이 인터페이스 타입 필드이므로 테스트에서는 같은 자리에 가짜를 넣을 수 있습니다.</p>
+        <p><b>인터페이스는 사용하는 쪽에서.</b> Go의 인터페이스는 구현 선언 없이 메서드만 맞으면 충족됩니다. 그래서 인터페이스를 <b>쓰는 쪽 패키지에 필요한 만큼만</b> 정의합니다. 이 프로젝트에서 <code>service.Repository</code>는 service 패키지에, <code>handler.TaskService</code>는 handler 패키지에 있고, 구현체(<code>repository.Memory</code>, <code>service.Service</code>)는 그 인터페이스를 import하지도 않습니다. 구현은 구체 타입으로 돌려주고 받는 쪽이 인터페이스로 받는 것이 기본입니다(100 Go Mistakes #5~#7).</p>
+        <p><b>미들웨어(middleware).</b> <code>http.Handler</code>를 받아 <code>http.Handler</code>를 돌려주는 함수입니다. 안쪽 핸들러를 부르기 전후에 로깅, 패닉 복구, 인증 같은 공통 작업을 끼워 넣습니다. 여러 개를 겹치면 먼저 적은 것이 가장 바깥쪽입니다.</p>
+        <p><b>httptest.</b> <code>httptest.NewRequest</code>로 가짜 요청을 만들고 <code>httptest.NewRecorder</code>에 응답을 받아 상태 코드·헤더·본문을 검사합니다. 네트워크도 포트도 쓰지 않아 빠르고, <code>handler.ServeHTTP(rec, req)</code>를 직접 부릅니다. 진짜 서버가 필요한 흐름 테스트는 <code>httptest.NewServer</code>로 임시 서버를 띄웁니다.</p>
+        <p><b>레이어 이름 패키지에 대하여.</b> Go에서는 패키지를 기능(context)별로 나누는 것을 선호하는 사람도 많고, 계층(layer)별로 나누는 것도 일관되기만 하면 틀린 선택이 아닙니다(100 Go Mistakes #12). 이 코스는 Spring 경험을 살려 계층 이름을 그대로 썼습니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>완성 코드가 <span class="file">lab/lesson09</span>에 있습니다. 이 레슨은 새로 입력하기보다 <b>읽고, 검색하고, 복사해서 고치고, 테스트를 돌리는</b> 단계로 구성했습니다. 코드를 건드리는 실습은 3단계에서 만드는 <span class="file">lab/lesson09/mine</span> 복사본에서만 합니다. 모든 단계는 앞 단계의 터미널(<span class="file">lab</span> 폴더)과 파일을 이어서 씁니다.</p>
+        <div class="callout tip"><strong>터미널 종류별 차이</strong>이 레슨의 <code>go run</code>, <code>go test</code>, <code>go vet</code> 명령은 PowerShell과 bash(MSYS2)에서 같은 모양입니다. 환경변수를 지정할 때만 다릅니다(bash는 <code>PORT=9090 go run ...</code>, PowerShell은 <code>$env:PORT='9090'</code>을 먼저 실행하고 끝나면 <code>Remove-Item Env:PORT</code>). bash에서 <code>go</code>를 찾지 못하면 <a href="01-environment.html">레슨 01</a>의 PATH 설정을 먼저 적용하세요.</div>
+        <ol class="steps">
+          <li>
+            <strong>구조 훑어보고 동작이 레슨 08과 같은지 확인하기</strong>
+            <p>탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson09</span>를 펼칩니다. 레슨 08은 파일 하나였지만 이번에는 폴더가 계층을 나타냅니다. 터미널(<span class="file">lab</span> 폴더)에서 패키지 목록을 확인합니다.</p>
+<pre class="code" data-lang="text">go list ./lesson09/...</pre>
+<pre class="output">golab/lesson09/cmd/taskapi
+golab/lesson09/exercises
+golab/lesson09/internal/domain
+golab/lesson09/internal/handler
+golab/lesson09/internal/repository
+golab/lesson09/internal/service</pre>
+            <p>각 폴더의 역할과 의존 방향은 아래 그림과 같습니다. 화살표는 "import한다"입니다. 가운데 <code>domain</code>은 아무도 import하지 않는 맨 아래 계층이라 순환이 생기지 않습니다. <code>exercises</code>는 연습 문제 정답이라 서버에는 연결되지 않습니다.</p>
+<pre class="code" data-lang="text">cmd/taskapi (main: 부품 조립)
+   ├─&gt; handler      HTTP 요청/응답, 미들웨어      ──&gt; domain
+   ├─&gt; service      업무 규칙, Repository 인터페이스 ──&gt; domain
+   └─&gt; repository   저장 구현(Memory)            ──&gt; domain
+domain: Task, UpdateInput, ErrNotFound, ValidationError</pre>
+            <p><code>internal</code> 폴더는 Go 컴파일러가 강제하는 접근 제한입니다. <span class="file">lesson09/internal</span> 아래 패키지는 <span class="file">lesson09</span> 폴더 안에서만 import할 수 있어서, 다른 레슨이 실수로 가져다 쓰는 것을 막아 줍니다. 이제 서버를 시작하고(<code>go run ./lesson09/cmd/taskapi</code>), <kbd class="key">Ctrl+Shift+5</kbd>로 터미널을 나눠 레슨 08과 같은 요청을 보냅니다. 처음 실행할 때 Windows 방화벽 창이 뜨면 <a href="08-http-server.html#firewall">레슨 08의 안내</a>대로 취소하고 계속합니다. 편한 쪽은 <span class="file">lab/lesson09/requests.http</span>를 REST Client(<kbd class="key">Ctrl+Alt+R</kbd>)로 보내는 것입니다. 아래는 curl.exe로 같은 요청을 보낸 뒤 서버 쪽에 찍힌 로그입니다(로그의 시각은 다릅니다). 응답 본문은 레슨 08과 글자까지 같습니다.</p>
+<pre class="code" data-lang="text">go run ./lesson09/cmd/taskapi</pre>
+<pre class="output">2026/11/15 23:54:04 Task API 서버 시작: http://localhost:8080
+2026/11/15 23:54:04 GET /health -&gt; 200 (0s)
+2026/11/15 23:54:04 POST /tasks -&gt; 201 (0s)
+2026/11/15 23:54:04 GET /tasks/1 -&gt; 200 (0s)
+2026/11/15 23:54:04 PATCH /tasks/1 -&gt; 200 (0s)
+2026/11/15 23:54:04 PATCH /tasks/1 -&gt; 400 (0s)
+2026/11/15 23:54:04 GET /tasks/abc -&gt; 400 (0s)
+2026/11/15 23:54:04 GET /tasks/9999 -&gt; 404 (0s)
+2026/11/15 23:54:04 DELETE /tasks/1 -&gt; 204 (0s)
+2026/11/15 23:54:04 PUT /tasks/1 -&gt; 405 (0s)
+2026/11/15 23:54:04 GET /tasks -&gt; 200 (0s)</pre>
+            <p>각 줄은 요청 하나가 끝날 때 로깅 미들웨어가 찍은 것입니다. 걸린 시간이 모두 <code>0s</code>로 나온 것은 이 PC에서 관찰한 값으로, 요청이 아주 빨랐기 때문입니다. 확인이 끝나면 서버 터미널에서 <kbd class="key">Ctrl+C</kbd>로 서버를 끝냅니다.</p>
+          </li>
+          <li>
+            <strong>전체 검색으로 에러가 흐르는 길 추적하기 (정규식, 포함/제외)</strong>
+            <p><kbd class="key">Ctrl+Shift+F</kbd>로 <b>검색(Search)</b> 보기를 열고 검색창에 <code>domain.ErrNotFound</code>를 입력합니다. 이 코스 폴더에는 레슨 09, 10, 11이 같은 코드를 각자 복사해 갖고 있어서 그냥 검색하면 여러 레슨과 HTML 레슨 파일까지 섞여 나옵니다. 검색창 아래 <b>줄임표(…, 검색 세부 정보 전환)</b>를 클릭하면 입력칸 두 개가 더 나타납니다. <b>포함할 파일(files to include)</b>에 <code>./lab/lesson09</code>, <b>제외할 파일(files to exclude)</b>에 <code>*_test.go</code>를 입력하세요. <code>./</code>로 시작하면 열어 둔 폴더(코스 폴더) 맨 위에서부터의 경로이고, 여러 패턴은 쉼표로 구분하며 경로는 슬래시를 씁니다(VS Code 문서 기준).</p>
+            <p>확인: 결과가 <b>2개 파일에서 4개</b>로 줄어듭니다(이 PC에서 같은 조건으로 센 값). 파일은 <span class="file">repository/memory.go</span>(세 곳, 저장소가 "없음"을 알리는 자리)와 <span class="file">handler/task_handler.go</span>(한 곳, 그 에러를 404로 바꾸는 자리)입니다. 결과 줄을 클릭하면 그 위치가 열립니다. <b>에러가 repository에서 만들어져 service를 그대로 통과해 handler에서 상태 코드가 된다</b>는 흐름을 이 검색 하나로 읽을 수 있습니다. service에는 이 에러가 나오지 않는다는 점도 눈여겨보세요(그냥 돌려보내기만 하기 때문입니다).</p>
+            <p>이번에는 검색창 오른쪽의 <b>정규식 사용(Use Regular Expression, <code>.*</code> 아이콘)</b>을 켜고 <code>func \(h \*Handler\) \w+</code>를 입력합니다(포함/제외 칸은 그대로). 핸들러 메서드의 선언 줄만 모아 보여 주고, 위 결과에서 <code>Routes</code>, <code>health</code>, <code>listTasks</code>, <code>createTask</code>, <code>getTask</code>, <code>updateTask</code>, <code>deleteTask</code>, <code>writeServiceError</code> 8개가 나와야 합니다. 정규식 안의 <code>\(</code>와 <code>\*</code>는 괄호와 별표를 글자 그대로 찾으라는 뜻이고, <code>\w+</code>는 이름 부분입니다. 확인이 끝나면 정규식 아이콘을 다시 끕니다. 이 아이콘이 켜진 채로 일반 문자열을 검색하면 <code>.</code>이나 <code>(</code> 때문에 결과가 이상해집니다.</p>
+          </li>
+          <li>
+            <strong>연습용 복사본 만들고, 전체 바꾸기로 import 경로 고치기</strong>
+            <p>탐색기에서 <span class="file">lab/lesson09</span> 아래에 새 폴더 <code>mine</code>을 만듭니다. <span class="file">cmd</span> 폴더를 우클릭해 <b>복사(Copy)</b>, <span class="file">mine</span> 폴더를 우클릭해 <b>붙여넣기(Paste)</b>를 합니다. 같은 방법으로 <span class="file">internal</span> 폴더도 <span class="file">mine</span> 안에 붙여넣습니다. 이제 <span class="file">lesson09/mine/cmd</span>와 <span class="file">lesson09/mine/internal</span>이 있고, <span class="file">exercises</span> 폴더와 <span class="file">requests.http</span>는 복사하지 않습니다(연습 정답이 들어 있기 때문입니다).</p>
+            <p>그런데 복사본의 <code>import</code>는 아직 원본 경로(<code>golab/lesson09/internal/...</code>)를 가리킵니다. 터미널에서 복사본을 빌드해 보면 아무 문제 없이 성공합니다.</p>
+<pre class="code" data-lang="text">go build -o bin/mine-check.exe ./lesson09/mine/cmd/taskapi</pre>
+            <p>아무 출력 없이 끝나는 것이 "성공"입니다. 이 빌드는 복사본의 <code>main</code>이 <b>복사본의 internal이 아니라 원본 internal을 가져다 쓰기 때문에</b> 성공하는 것입니다. 복사본의 service를 고쳐도 서버에는 반영되지 않는, 알아차리기 어려운 상태입니다. 확인이 끝나면 <b>바로</b> <span class="file">lab/bin</span> 폴더를 지웁니다(탐색기에서 우클릭 → <b>삭제(Delete)</b>). 만들어진 실행 파일은 이 실습에 더 쓰이지 않습니다.</p>
+            <p><kbd class="key">Ctrl+Shift+H</kbd>로 <b>바꾸기(Replace)</b>가 열린 검색 보기를 엽니다. 위쪽 칸에 <code>golab/lesson09/</code>, 아래쪽 바꿀 칸에 <code>golab/lesson09/mine/</code>을 입력하고(정규식은 꺼 둡니다), 검색 세부 정보의 <b>포함할 파일</b>에 <code>./lab/lesson09/mine</code>을 입력합니다. <b>이 포함 칸이 가장 중요합니다.</b> 비우면 코스 폴더 전체(다른 레슨의 완성본까지)가 바뀝니다. 결과는 <b>7개 파일에서 12개</b>가 나옵니다(이 PC에서 같은 복사본으로 센 값). 바뀔 내용은 결과 줄을 클릭하면 변경 전/후를 나란히 보여 주는 <b>비교(diff)</b> 화면으로 미리 볼 수 있습니다. 모두 <code>import</code> 줄인지 훑어본 뒤 <b>모두 바꾸기(Replace All)</b>를 클릭하고, 확인 창이 뜨면 승인합니다. 바뀐 파일은 저장되지 않은 상태로 열려 있을 수 있으니 <kbd class="key">Ctrl+S</kbd>로 저장합니다(모든 파일을 한꺼번에 저장하려면 <b>File: Save All</b> 명령).</p>
+<pre class="code" data-lang="text">go vet ./lesson09/mine/...
+go test ./lesson09/mine/...</pre>
+<pre class="output">ok  	golab/lesson09/mine/internal/handler	0.694s
+ok  	golab/lesson09/mine/internal/repository	0.168s
+ok  	golab/lesson09/mine/internal/service	0.169s</pre>
+            <p><code>go vet</code>은 출력이 없고, 테스트는 위와 같이 통과해야 합니다. 이제 <span class="file">mine</span> 안의 코드가 서로를 가리킵니다. 걸린 시간 숫자는 달라도 됩니다. 이후 단계에서 코드를 고치는 곳은 모두 <span class="file">mine</span> 폴더입니다. 오른쪽 터미널에서 <code>go test ./lesson09/mine/...</code>를 쓰고, 완성본을 보고 싶으면 <code>./lesson09/...</code>를 씁니다.</p>
+          </li>
+          <li>
+            <strong>서비스 계층 테스트 읽고 실행하기 (table-driven, 가짜 주입)</strong>
+            <p><kbd class="key">Ctrl+P</kbd>로 <code>mine/internal/service/task_service_test.go</code>를 열어 <code>TestCreateValidation</code>을 읽습니다. 레슨 06에서 배운 table-driven 테스트이고, 한글 100자는 통과하고 101자는 거부되는지를 <code>strings.Repeat("가", 100)</code>으로 경계 값을 만들어 확인합니다. 서비스는 <code>repository.NewMemory()</code>를 그대로 주입받아 쓰므로 파일도 서버도 필요 없습니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson09/internal/service/task_service_test.go" data-lines="17-50">func TestCreateValidation(t *testing.T) {
+	tests := []struct {
+		name      string
+		title     string
+		wantTitle string
+		wantErr   bool
+	}{
+		{"정상", "Go 공부하기", "Go 공부하기", false},
+		{"앞뒤 공백 제거", "  장보기  ", "장보기", false},
+		{"빈 문자열", "", "", true},
+		{"공백만", "   ", "", true},
+		{"한글 100자는 허용", strings.Repeat("가", 100), strings.Repeat("가", 100), false},
+		{"한글 101자는 거부", strings.Repeat("가", 101), "", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := newTestService().Create(context.Background(), tt.title)
+
+			var validation *domain.ValidationError
+			if tt.wantErr {
+				if !errors.As(err, &amp;validation) {
+					t.Fatalf("ValidationError가 와야 합니다: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("예상하지 못한 에러: %v", err)
+			}
+			if got.Title != tt.wantTitle {
+				t.Errorf("Title = %q, want %q", got.Title, tt.wantTitle)
+			}
+		})
+	}
+}</pre>
+            <p>실행합니다. <code>-run</code>은 이름이 맞는 테스트만 실행하고, <code>-v</code>는 하위 테스트 결과를 하나씩 보여 줍니다. 한글·공백이 들어간 이름은 <code>_</code>로 바뀌어 보입니다.</p>
+<pre class="code" data-lang="text">go test -v -run TestCreateValidation ./lesson09/mine/internal/service</pre>
+<pre class="output">=== RUN   TestCreateValidation
+=== RUN   TestCreateValidation/정상
+=== RUN   TestCreateValidation/앞뒤_공백_제거
+=== RUN   TestCreateValidation/빈_문자열
+=== RUN   TestCreateValidation/공백만
+=== RUN   TestCreateValidation/한글_100자는_허용
+=== RUN   TestCreateValidation/한글_101자는_거부
+--- PASS: TestCreateValidation (0.00s)
+    --- PASS: TestCreateValidation/정상 (0.00s)
+    --- PASS: TestCreateValidation/앞뒤_공백_제거 (0.00s)
+    --- PASS: TestCreateValidation/빈_문자열 (0.00s)
+    --- PASS: TestCreateValidation/공백만 (0.00s)
+    --- PASS: TestCreateValidation/한글_100자는_허용 (0.00s)
+    --- PASS: TestCreateValidation/한글_101자는_거부 (0.00s)
+PASS
+ok  	golab/lesson09/mine/internal/service	0.240s</pre>
+            <p>같은 파일 아래쪽의 <code>failingRepo</code>도 읽어 보세요. <code>Repository</code> 인터페이스를 <b>필드로 품은(임베딩) 구조체</b>에서 <code>Create</code> 하나만 에러를 내도록 덮어쓴 것입니다. 인터페이스 메서드가 다섯 개여도 필요한 하나만 바꿔 "저장소가 고장 났을 때 서비스가 에러를 그대로 전달하는가"를 확인할 수 있습니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson09/internal/service/task_service_test.go" data-lines="84-98">type failingRepo struct {
+	Repository
+}
+
+func (failingRepo) Create(context.Context, string) (domain.Task, error) {
+	return domain.Task{}, errors.New("db down")
+}
+
+func TestRepositoryErrorsPropagate(t *testing.T) {
+	svc := New(failingRepo{})
+	_, err := svc.Create(context.Background(), "아무 제목")
+	if err == nil || err.Error() != "db down" {
+		t.Errorf("저장소 에러가 그대로 전달되어야 합니다: %v", err)
+	}
+}</pre>
+          </li>
+          <li>
+            <strong>핸들러 테스트: 가짜 서비스와 httptest, 그리고 일부러 빨간 불 만들기</strong>
+            <p><span class="file">mine/internal/handler/task_handler_test.go</span>를 엽니다. <code>fakeTasks</code>는 <code>TaskService</code>를 만족하는 테스트용 가짜이고, 필요한 동작만 함수 필드로 채웁니다. <code>do</code> 도우미는 가짜 요청을 만들어 핸들러에 넣고 기록된 응답을 돌려줍니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson09/internal/handler/task_handler_test.go" data-lines="18-24">// fakeTasks는 테스트용 가짜 TaskService입니다. 필요한 동작만 함수로 채웁니다.
+type fakeTasks struct {
+	create func(ctx context.Context, title string) (domain.Task, error)
+	get    func(ctx context.Context, id int) (domain.Task, error)
+	update func(ctx context.Context, id int, in domain.UpdateInput) (domain.Task, error)
+	remove func(ctx context.Context, id int) error
+}</pre>
+<pre class="code" data-lang="go" data-src="lab/lesson09/internal/handler/task_handler_test.go" data-lines="48-58">func do(t *testing.T, h http.Handler, method, target, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	var reader io.Reader
+	if body != "" {
+		reader = strings.NewReader(body)
+	}
+	req := httptest.NewRequest(method, target, reader)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}</pre>
+            <p>핸들러를 <code>New(...).Routes()</code>로 만든 라우터째 호출하는 점이 중요합니다. 라우터를 거쳐야 <code>GET /tasks/{id}</code> 패턴이 <code>{id}</code>를 채워 주기 때문입니다("자주 나는 오류"에서 직접 부르면 어떻게 되는지 봅니다). 아래 두 테스트를 실행해 하위 테스트 이름과 결과를 읽습니다.</p>
+<pre class="code" data-lang="text">go test -v -run "TestCreateTask|TestGetTask" ./lesson09/mine/internal/handler</pre>
+<pre class="output">--- PASS: TestCreateTask (0.01s)
+    --- PASS: TestCreateTask/성공 (0.00s)
+    --- PASS: TestCreateTask/검증_실패는_400 (0.00s)
+    --- PASS: TestCreateTask/깨진_JSON은_서비스를_부르지_않고_400 (0.00s)
+    --- PASS: TestCreateTask/알_수_없는_필드는_400 (0.00s)
+    --- PASS: TestCreateTask/예상하지_못한_에러는_500이고_내용을_숨김 (0.01s)
+--- PASS: TestGetTask (0.00s)
+    --- PASS: TestGetTask/성공 (0.00s)
+    --- PASS: TestGetTask/없는_id (0.00s)
+    --- PASS: TestGetTask/숫자가_아닌_id (0.00s)
+    --- PASS: TestGetTask/0_이하의_id (0.00s)
+PASS
+ok  	golab/lesson09/mine/internal/handler	0.674s</pre>
+            <p>(위 출력은 <code>-v</code>의 <code>=== RUN</code> 줄을 생략하고 결과 줄만 옮긴 것입니다.) 이제 <b>테스트가 실제로 버그를 잡는지</b> 확인합니다. ① <code>TestGetTask</code>의 표에서 <code>{"0 이하의 id", "/tasks/0", http.StatusBadRequest},</code> 줄 아래에 한 줄을 추가합니다: <code>{"음수 id", "/tasks/-1", http.StatusBadRequest},</code>. 저장하고 <code>go test -run TestGetTask ./lesson09/mine/internal/handler</code>를 실행하면 통과합니다. ② 이번에는 <span class="file">mine/internal/handler/json.go</span>의 <code>parseID</code>에서 <code>if err != nil || id &lt; 1 {</code>를 <code>if err != nil {</code>로 바꿔 저장합니다("1 이상" 검사를 지운 버그). 다시 같은 명령을 실행합니다.</p>
+<pre class="output">--- FAIL: TestGetTask (0.00s)
+    --- FAIL: TestGetTask/0_이하의_id (0.00s)
+        task_handler_test.go:162: status = 404, want 400 (body: {"error":"할 일을 찾을 수 없습니다"}
+            )
+    --- FAIL: TestGetTask/음수_id (0.00s)
+        task_handler_test.go:162: status = 404, want 400 (body: {"error":"할 일을 찾을 수 없습니다"}
+            )
+FAIL
+FAIL	golab/lesson09/mine/internal/handler	0.665s
+FAIL</pre>
+            <p>실패한 하위 테스트 이름이 어느 경우인지 바로 알려 줍니다. ③ 확인했으면 <code>json.go</code>를 원래대로 되돌려 저장하고 다시 통과하는지 봅니다. VS Code 편집기에서는 테스트 파일의 <code>t.Run</code>/함수 위에 실행 링크(CodeLens)가 보이기도 하는데, 이 코스는 터미널 명령으로 통일합니다.</p>
+          </li>
+          <li>
+            <strong>미들웨어 읽고 테스트하기, 쌓는 순서 확인하기</strong>
+            <p><span class="file">mine/internal/handler/middleware.go</span>를 엽니다. <code>Chain</code>은 목록의 첫 번째가 가장 바깥쪽이 되도록 뒤에서부터 감쌉니다. <code>Logging</code>은 안쪽 핸들러가 끝난 뒤 상태 코드와 걸린 시간을 기록하려고 <code>ResponseWriter</code>를 감싼 <code>statusRecorder</code>를 씁니다. <code>Recover</code>는 <code>defer</code> 안에서 <code>recover()</code>로 패닉을 잡아 500 응답으로 바꿉니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson09/internal/handler/middleware.go" data-lines="9-18">// Middleware는 핸들러를 감싸 공통 기능을 덧붙이는 함수입니다.
+type Middleware func(http.Handler) http.Handler
+
+// Chain은 h를 mws로 감쌉니다. 목록의 첫 번째가 가장 바깥쪽입니다.
+func Chain(h http.Handler, mws ...Middleware) http.Handler {
+	for i := len(mws) - 1; i &gt;= 0; i-- {
+		h = mws[i](h)
+	}
+	return h
+}</pre>
+<pre class="code" data-lang="go" data-src="lab/lesson09/internal/handler/middleware.go" data-lines="45-56">// Recover는 핸들러에서 난 패닉을 잡아 500 응답으로 바꿉니다.
+func Recover(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if v := recover(); v != nil {
+				log.Printf("패닉 복구: %v", v)
+				writeError(w, http.StatusInternalServerError, "서버 내부 오류")
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}</pre>
+            <p><span class="file">mine/cmd/taskapi/main.go</span>에서 조립하는 모습도 봅니다. 순서가 중요합니다. <code>Logging</code>을 바깥에, <code>Recover</code>를 안쪽에 두었기 때문에 패닉이 500으로 바뀐 뒤의 상태 코드가 로그에 찍힙니다. 반대로 쌓으면 패닉이 로깅 미들웨어를 뚫고 올라가 로그가 남지 않습니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson09/cmd/taskapi/main.go" data-lines="13-26">func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	repo := repository.NewMemory()
+	svc := service.New(repo)
+	h := handler.New(svc)
+	root := handler.Chain(h.Routes(), handler.Logging, handler.Recover)
+
+	log.Printf("Task API 서버 시작: http://localhost:%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, root))
+}</pre>
+            <p>미들웨어 테스트를 실행합니다. <code>TestChainOrder</code>는 호출 순서가 <code>A 시작, B 시작, 핸들러, B 끝, A 끝</code>인지를 문자열로 확인합니다.</p>
+<pre class="code" data-lang="text">go test -v -run "TestChainOrder|TestRecover|TestLogging" ./lesson09/mine/internal/handler</pre>
+            <p>세 테스트 모두 <code>PASS</code>로 끝나야 합니다. 이어서 <code>go run ./lesson09/mine/cmd/taskapi</code>로 내 복사본 서버를 켜고 <code>requests.http</code>(<span class="file">lesson09</span> 폴더의 것)로 요청을 보내 1단계와 같은 로그가 찍히는지 확인한 뒤 <kbd class="key">Ctrl+C</kbd>로 끝냅니다.</p>
+          </li>
+          <li>
+            <strong>소스 제어 보기 읽기 (diff, stage, commit의 흐름)</strong>
+            <p><kbd class="key">Ctrl+Shift+G</kbd>를 눌러 <b>소스 제어(Source Control)</b> 보기를 엽니다. 이 단계는 <b>읽기만</b> 합니다. 이 코스 폴더 자체는 Git 저장소가 아닐 수 있고(이 PC에서는 코스 폴더에 <code>.git</code>이 없습니다), 그 경우 저장소를 새로 만들자는 안내가 보일 수 있는데 지금은 누르지 않아도 됩니다. 클론한 자료 폴더 안에는 각자의 <code>.git</code>이 있으니 그 저장소들이 목록에 나타날 수도 있습니다. 읽기 전용 자료이므로 어떤 파일도 스테이지하거나 커밋하지 마세요. 자신의 다른 프로젝트 폴더에서 같은 화면을 열어 보면 아래 흐름이 그대로 보입니다(VS Code 공식 문서의 "Staging and committing" 기준).</p>
+            <p>① <b>변경(Changes)</b> 목록에 저장한 파일이 나타납니다. 파일 이름 옆 글자는 <code>M</code>(수정), <code>U</code>(새 파일, 추적 전), <code>D</code>(삭제)입니다. ② 파일을 클릭하면 <b>diff 편집기</b>가 열려 원래 내용과 바뀐 내용을 나란히 보여 줍니다. 레슨 08의 마지막 단계에서 쓴 "비교를 위해 선택/선택 항목과 비교"와 같은 모양입니다. ③ 파일에 마우스를 올려 <b>+</b>를 누르면 <b>스테이징(stage)</b>되어 <b>스테이지된 변경(Staged Changes)</b>으로 옮겨 갑니다. 스테이징은 "다음 커밋에 넣을 내용을 고르는" 단계이고, 그 뒤에 고친 내용은 다시 스테이징하기 전까지 커밋에 들어가지 않습니다. ④ 위쪽 메시지 칸에 한 줄 요약을 쓰고 <b>커밋(Commit)</b>을 누르면 로컬 기록에 남습니다. 서버로 올리는 push는 별개의 동작입니다. ⑤ 실수로 지우고 싶지 않은 변경은 <b>변경 취소(Discard Changes)</b>를 누르기 전에 반드시 확인하세요. 저장되지 않은 파일이 사라질 수 있습니다.</p>
+            <p>지금 하고 있는 "복사본에서 먼저 고치고, 원본과 비교한다"는 흐름이 Git 브랜치와 diff가 자동화해 주는 일입니다. Spring 프로젝트에서 쓰던 IntelliJ의 변경 목록(Changes) 화면과 같은 개념이라고 보면 됩니다.</p>
+          </li>
+          <li>
+            <strong>전체 테스트와 커버리지로 마무리하기</strong>
+            <p>복사본이 아니라 완성본 전체를 한 번에 돌려 봅니다. <code>-cover</code>는 테스트가 실행한 코드 비율을 출력합니다.</p>
+<pre class="code" data-lang="text">go test -cover ./lesson09/...</pre>
+<pre class="output">	golab/lesson09/cmd/taskapi		coverage: 0.0% of statements
+ok  	golab/lesson09/exercises	0.595s	coverage: 100.0% of statements
+	golab/lesson09/internal/domain		coverage: 0.0% of statements
+ok  	golab/lesson09/internal/handler	0.851s	coverage: 80.0% of statements
+ok  	golab/lesson09/internal/repository	0.316s	coverage: 93.2% of statements
+ok  	golab/lesson09/internal/service	0.316s	coverage: 86.4% of statements</pre>
+            <p>handler는 80%입니다. 어디가 비었는지 함수별로 확인하려면 프로파일 파일을 만들고 <code>go tool cover -func</code>로 읽습니다. 파일 이름 <code>coverage.out</code>은 <span class="file">.gitignore</span>에 들어 있어 커밋되지 않습니다. 결과를 확인하면 <b>바로</b> <span class="file">lab/coverage.out</span>을 지웁니다.</p>
+<pre class="code" data-lang="text">go test -coverprofile=coverage.out ./lesson09/internal/handler
+go tool cover -func=coverage.out</pre>
+<pre class="output">golab/lesson09/internal/handler/task_handler.go:46:	health			0.0%
+golab/lesson09/internal/handler/task_handler.go:50:	listTasks		0.0%
+golab/lesson09/internal/handler/task_handler.go:99:	updateTask		53.8%
+golab/lesson09/internal/handler/task_handler.go:119:	deleteTask		50.0%</pre>
+            <p>(전체 목록에서 100%가 아닌 핸들러만 옮겼습니다.) <code>health</code>와 <code>listTasks</code>는 테스트가 아직 없고, <code>updateTask</code>와 <code>deleteTask</code>는 일부 경로만 확인합니다. 연습 문제 1이 이 빈 곳을 채웁니다.</p>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong>같은 레슨의 "자주 나는 오류"를 먼저 확인하세요. 복사본이 꼬였으면 <span class="file">mine</span> 폴더를 통째로 지우고 3단계부터 다시 하면 됩니다.</div>
+        <div class="callout warn"><strong>끝낼 때는 "정리하기"를 꼭 하세요</strong><span class="file">mine</span> 폴더에 컴파일되지 않는 코드가 남아 있으면 <span class="file">lab</span> 전체를 대상으로 하는 <code>go: test all</code>·<code>go: vet all</code> 작업이 실패합니다. 연습 문제까지 마친 뒤(또는 오늘 공부를 여기서 멈출 때) 연습 문제 절 끝의 <a href="#cleanup">정리하기</a>를 합니다.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Go</th></tr></thead>
+            <tbody>
+              <tr><td>계층 구성</td><td><code>@RestController</code> / <code>@Service</code> / <code>@Repository</code></td><td><code>APIRouter</code> + 서비스 모듈 + 저장소 모듈</td><td><code>handler</code> / <code>service</code> / <code>repository</code> 패키지 (애너테이션 없음)</td></tr>
+              <tr><td>의존성 주입</td><td>컨테이너가 생성자 주입을 자동으로 연결</td><td><code>Depends()</code>로 함수에 주입</td><td><code>main</code>에서 <code>New(...)</code>를 직접 호출해 연결</td></tr>
+              <tr><td>인터페이스</td><td>구현 클래스가 <code>implements</code>/<code>: Interface</code> 선언, 보통 제공자가 정의</td><td><code>Protocol</code>, ABC</td><td>메서드만 맞으면 충족(암묵적), <b>사용하는 쪽 패키지</b>에 정의</td></tr>
+              <tr><td>공통 처리</td><td><code>Filter</code>, <code>HandlerInterceptor</code>, AOP</td><td>middleware, 의존성</td><td><code>func(http.Handler) http.Handler</code> 감싸기 + <code>Chain</code></td></tr>
+              <tr><td>예외 → 상태 코드</td><td><code>@ControllerAdvice</code> + <code>@ExceptionHandler</code></td><td><code>exception_handler</code></td><td>서비스는 에러 값 반환, 핸들러가 <code>errors.Is</code>/<code>errors.As</code>로 상태 코드 결정</td></tr>
+              <tr><td>웹 계층 테스트</td><td><code>MockMvc</code>, <code>@WebMvcTest</code></td><td><code>TestClient</code></td><td><code>httptest.NewRecorder</code> + <code>ServeHTTP</code></td></tr>
+              <tr><td>가짜(테스트 더블)</td><td>Mockito <code>@MockBean</code> (자동 생성)</td><td><code>unittest.mock</code>, <code>dependency_overrides</code></td><td>인터페이스를 만족하는 작은 구조체를 직접 작성</td></tr>
+              <tr><td>접근 제한</td><td><code>internal</code>(모듈 단위), <code>private</code></td><td>이름 앞 <code>_</code>은 관례</td><td><code>internal/</code> 폴더는 컴파일러가 바깥 import를 막음, 이름 대문자 규칙</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ①: DI 컨테이너가 없습니다</strong>Spring에서는 빈을 선언만 하면 연결이 알아서 되지만, Go에서는 <code>main</code>에서 순서대로 직접 만들어 넘깁니다. 부품이 많아지면 <code>main</code>이 길어지는데, 그것이 의존 관계를 한눈에 보여 주는 장점이기도 합니다. 또 계층이 서로 import하는 순환 의존은 <b>컴파일 오류</b>입니다(아래 "자주 나는 오류"). 스프링에서처럼 런타임까지 숨어 있다가 나지 않습니다.</div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ②: 인터페이스를 미리 만들지 마세요</strong>Java/Kotlin에서는 구현마다 인터페이스를 먼저 두는 습관이 흔합니다. Go에서는 "쓰는 쪽이 필요한 메서드만" 인터페이스로 정의하고 구현체는 구체 타입으로 돌려줍니다. 이 레슨의 <code>handler.TaskService</code>는 handler가 필요한 다섯 메서드만 적었고, 같은 서비스를 쓰는 다른 곳이 생기면 그쪽에서 자기 인터페이스를 따로 정의합니다(100 Go Mistakes #5, #6). 구현체가 어떤 인터페이스를 만족하는지 선언하지 않아도 되는 것이 이 구조를 가능하게 합니다.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 전체 검색과 바꾸기, 소스 제어 보기</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>전체 검색</td><td><kbd class="key">Ctrl+Shift+F</kbd></td><td>프로젝트 전체에서 이름·문구를 찾을 때(정규식, 포함/제외 폴더 지원)</td></tr>
+                <tr><td>전체 바꾸기</td><td><kbd class="key">Ctrl+Shift+H</kbd></td><td>여러 파일의 같은 문자열(예: import 경로)을 한꺼번에 바꿀 때</td></tr>
+                <tr><td>소스 제어 보기</td><td><kbd class="key">Ctrl+Shift+G</kbd></td><td>바뀐 파일 목록과 diff를 볼 때(스테이지·커밋)</td></tr>
+                <tr><td>파일 이름으로 열기</td><td><kbd class="key">Ctrl+P</kbd></td><td>검색 결과가 아니라 파일 이름을 알 때</td></tr>
+                <tr><td>탐색기 열기</td><td><kbd class="key">Ctrl+Shift+E</kbd></td><td>폴더 복사·붙여넣기, 파일 만들기</td></tr>
+                <tr><td>현재 파일에서 찾기</td><td><kbd class="key">Ctrl+F</kbd></td><td>한 파일 안에서 찾을 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>검색 보기 오른쪽 위의 <b>검색 세부 정보 전환(…)</b>으로 포함/제외 칸을 엽니다. 두 칸은 <code>*</code>(경로 한 칸 안의 아무 글자), <code>**</code>(하위 폴더 포함), <code>{}</code>(조건 묶음) 같은 글롭(glob) 패턴을 쓰고 <code>./</code>로 시작하면 열어 둔 폴더 맨 위에서부터의 경로입니다. 탐색기에서 폴더를 우클릭해 <b>폴더에서 찾기(Find in Folder)</b>를 고르면 포함 칸이 자동으로 채워집니다.</p>
+        </div>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>연습용 프로필에서 검색 제외 폴더 지정하기 (search.exclude)</strong>
+            <p>매번 제외 칸에 쓰기 귀찮은 폴더는 설정으로 지정합니다. <a href="07-concurrency.html#practice-profile">레슨 07의 연습용 프로필 절차</a> 1~6번으로 <code>go-practice</code> 프로필을 만들고 전환합니다(기본 프로필에서 복사, 제목 표시줄이나 관리 버튼에서 프로필 이름 확인). 이 실험에는 3단계에서 만든 <span class="file">lesson09/mine</span>이 필요합니다. <kbd class="key">Ctrl+,</kbd>로 설정을 열고 <b>User</b> 탭이 선택되어 있는지 확인한 뒤 검색창에 <code>search.exclude</code>를 입력합니다. 이 설정은 "패턴: 켜짐/꺼짐" 목록(객체)입니다. <b>항목 추가(Add Pattern)</b>를 눌러 <code>**/mine</code>을 추가하고 켜 둔 상태로, <kbd class="key">Ctrl+Shift+F</kbd>에서 <code>domain.ErrNotFound</code>를 포함 칸 없이 검색해 보세요. 3단계에서 만든 <span class="file">lesson09/mine</span>의 복사본이 결과에서 빠집니다(검색 보기의 "제외 설정과 무시 파일 사용" 토글이 켜져 있을 때).</p>
+            <p>이어서 <kbd class="key">Ctrl+Shift+P</kbd> → <b>Preferences: Open User Settings (JSON)</b>으로 열어 <code>"search.exclude"</code>가 어떻게 기록되었는지 확인합니다. 설정 화면에서 바꾼 값은 이렇게 파일에 그대로 기록됩니다(객체 설정은 기본값과 합쳐지므로 기본 항목이 함께 적혀 있을 수도 있습니다). 편집기 탭에 마우스를 올려 경로가 <code>...\Code\User\profiles\...\settings.json</code> 모양인지 먼저 확인합니다. <code>profiles</code>가 없는 경로면 기본 프로필의 파일이니 고치지 말고 닫습니다.</p>
+            <p><b>실험이 끝났으니 지금 바로 정리합니다.</b> 레슨 07 절차의 8번(기본 프로필로 돌아오기, <code>go-practice</code> 삭제)과 9번(확인)을 합니다. 확인: 기본 프로필로 돌아온 상태에서 <b>User</b> 탭의 <code>@modified</code> 검색 결과에 <code>search.exclude</code>가 없고, <kbd class="key">Ctrl+Shift+F</kbd>에서 <code>domain.ErrNotFound</code>를 포함 칸 없이 다시 검색하면 <span class="file">lesson09/mine</span>의 복사본이 결과에 <b>다시 나타납니다</b>(제외 설정이 기본 프로필에는 적용되지 않았다는 증거입니다).</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <h3>문제 1. PATCH와 DELETE 핸들러 테스트 쓰기</h3>
+        <p>1~8단계에서 읽은 <code>TestCreateTask</code>를 본보기로, <span class="file">lab/lesson09/mine/exercises</span> 폴더(패키지 이름 <code>exercises</code>)에 <code>update_delete_test.go</code>를 만들어 <code>PATCH /tasks/{id}</code>와 <code>DELETE /tasks/{id}</code>를 table-driven으로 테스트하세요. 여기서는 내부 도우미를 쓰지 않고 공개 API(<code>handler.New</code>)와 직접 만든 가짜 서비스로 작성합니다. <b>완료 조건</b>: PATCH는 성공(200), 수정할 필드 없음(400), 없는 id(404), 숫자가 아닌 id(400), 깨진 JSON(400)을, DELETE는 성공(204, 본문 없음), 없는 id(404), 숫자가 아닌 id(400)를 확인하고 <code>go test ./lesson09/mine/exercises</code>가 통과한다. import 경로는 <code>golab/lesson09/mine/internal/...</code>입니다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p><code>handler.TaskService</code>는 다섯 메서드를 가진 인터페이스라서 가짜도 다섯 개를 모두 가져야 컴파일됩니다. 쓰지 않는 메서드는 에러를 돌려주는 한 줄짜리로 두고, 이 테스트에서 쓰는 <code>Update</code>와 <code>Delete</code>만 함수 필드로 바꿔 끼울 수 있게 만드세요. 요청은 <code>httptest.NewRequest</code>, 응답은 <code>httptest.NewRecorder</code>, 호출은 <code>handler.New(가짜).Routes().ServeHTTP(rec, req)</code>입니다. <code>Routes()</code>를 거쳐야 <code>{id}</code>가 채워집니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="go" data-src="lab/lesson09/exercises/update_delete_test.go">package exercises
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"golab/lesson09/internal/domain"
+	"golab/lesson09/internal/handler"
+)
+
+// stubService는 PATCH와 DELETE만 흉내 내는 가짜 TaskService입니다.
+type stubService struct {
+	update func(ctx context.Context, id int, in domain.UpdateInput) (domain.Task, error)
+	remove func(ctx context.Context, id int) error
+}
+
+var errUnused = errors.New("이 테스트에서는 쓰지 않는 메서드입니다")
+
+func (s stubService) List(context.Context) ([]domain.Task, error) {
+	return nil, errUnused
+}
+
+func (s stubService) Create(context.Context, string) (domain.Task, error) {
+	return domain.Task{}, errUnused
+}
+
+func (s stubService) Get(context.Context, int) (domain.Task, error) {
+	return domain.Task{}, errUnused
+}
+
+func (s stubService) Update(ctx context.Context, id int, in domain.UpdateInput) (domain.Task, error) {
+	return s.update(ctx, id, in)
+}
+
+func (s stubService) Delete(ctx context.Context, id int) error {
+	return s.remove(ctx, id)
+}
+
+func send(h http.Handler, method, target, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, target, strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestUpdateTask(t *testing.T) {
+	update := func(_ context.Context, id int, in domain.UpdateInput) (domain.Task, error) {
+		switch {
+		case id == 99:
+			return domain.Task{}, domain.ErrNotFound
+		case in.Title == nil &amp;&amp; in.Done == nil:
+			return domain.Task{}, &amp;domain.ValidationError{Message: "수정할 필드(title, done)가 없습니다"}
+		}
+		return domain.Task{ID: id, Title: "수정됨", Done: in.Done != nil &amp;&amp; *in.Done}, nil
+	}
+	tests := []struct {
+		name       string
+		path       string
+		body       string
+		wantStatus int
+	}{
+		{"done 수정", "/tasks/1", `{"done":true}`, http.StatusOK},
+		{"수정할 필드 없음", "/tasks/1", `{}`, http.StatusBadRequest},
+		{"없는 id", "/tasks/99", `{"done":true}`, http.StatusNotFound},
+		{"숫자가 아닌 id", "/tasks/x", `{"done":true}`, http.StatusBadRequest},
+		{"깨진 JSON", "/tasks/1", `{"done":`, http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := handler.New(stubService{update: update}).Routes()
+
+			rec := send(h, http.MethodPatch, tt.path, tt.body)
+
+			if rec.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d (body: %s)", rec.Code, tt.wantStatus, rec.Body)
+			}
+		})
+	}
+}
+
+func TestDeleteTask(t *testing.T) {
+	remove := func(_ context.Context, id int) error {
+		if id == 1 {
+			return nil
+		}
+		return domain.ErrNotFound
+	}
+	tests := []struct {
+		name       string
+		path       string
+		wantStatus int
+	}{
+		{"성공은 204", "/tasks/1", http.StatusNoContent},
+		{"없는 id는 404", "/tasks/2", http.StatusNotFound},
+		{"숫자가 아닌 id는 400", "/tasks/abc", http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := handler.New(stubService{remove: remove}).Routes()
+
+			rec := send(h, http.MethodDelete, tt.path, "")
+
+			if rec.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d", rec.Code, tt.wantStatus)
+			}
+			if tt.wantStatus == http.StatusNoContent &amp;&amp; rec.Body.Len() != 0 {
+				t.Errorf("204 응답에는 본문이 없어야 합니다: %q", rec.Body)
+			}
+		})
+	}
+}</pre>
+            <p>완성본의 import 경로는 <code>golab/lesson09/internal/...</code>입니다. 내 코드에서는 <code>golab/lesson09/mine/internal/...</code>로 바꿔 쓰세요.</p>
+          </div>
+        </details>
+
+        <h3>문제 2. API 키를 검사하는 미들웨어 만들기</h3>
+        <p><span class="file">mine/exercises</span> 폴더에 <code>apikey.go</code>를 만들어 <code>RequireAPIKey(key string) func(http.Handler) http.Handler</code>를 구현하세요. <code>X-API-Key</code> 헤더가 <code>key</code>와 같은 요청만 통과시키고, 아니면 401과 <code>{"error":"인증이 필요합니다"}</code>를 돌려주며, <code>GET /health</code>는 키 없이도 통과시킵니다. <b>완료 조건</b>: 아래 테스트를 <code>apikey_test.go</code>로 입력해 <code>go test ./lesson09/mine/exercises</code>가 통과한다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson09/exercises/apikey_test.go">package exercises
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestRequireAPIKey(t *testing.T) {
+	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	protected := RequireAPIKey("secret")(ok)
+
+	tests := []struct {
+		name       string
+		method     string
+		path       string
+		header     string
+		wantStatus int
+	}{
+		{"키가 맞으면 통과", http.MethodGet, "/tasks", "secret", http.StatusOK},
+		{"키가 없으면 401", http.MethodGet, "/tasks", "", http.StatusUnauthorized},
+		{"키가 틀리면 401", http.MethodPost, "/tasks", "wrong", http.StatusUnauthorized},
+		{"health는 키 없이 통과", http.MethodGet, "/health", "", http.StatusOK},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			if tt.header != "" {
+				req.Header.Set("X-API-Key", tt.header)
+			}
+			rec := httptest.NewRecorder()
+
+			protected.ServeHTTP(rec, req)
+
+			if rec.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d", rec.Code, tt.wantStatus)
+			}
+		})
+	}
+}</pre>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>미들웨어는 "설정 값을 받아 미들웨어를 돌려주는" 함수 한 겹이 더 있는 모양입니다. <code>RequireAPIKey("secret")</code>이 <code>func(http.Handler) http.Handler</code>를 돌려주고, 그것이 다시 <code>http.HandlerFunc</code>를 돌려줍니다. 통과시키려면 <code>next.ServeHTTP(w, r)</code>를 부르고, 막으려면 응답을 쓴 뒤 <b>반드시 <code>return</code></b>합니다. 비밀 값 비교는 시간차 공격을 줄이려고 <code>crypto/subtle</code>의 <code>ConstantTimeCompare</code>를 쓰는 것이 관례입니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="go" data-src="lab/lesson09/exercises/apikey.go">// Package exercises는 레슨 09 연습 문제의 정답 예시입니다.
+package exercises
+
+import (
+	"crypto/subtle"
+	"net/http"
+)
+
+// RequireAPIKey는 X-API-Key 헤더가 key와 같은 요청만 통과시킵니다.
+// GET /health는 상태 확인용이므로 키 없이도 통과시킵니다.
+func RequireAPIKey(key string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet &amp;&amp; r.URL.Path == "/health" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			got := r.Header.Get("X-API-Key")
+			if subtle.ConstantTimeCompare([]byte(got), []byte(key)) != 1 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"error":"인증이 필요합니다"}` + "\n"))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}</pre>
+            <p>이 미들웨어는 서버에 연결하지 않은 연습용입니다. 연결한다면 <span class="file">main.go</span>의 <code>handler.Chain(h.Routes(), handler.Logging, handler.Recover)</code> 목록에 <code>exercises.RequireAPIKey("secret")</code>을 추가하면 됩니다(순서에 따라 로그에 401이 남는지가 달라집니다).</p>
+          </div>
+        </details>
+
+        <h3 id="cleanup">정리하기: 연습 파일 지우고 전체 점검이 통과하는지 확인</h3>
+        <p>연습 문제까지 마쳤거나 오늘 공부를 여기서 멈출 때 합니다. <code>go: test all</code>과 <code>go: vet all</code>은 <span class="file">lab</span> 안의 모든 폴더(<code>./...</code>)를 대상으로 하므로 <span class="file">mine</span> 복사본이 컴파일되지 않으면 레슨과 상관없이 실패합니다. 테스트 파일만 넣고 구현은 아직 쓰지 않은 연습 문제 폴더가 대표적입니다(레슨 07 "정리하기"의 실제 출력 참고). 실행 파일(<span class="file">lab/bin</span>)과 <span class="file">coverage.out</span>은 Go 코드가 아니라서 <code>go test ./...</code>를 깨뜨리지 않지만(이 PC에서 확인), 쓸모없는 파일이니 함께 지웁니다.</p>
+        <ol class="steps">
+          <li>
+            <strong>mine·bin·coverage.out 지우고 상태 확인하기</strong>
+            <p>① 서버가 켜져 있으면 해당 터미널에서 <kbd class="key">Ctrl+C</kbd>로 끝냅니다. ② 남기고 싶은 코드가 있으면 <span class="file">lab</span> 폴더 밖으로 복사해 둡니다. ③ 탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson09/mine</span> 폴더를 우클릭해 <b>삭제(Delete)</b>합니다. "자주 나는 오류"를 재현하느라 <span class="file">lab/lesson07/mine</span>을 새로 만들었다면 그것도 지웁니다. 3단계와 8단계에서 이미 지웠다면 <span class="file">lab/bin</span>, <span class="file">lab/coverage.out</span>은 없는 상태여야 하고, 남아 있으면 같은 방법으로 지웁니다. ④ 터미널(<span class="file">lab</span> 폴더)에서 <code>ls</code>와 <code>ls lesson09</code>를 실행해 <code>bin</code>, <code>coverage.out</code>, <code>lesson09/mine</code>이 목록에 없는 것을 확인합니다(PowerShell과 bash 모두 됩니다). ⑤ 관리 버튼과 제목 표시줄에 프로필 이름이 없어야 합니다(연습용 프로필을 지운 상태). ⑥ 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)의 <b>Tasks: Run Test Task</b>로 <code>go: test all</code>을 실행해 <code>FAIL</code> 줄이 없는 것을 확인합니다. <code>FAIL</code>이 나오면 패키지 이름으로 어느 폴더 때문인지 알 수 있습니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="go-09-run"><span>계층으로 나뉜 서버를 실행해 레슨 08과 같은 응답과 요청별 로그 줄(<code>GET /tasks/abc -> 400</code> 등)을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-09-search"><span><kbd class="key">Ctrl+Shift+F</kbd>의 포함/제외 칸으로 <code>domain.ErrNotFound</code> 결과를 4개로 줄였고, 정규식 검색으로 핸들러 메서드 8개를 찾았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-09-replace"><span><kbd class="key">Ctrl+Shift+H</kbd>로 <code>mine</code> 복사본의 import 경로만 바꿨고(미리보기 확인), <code>go vet</code>과 <code>go test ./lesson09/mine/...</code>가 통과했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-09-tests"><span>서비스 테스트를 <code>-v</code>로 실행해 한글 100자 허용·101자 거부 하위 테스트가 통과하는 것을 보았고, 핸들러 테스트에서 표에 행을 추가한 뒤 코드를 일부러 깨뜨려 <code>FAIL</code>이 나는 것을 확인하고 되돌렸으며, <code>TestChainOrder</code>로 <code>Chain</code>의 순서를 확인해 <code>Logging</code>을 바깥, <code>Recover</code>를 안쪽에 둔 이유를 설명할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-09-scm"><span><kbd class="key">Ctrl+Shift+G</kbd>를 열어 변경 목록, diff, 스테이지, 커밋의 순서를 설명할 수 있다(실제 커밋은 하지 않았다).</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-09-practice"><span>연습 문제 두 개를 힌트 없이 먼저 시도했고, <code>go test ./lesson09/mine/exercises</code>(또는 정답 폴더)가 통과하는 것을 보았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-09-profile"><span>기본 프로필에서 복사한 연습용 프로필에서만 <code>search.exclude</code>를 바꿨고(설정 JSON 탭의 경로에 <code>profiles</code>가 있었다), 기본 프로필로 돌아와 프로필을 지웠다. 기본 프로필에서 다시 검색하면 <code>mine</code> 결과가 나타났고 <code>@modified</code>에 <code>search.exclude</code>가 없다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="go-09-cleanup"><span><code>lesson09/mine</code>, <code>lab/bin</code>, <code>lab/coverage.out</code>을 지운 뒤 <code>ls</code> 결과에 없는 것을 확인했고, <code>Tasks: Run Test Task</code>의 <code>go: test all</code>이 <code>FAIL</code> 없이 끝나는 것을 확인했다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <h3>증상: 핸들러 메서드를 직접 불렀더니 id를 못 읽는다 (400)</h3>
+        <p>테스트에서 <code>h.getTask(rec, req)</code>처럼 핸들러 메서드를 직접 부르면, 요청이 라우터(<code>ServeMux</code>)를 거치지 않아서 경로 변수 <code>{id}</code>가 채워지지 않습니다. <code>r.PathValue("id")</code>가 빈 문자열이라 <code>parseID</code>가 400을 돌려줍니다. 재현하려면 <span class="file">mine/internal/handler</span>에 새 파일 <code>direct_call_test.go</code>를 만들어 아래 코드를 입력하고 실행합니다(import 경로가 <code>mine</code> 기준입니다). 확인하면 이 파일은 지웁니다. 해결은 라우터째 호출(<code>New(...).Routes().ServeHTTP(rec, req)</code>)하거나, 직접 부르려면 <code>req.SetPathValue("id", "1")</code>로 값을 채워 주는 것입니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson09/fail/direct_call_test.go.txt">package handler
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"golab/lesson09/mine/internal/domain"
+)
+
+func TestDirectCall(t *testing.T) {
+	fake := fakeTasks{get: func(_ context.Context, id int) (domain.Task, error) {
+		return domain.Task{ID: id, Title: "x"}, nil
+	}}
+	h := New(fake)
+	req := httptest.NewRequest(http.MethodGet, "/tasks/1", nil)
+	rec := httptest.NewRecorder()
+
+	h.getTask(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body)
+	}
+}</pre>
+<pre class="code" data-lang="text">go test -run TestDirectCall ./lesson09/mine/internal/handler</pre>
+<pre class="output">--- FAIL: TestDirectCall (0.00s)
+    direct_call_test.go:23: status = 400, want 200 (body: {"error":"id는 1 이상의 정수여야 합니다"}
+        )
+FAIL
+FAIL	golab/lesson09/mine/internal/handler	0.697s
+FAIL</pre>
+        <h3>증상: import cycle not allowed in test</h3>
+        <p>계층이 서로를 import하면 컴파일할 수 없습니다. 재현하려면 <span class="file">mine/internal/repository/memory.go</span> 맨 아래에 인터페이스를 만족하는지 확인하는 아래 한 줄을 추가하고 저장합니다. import 줄 <code>"golab/lesson09/mine/internal/service"</code>는 자동으로 채워지고, 채워지지 않으면 <code>import</code> 블록에 직접 추가합니다. <code>service</code>의 테스트가 <code>repository</code>를 import하는데 <code>repository</code>가 다시 <code>service</code>를 import하니 순환이 생깁니다. 구현체(repository)가 인터페이스를 쓰는 쪽(service)을 import하지 않는 것이 이 구조의 규칙입니다. 확인한 뒤 추가한 두 줄(선언과 import)을 지웁니다. 인터페이스 충족 확인이 필요하면 순환이 생기지 않는 <b>테스트 파일 안에서</b> 같은 선언을 합니다(레슨 11의 <span class="file">file_test.go</span>가 그렇게 합니다).</p>
+<pre class="code" data-lang="go">var _ service.Repository = (*Memory)(nil)</pre>
+<pre class="code" data-lang="text">go test ./lesson09/mine/internal/service</pre>
+<pre class="output"># golab/lesson09/mine/internal/service
+package golab/lesson09/mine/internal/service
+	imports golab/lesson09/mine/internal/repository from task_service_test.go
+	imports golab/lesson09/mine/internal/service from memory.go: import cycle not allowed in test
+FAIL	golab/lesson09/mine/internal/service [setup failed]
+FAIL</pre>
+        <h3>증상: use of internal package ... not allowed</h3>
+        <p><code>internal</code> 폴더 안의 패키지를 그 바깥의 다른 폴더(예: <span class="file">lesson07</span>)에서 import하면 컴파일러가 거부합니다. 레슨마다 코드를 복사해 쓰는 이 코스에서는 다른 레슨의 <code>internal</code>을 import하지 않고 복사해 쓰는 것이 규칙입니다. 재현하려면 <span class="file">lab/lesson07/mine/main.go</span>(레슨 07에서 지웠다면 폴더와 파일을 새로 만듭니다)를 아래 코드로 바꾸고 <code>go vet</code>을 실행합니다. 확인하면 이 파일(과 <span class="file">lesson07/mine</span> 폴더)을 지웁니다. 컴파일되지 않는 파일이 남으면 <code>go: test all</code>이 실패합니다.</p>
+<pre class="code" data-lang="go" data-src="lab/lesson09/fail/internal_import.go.txt">package main
+
+import "golab/lesson09/internal/domain"
+
+func main() {
+	_ = domain.ErrNotFound
+}</pre>
+<pre class="code" data-lang="text">go vet ./lesson07/mine</pre>
+<pre class="output">package golab/lesson07/mine
+	lesson07\mine\main.go:3:8: use of internal package golab/lesson09/internal/domain not allowed</pre>
+        <h3>증상: 복사본을 고쳤는데 서버 동작이 그대로다</h3>
+        <p>3단계에서 import 경로를 바꾸지 않아 복사본의 <code>main</code>이 원본 <code>internal</code>을 쓰고 있는 경우입니다. 오류가 나지 않아서 더 헷갈립니다. 전체 검색(<kbd class="key">Ctrl+Shift+F</kbd>)에서 <code>golab/lesson09/internal</code>을 <b>포함할 파일 <code>./lab/lesson09/mine</code></b>로 검색해 결과가 하나도 없어야 정상입니다. 남아 있으면 3단계의 전체 바꾸기를 다시 합니다.</p>
+        <h3>증상: 전체 바꾸기를 눌렀더니 다른 레슨까지 바뀌었다</h3>
+        <p>포함 칸을 비우고 <b>모두 바꾸기</b>를 누르면 열어 둔 폴더 전체가 대상이 됩니다. 이런 일이 생기지 않게 하려면 바꾸기 전에 ① 포함 칸에 폴더를 적고 ② 결과의 파일 수가 예상(7개)과 맞는지 보고 ③ 결과 줄을 클릭해 diff를 확인합니다. 이 코스에서는 <span class="file">lab/lesson09</span>의 완성 코드와 레슨 09 페이지(<span class="file">lessons/09-taskapi-layers.html</span>)의 코드 블록까지 바뀝니다(레슨 10, 11은 경로의 숫자가 달라 영향이 없습니다). 저장 전이라면 바뀐 파일마다 편집기에서 <kbd class="key">Ctrl+Z</kbd>로 되돌릴 수 있습니다. 이미 저장했다면 같은 검색 보기에서 찾을 칸과 바꿀 칸을 서로 맞바꿔 한 번 더 바꾸면 되돌아가는 경우가 많지만 확실하지 않으니, 처음부터 포함 칸을 채우는 습관이 최선입니다.</p>
+      </section>
+
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨 10에서는 이 서버를 운영에 가깝게 만듭니다. <code>log/slog</code> 구조화 로그, 환경변수 설정, 요청 ID, 서버 타임아웃, <code>signal.NotifyContext</code>와 <code>http.Server.Shutdown</code>을 쓴 안전한 종료, 크로스 컴파일을 익히고, VS Code의 설정 JSON·프로필·스니펫·<code>keybindings.json</code>을 직접 다룹니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="08-http-server.html"><small>← 이전 레슨</small>08 · net/http로 만드는 REST 서버</a>
+          <a class="next" rel="next" href="10-production-habits.html"><small>다음 레슨 →</small>10 · 운영 습관: slog·설정·종료 처리</a>
+        </nav>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Go 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

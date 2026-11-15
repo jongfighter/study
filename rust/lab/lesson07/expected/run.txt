@@ -1,0 +1,26 @@
+Some(9)
+Some(1.5)
+Some("rust")
+None
+[10, 20, 30] 총 5건 / 더 있나? true
+[email] alice@example.com <- 배포 완료
+[slack #dev] @alice <- 점검 시작
+[slack #dev] @bob <- 점검 시작
+[email] carol@example.com <- 회의 시작
+[slack #dev] @alice <- 점검 종료
+[slack #dev] @bob <- 점검 종료
+가장 큰 값: 높음
+가장 큰 값: 8
+email: [email] carol@example.com <- 장애 복구
+slack: [slack #ops] @carol <- 장애 복구
+더 긴 제목: trait와 제네릭
+발췌: 첫 줄입니다
+[email] dave@example.com <- 회의 10분 전
+[email] erin@example.com <- 회의 10분 전
+[sms +82] dave <- 회의 10분 전
+[sms +82] erin <- 회의 10분 전
+peek = Some("둘째"), len = 2
+pop = Some("둘째")
+pop = Some("첫째")
+pop = None, 비었나? true
+가장 긴 줄: 조금 더 긴 줄

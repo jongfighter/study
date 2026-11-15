@@ -1,0 +1,5 @@
+'hello'의 길이는 5
+바뀐 값: hello, world
+읽기 참조 두 개: hello, world / hello, world
+가변 참조: hello, world!
+원래 변수: hello, world!

@@ -1,0 +1,22 @@
+     Running unittests examples\scratch.rs (...)
+
+running 1 test
+test slug_keeps_korean ... FAILED
+
+failures:
+
+---- slug_keeps_korean stdout ----
+
+thread 'slug_keeps_korean' (...) panicked at lesson09\examples\scratch.rs:5:5:
+assertion `left == right` failed
+  left: ""
+ right: "보고서-작성"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    slug_keeps_korean
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p lesson09 --example scratch`

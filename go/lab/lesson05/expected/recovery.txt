@@ -1,0 +1,7 @@
+본문 끝
+defer 3
+defer 2
+defer 1
+5 <nil>
+0 복구했습니다: runtime error: integer divide by zero
+프로그램은 계속 실행됩니다

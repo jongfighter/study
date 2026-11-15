@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="rust" data-lesson="07">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="trait로 공통 동작을 약속하고 제네릭과 라이프타임을 컴파일러 오류로 익힙니다.">
+  <title>07 · trait·제네릭·라이프타임 — Rust 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Rust 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Rs</span>
+      <span>Rust 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 07 · 추상화</p>
+        <h1>trait·제네릭·라이프타임</h1>
+        <p class="lead">서로 다른 타입이 같은 일을 하도록 trait로 약속하고, 제네릭으로 코드를 재사용하고, 라이프타임 오류를 컴파일러 메시지로 읽어 고치는 데까지 갑니다. Kotlin의 interface·제네릭과 하나씩 맞대어 봅니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 130분</li>
+          <li><b>난이도</b> ★★★☆☆</li>
+          <li><b>선행</b> <a href="06-collections-errors.html">레슨 06</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson07</span></li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li>제네릭 함수와 제네릭 구조체를 만들고, <code>T: PartialOrd</code>처럼 trait bound로 필요한 능력을 요구할 수 있다.</li>
+          <li>trait을 정의하고 기본 구현(default method)을 둔 채 여러 구조체에 <code>impl</code>할 수 있다.</li>
+          <li><code>impl Trait</code>(정적 디스패치)와 <code>Box&lt;dyn Trait&gt;</code>(동적 디스패치)를 상황에 맞게 고를 수 있다.</li>
+          <li>라이프타임 오류 <code>E0106</code>, <code>E0597</code>의 메시지를 읽고 <code>'a</code> 표기나 코드 구조 변경으로 고칠 수 있다.</li>
+          <li>VS Code에서 <kbd class="key">Ctrl+F12</kbd>로 구현을 찾고, 코드 액션(<kbd class="key">Ctrl+.</kbd>)으로 <code>impl</code> 뼈대를 만들 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>이 페이지의 한국어 해설을 먼저 읽고, 같은 주제의 원문을 훑어보는 순서를 권합니다. 로컬 파일은 VS Code에서 <kbd class="key">Ctrl+P</kbd>로 파일명을 입력해 바로 열 수 있습니다.</p>
+        <ul>
+          <li><a href="https://doc.rust-lang.org/book/ch10-00-generics.html">The Rust Book 10장 · 제네릭, trait, 라이프타임 (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch10-01-syntax.md">the-rust-book/src/ch10-01-syntax.md</span>, <span class="file" data-local="the-rust-book/src/ch10-02-traits.md">ch10-02-traits.md</span>, <span class="file" data-local="the-rust-book/src/ch10-03-lifetime-syntax.md">ch10-03-lifetime-syntax.md</span></li>
+          <li><a href="https://doc.rust-lang.org/book/ch18-02-trait-objects.html">The Rust Book 18.2 · trait 객체 (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch18-02-trait-objects.md">the-rust-book/src/ch18-02-trait-objects.md</span></li>
+          <li><a href="https://doc.rust-lang.org/rust-by-example/generics.html">Rust By Example · 제네릭 (영문)</a> — 로컬 파일: <span class="file" data-local="rust-by-example/src/generics.md">rust-by-example/src/generics.md</span>, <span class="file" data-local="rust-by-example/src/trait.md">trait.md</span>, <span class="file" data-local="rust-by-example/src/scope/lifetime.md">scope/lifetime.md</span></li>
+          <li>연습 문제 모음 rustlings: <span class="file" data-local="rustlings/exercises/14_generics/generics1.rs">14_generics/generics1.rs</span>, <span class="file" data-local="rustlings/exercises/15_traits/traits1.rs">15_traits/traits1.rs</span>, <span class="file" data-local="rustlings/exercises/16_lifetimes/lifetimes1.rs">16_lifetimes/lifetimes1.rs</span></li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>제네릭(generics)</b>은 타입을 나중에 정하겠다는 표시입니다. 함수 이름 뒤 <code>&lt;T&gt;</code>가 "여기 들어올 타입을 T라고 부르겠다"는 선언입니다. JVM의 제네릭은 컴파일 후 타입 정보가 지워지는 <b>타입 소거(type erasure)</b> 방식이지만, Rust는 쓰인 타입마다 코드를 따로 만들어 내는 <b>단형성화(monomorphization)</b>를 합니다. 그래서 제네릭을 써도 실행 중 비용이 늘지 않습니다.</p>
+        <p><b>trait</b>은 "이 타입은 이런 일을 할 수 있다"는 약속입니다. Kotlin의 <code>interface</code>와 닮았지만 두 가지가 다릅니다. 첫째, 구현을 타입 정의 안이 아니라 <code>impl Trait for 타입</code>이라는 별도 블록에 씁니다. 둘째, 상속이 없고 오직 "약속의 집합"만 있습니다. 메서드에 본문을 적어 두면 <b>기본 구현(default method)</b>이 되어, 구현하는 쪽이 생략할 수 있습니다.</p>
+        <p><b>trait bound</b>는 제네릭에 능력을 요구하는 문법입니다. <code>fn largest&lt;T: PartialOrd&gt;</code>는 "비교할 수 있는 타입만 받겠다"는 뜻이고, 이 조건이 없으면 함수 안에서 <code>&gt;</code> 연산을 쓸 수 없습니다. 같은 뜻을 <code>&amp;impl Trait</code>나 <code>where</code> 절로도 쓸 수 있습니다.</p>
+        <p><b>trait 객체(trait object)</b>는 <code>Box&lt;dyn Notifier&gt;</code>처럼 실행 중에 구현체가 정해지는 타입입니다. Kotlin에서 <code>List&lt;Notifier&gt;</code>를 쓰던 자리가 Rust에서는 <code>Vec&lt;Box&lt;dyn Notifier&gt;&gt;</code>입니다. 메서드 호출이 가상 함수 표(vtable)를 거치므로 <b>동적 디스패치(dynamic dispatch)</b>이고, 제네릭이나 <code>impl Trait</code>는 컴파일 때 호출 대상이 정해지는 <b>정적 디스패치(static dispatch)</b>입니다.</p>
+        <p><b>라이프타임(lifetime)</b>은 참조가 가리키는 값이 얼마나 오래 사는지를 컴파일러가 따져 보기 위한 이름표입니다. JVM에는 가비지 컬렉터가 있어 이런 개념이 없습니다. <code>'a</code>는 값의 수명을 늘려 주는 것이 아니라 "이 참조들은 서로 이런 관계다"라고 적어 주는 설명서입니다. 참조 하나를 받아 참조 하나를 돌려주는 흔한 경우에는 컴파일러가 알아서 채워 주는 <b>생략 규칙(elision)</b>이 있어서 대부분 <code>'a</code>를 직접 쓸 일이 없습니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>완성본은 <span class="file">lab/lesson07/src/main.rs</span>에 이미 들어 있습니다. 완성본을 건드리지 않도록, 직접 입력할 코드는 새 파일 <span class="file">lab/lesson07/src/bin/mine.rs</span>에 씁니다. 단계마다 코드를 이어 붙이고 마지막에 <code>cargo run</code>으로 확인합니다. 아래 코드 블록의 <b>복사</b> 버튼을 써도 되지만, 가능하면 직접 입력하며 자동완성이 어떻게 돕는지 지켜보세요.</p>
+        <div class="callout tip"><strong>중간 경고는 정상입니다</strong>함수나 구조체를 만들기만 하고 아직 쓰지 않은 단계에서는 <code>never used</code> 경고가 나옵니다. 뒤 단계에서 호출하면 사라지므로 지금은 무시해도 됩니다. 오류(<code>error</code>)와 경고(<code>warning</code>)를 구분해서 읽으세요.</div>
+        <ol class="steps">
+          <li>
+            <strong>연습 파일 만들기 (이전 단계 의존 없음)</strong>
+            <p>왼쪽 탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab</span> → <span class="file">lesson07</span> → <span class="file">src</span> 순서로 펼칩니다. <span class="file">src</span> 폴더를 우클릭해 <b>새 폴더(New Folder)</b>를 고르고 <code>bin</code>을 입력한 뒤 엔터(Enter) 키를 누릅니다. 이어서 <span class="file">bin</span> 폴더를 우클릭해 <b>새 파일(New File)</b>을 고르고 <code>mine.rs</code>를 입력합니다. 빈 파일이 에디터에 열리면 준비가 끝났습니다.</p>
+            <p>터미널을 엽니다(<kbd class="key">Ctrl+`</kbd>). 이후 모든 <code>cargo</code> 명령은 워크스페이스 루트인 <span class="file">lab</span> 폴더에서 실행합니다. PowerShell과 bash 모두 같은 명령입니다.</p>
+<pre class="code" data-lang="bash">cd lab</pre>
+            <p>이미 <span class="file">lab</span> 폴더 안에 있다면 이 명령은 건너뜁니다. 프롬프트에 <code>lab</code>이 보이는지 확인하세요.</p>
+          </li>
+          <li>
+            <strong>제네릭 함수와 제네릭 구조체 (<span class="file">mine.rs</span>, 1단계 의존)</strong>
+            <p><span class="file">mine.rs</span>에 아래 코드를 입력합니다. <code>largest</code>는 어떤 타입의 슬라이스든 받아 가장 큰 원소의 참조를 돌려주고, <code>Page&lt;T&gt;</code>는 목록 응답을 담는 그릇입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/src/main.rs" data-lines="1-51">use std::fmt::{self, Display};
+
+// ── 1. 제네릭: 타입을 나중에 정한다 ─────────────────────────────
+
+fn largest&lt;T: PartialOrd&gt;(items: &amp;[T]) -&gt; Option&lt;&amp;T&gt; {
+    let mut iter = items.iter();
+    let mut max = iter.next()?;
+    for item in iter {
+        if item &gt; max {
+            max = item;
+        }
+    }
+    Some(max)
+}
+
+#[derive(Debug)]
+struct Page&lt;T&gt; {
+    items: Vec&lt;T&gt;,
+    total: usize,
+}
+
+impl&lt;T&gt; Page&lt;T&gt; {
+    fn new(items: Vec&lt;T&gt;, total: usize) -&gt; Self {
+        Page { items, total }
+    }
+
+    fn has_more(&amp;self) -&gt; bool {
+        self.items.len() &lt; self.total
+    }
+}
+
+impl&lt;T: Display&gt; Page&lt;T&gt; {
+    fn describe(&amp;self) -&gt; String {
+        let mut parts = Vec::new();
+        for item in &amp;self.items {
+            parts.push(item.to_string());
+        }
+        format!("[{}] 총 {}건", parts.join(", "), self.total)
+    }
+}
+
+fn demo_generics() {
+    println!("{:?}", largest(&amp;[3, 9, 4]));
+    println!("{:?}", largest(&amp;[1.5, 0.2]));
+    println!("{:?}", largest(&amp;["rust", "kotlin", "python"]));
+    let empty: [i32; 0] = [];
+    println!("{:?}", largest(&amp;empty));
+
+    let page = Page::new(vec![10, 20, 30], 5);
+    println!("{} / 더 있나? {}", page.describe(), page.has_more());
+}</pre>
+            <p>파일 맨 아래에 <code>fn main() { demo_generics(); }</code>를 한 줄로 입력하고 저장(<kbd class="key">Ctrl+S</kbd>)합니다. 저장 시 포맷이 켜져 있다면 rustfmt가 세 줄로 펼쳐 줍니다. 실행합니다.</p>
+<pre class="code" data-lang="bash">cargo run -p lesson07 --bin mine</pre>
+            <p>처음 실행에는 컴파일 로그가 먼저 나오고, 프로그램 출력은 아래 5줄입니다.</p>
+<pre class="output" data-src="lab/lesson07/expected/run.txt" data-lines="1-5">Some(9)
+Some(1.5)
+Some("rust")
+None
+[10, 20, 30] 총 5건 / 더 있나? true</pre>
+            <p>읽는 법을 짚어 봅니다.</p>
+            <ul>
+              <li><code>fn largest&lt;T: PartialOrd&gt;(items: &amp;[T]) -&gt; Option&lt;&amp;T&gt;</code>: 빈 슬라이스에는 줄 값이 없으므로 <code>Option</code>으로 돌려줍니다. <code>iter.next()?</code>는 값이 없으면 곧바로 <code>None</code>을 반환합니다.</li>
+              <li>같은 함수가 정수, 실수, 문자열 슬라이스에 모두 쓰입니다. 컴파일러가 타입마다 함수를 따로 만듭니다.</li>
+              <li><code>impl&lt;T&gt; Page&lt;T&gt;</code>는 모든 <code>T</code>에 대한 메서드이고, <code>impl&lt;T: Display&gt; Page&lt;T&gt;</code>는 출력할 수 있는 <code>T</code>일 때만 생기는 메서드(<code>describe</code>)입니다.</li>
+            </ul>
+          </li>
+          <li>
+            <strong>trait 정의와 구현, 코드 액션으로 뼈대 만들기 (<span class="file">mine.rs</span>, 2단계 의존)</strong>
+            <p>2단계 코드 아래에 trait 정의와 두 구조체를 입력합니다. 먼저 <code>trait Notifier</code>, <code>struct EmailNotifier</code>, <code>struct SlackNotifier</code>, 그리고 <code>impl Notifier for EmailNotifier</code>까지 입력하세요. 모양은 아래 코드의 앞부분과 같습니다.</p>
+            <p>이제 VS Code의 도움을 받습니다. <code>SlackNotifier</code>의 구현은 본문을 쓰지 말고 <code>impl Notifier for SlackNotifier {}</code>까지만 입력합니다. 중괄호 사이에 커서를 두고 <kbd class="key">Ctrl+.</kbd>를 누른 뒤 목록에서 <b>Implement missing members</b>를 고릅니다. <code>name</code>과 <code>send</code> 두 함수의 뼈대가 <code>todo!()</code> 본문과 함께 생깁니다. <code>broadcast</code>는 기본 구현이 있어서 만들어지지 않습니다. 각 <code>todo!()</code>를 아래 코드의 본문으로 바꿔 완성합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/src/main.rs" data-lines="53-108">// ── 2. trait: 같은 행동을 약속한다 ──────────────────────────────
+
+trait Notifier {
+    fn name(&amp;self) -&gt; String;
+    fn send(&amp;self, to: &amp;str, message: &amp;str) -&gt; String;
+
+    fn broadcast(&amp;self, recipients: &amp;[&amp;str], message: &amp;str) -&gt; Vec&lt;String&gt; {
+        let mut results = Vec::new();
+        for to in recipients {
+            results.push(self.send(to, message));
+        }
+        results
+    }
+}
+
+struct EmailNotifier {
+    domain: String,
+}
+
+struct SlackNotifier {
+    channel: String,
+}
+
+impl Notifier for EmailNotifier {
+    fn name(&amp;self) -&gt; String {
+        String::from("email")
+    }
+
+    fn send(&amp;self, to: &amp;str, message: &amp;str) -&gt; String {
+        format!("[email] {to}@{} &lt;- {message}", self.domain)
+    }
+}
+
+impl Notifier for SlackNotifier {
+    fn name(&amp;self) -&gt; String {
+        String::from("slack")
+    }
+
+    fn send(&amp;self, to: &amp;str, message: &amp;str) -&gt; String {
+        format!("[slack #{}] @{to} &lt;- {message}", self.channel)
+    }
+}
+
+fn demo_notifiers() {
+    let email = EmailNotifier {
+        domain: String::from("example.com"),
+    };
+    let slack = SlackNotifier {
+        channel: String::from("dev"),
+    };
+
+    println!("{}", email.send("alice", "배포 완료"));
+    for line in slack.broadcast(&amp;["alice", "bob"], "점검 시작") {
+        println!("{line}");
+    }
+}</pre>
+            <p><code>main</code>의 호출을 <code>demo_notifiers();</code>로 바꿔(또는 <code>demo_generics();</code> 아래에 추가해) 실행합니다. 출력 끝에 아래 3줄이 붙습니다.</p>
+<pre class="output" data-src="lab/lesson07/expected/run.txt" data-lines="6-8">[email] alice@example.com &lt;- 배포 완료
+[slack #dev] @alice &lt;- 점검 시작
+[slack #dev] @bob &lt;- 점검 시작</pre>
+          </li>
+          <li>
+            <strong>trait bound로 쓰기, Display 구현 (<span class="file">mine.rs</span>, 3단계 의존)</strong>
+            <p>3단계 코드 아래에 이어서 입력합니다. <code>Priority</code>는 <code>#[derive(PartialOrd, ...)]</code>로 비교 능력을 자동으로 얻고, <code>Display</code>는 직접 <code>impl</code>합니다. 입력한 뒤 <code>describe_largest</code> 위에 마우스를 올리거나 커서를 두고 <kbd class="key">Ctrl+K Ctrl+I</kbd>를 눌러 시그니처와 trait bound가 어떻게 표시되는지 확인해 보세요.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/src/main.rs" data-lines="110-164">// ── 3. trait bound: 제네릭에 "할 수 있는 일"을 요구한다 ───────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Priority {
+    Low,
+    Normal,
+    High,
+}
+
+impl Display for Priority {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        let label = match self {
+            Priority::Low =&gt; "낮음",
+            Priority::Normal =&gt; "보통",
+            Priority::High =&gt; "높음",
+        };
+        write!(f, "{label}")
+    }
+}
+
+fn notify_one&lt;N: Notifier&gt;(notifier: &amp;N, to: &amp;str, message: &amp;str) -&gt; String {
+    notifier.send(to, message)
+}
+
+fn announce(notifier: &amp;impl Notifier, message: &amp;str) -&gt; Vec&lt;String&gt; {
+    notifier.broadcast(&amp;["alice", "bob"], message)
+}
+
+fn describe_largest&lt;T&gt;(items: &amp;[T]) -&gt; String
+where
+    T: PartialOrd + Display,
+{
+    match largest(items) {
+        Some(max) =&gt; format!("가장 큰 값: {max}"),
+        None =&gt; String::from("비어 있음"),
+    }
+}
+
+fn demo_bounds() {
+    let email = EmailNotifier {
+        domain: String::from("example.com"),
+    };
+    let slack = SlackNotifier {
+        channel: String::from("dev"),
+    };
+
+    println!("{}", notify_one(&amp;email, "carol", "회의 시작"));
+    for line in announce(&amp;slack, "점검 종료") {
+        println!("{line}");
+    }
+
+    let priorities = [Priority::Low, Priority::High, Priority::Normal];
+    println!("{}", describe_largest(&amp;priorities));
+    println!("{}", describe_largest(&amp;[2.5, 8.0, 1.0]));
+}</pre>
+            <p><code>main</code>에 <code>demo_bounds();</code>를 추가하고 실행합니다. 새로 붙는 5줄입니다.</p>
+<pre class="output" data-src="lab/lesson07/expected/run.txt" data-lines="9-13">[email] carol@example.com &lt;- 회의 시작
+[slack #dev] @alice &lt;- 점검 종료
+[slack #dev] @bob &lt;- 점검 종료
+가장 큰 값: 높음
+가장 큰 값: 8</pre>
+            <p><code>notify_one</code>(제네릭), <code>announce</code>(<code>&amp;impl Trait</code>), <code>describe_largest</code>(<code>where</code> 절)는 모두 같은 뜻을 다른 문법으로 쓴 것입니다. 실행 결과도 같습니다.</p>
+          </li>
+          <li>
+            <strong>trait 객체와 구현 찾기 (<span class="file">mine.rs</span>, 3단계 의존)</strong>
+            <p>이번에는 서로 다른 구현체를 한 목록에 담습니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/src/main.rs" data-lines="166-184">// ── 4. dyn Trait: 실행 중에 구현체를 고른다 ──────────────────────
+
+fn send_everywhere(notifiers: &amp;[Box&lt;dyn Notifier&gt;], to: &amp;str, message: &amp;str) {
+    for notifier in notifiers {
+        println!("{}: {}", notifier.name(), notifier.send(to, message));
+    }
+}
+
+fn demo_dyn() {
+    let notifiers: Vec&lt;Box&lt;dyn Notifier&gt;&gt; = vec![
+        Box::new(EmailNotifier {
+            domain: String::from("example.com"),
+        }),
+        Box::new(SlackNotifier {
+            channel: String::from("ops"),
+        }),
+    ];
+    send_everywhere(&amp;notifiers, "carol", "장애 복구");
+}</pre>
+            <p><code>main</code>에 <code>demo_dyn();</code>을 추가하고 실행합니다.</p>
+<pre class="output" data-src="lab/lesson07/expected/run.txt" data-lines="14-15">email: [email] carol@example.com &lt;- 장애 복구
+slack: [slack #ops] @carol &lt;- 장애 복구</pre>
+            <p>VS Code로 구현을 찾아봅니다. <code>send_everywhere</code> 안의 <code>notifier.send(...)</code>에서 <code>send</code> 위에 커서를 두고 <kbd class="key">F12</kbd>를 누르면 trait 선언으로 갑니다. 이번에는 <kbd class="key">Ctrl+F12</kbd>를 누르세요. 구현이 둘 이상이면 <code>EmailNotifier</code>와 <code>SlackNotifier</code>의 <code>send</code>가 목록으로 나옵니다. 하나를 고른 뒤 <kbd class="key">Alt+←</kbd>로 원래 자리로 돌아옵니다. <code>trait Notifier</code> 위에는 회색 글씨 <b>implementations</b> 링크(CodeLens)도 보입니다.</p>
+          </li>
+          <li>
+            <strong>컴파일러가 막는 순간 ① — trait bound와 trait 구현 (이전 단계와 독립)</strong>
+            <p>지금까지 입력한 파일을 건드리지 않고 오류를 일부러 만들어 봅니다. 탐색기에서 <span class="file">lesson07</span> 폴더를 우클릭해 새 폴더 <code>examples</code>를 만들고, 그 안에 <span class="file">scratch.rs</span> 파일을 만듭니다. 이 파일은 실험용이라 실험이 끝나면 지웁니다(남겨 두면 뒤의 <code>cargo clippy --all-targets</code>에도 걸립니다).</p>
+            <p><b>오류 1. 제네릭에 능력을 요구하지 않았을 때.</b> 아래 코드를 <span class="file">scratch.rs</span>에 붙여 넣습니다. 저장하기 전에도 <code>&gt;</code> 아래에 빨간 물결선이 생기는지 보세요.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/fail/missing_bound.rs.txt">fn largest&lt;T&gt;(items: &amp;[T]) -&gt; &amp;T {
+    let mut max = &amp;items[0];
+    for item in items {
+        if item &gt; max {
+            max = item;
+        }
+    }
+    max
+}
+
+fn main() {
+    println!("{}", largest(&amp;[3, 9, 4]));
+}</pre>
+<pre class="code" data-lang="bash">cargo check -p lesson07 --example scratch</pre>
+<pre class="output" data-src="lab/lesson07/expected/missing_bound.txt">error[E0369]: binary operation `&gt;` cannot be applied to type `&amp;T`
+ --&gt; lesson07\examples\scratch.rs:4:17
+  |
+4 |         if item &gt; max {
+  |            ---- ^ --- &amp;T
+  |            |
+  |            &amp;T
+  |
+help: consider restricting type parameter `T` with trait `PartialOrd`
+  |
+1 | fn largest&lt;T: std::cmp::PartialOrd&gt;(items: &amp;[T]) -&gt; &amp;T {
+  |             ++++++++++++++++++++++
+
+For more information about this error, try `rustc --explain E0369`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error</pre>
+            <p>메시지를 읽는 순서는 이렇습니다. 첫 줄이 사건(<code>&gt;</code> 연산을 <code>&amp;T</code>에 쓸 수 없음), 화살표 아래가 위치, <code>help</code>가 처방입니다. 처방대로 <code>&lt;T: PartialOrd&gt;</code>를 붙이면 해결됩니다. 이 제안은 <kbd class="key">Ctrl+.</kbd> 빠른 수정으로도 적용할 수 있습니다.</p>
+            <p><b>오류 2. trait의 필수 메서드를 빼먹었을 때.</b> <span class="file">scratch.rs</span> 내용을 아래로 교체하고 같은 명령을 실행합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/fail/missing_method.rs.txt">trait Notifier {
+    fn name(&amp;self) -&gt; String;
+    fn send(&amp;self, to: &amp;str, message: &amp;str) -&gt; String;
+}
+
+struct EmailNotifier;
+
+impl Notifier for EmailNotifier {
+    fn name(&amp;self) -&gt; String {
+        String::from("email")
+    }
+}
+
+fn main() {
+    let notifier = EmailNotifier;
+    println!("{}", notifier.name());
+}</pre>
+<pre class="output" data-src="lab/lesson07/expected/missing_method.txt">error[E0046]: not all trait items implemented, missing: `send`
+ --&gt; lesson07\examples\scratch.rs:8:1
+  |
+3 |     fn send(&amp;self, to: &amp;str, message: &amp;str) -&gt; String;
+  |     -------------------------------------------------- `send` from trait
+...
+8 | impl Notifier for EmailNotifier {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `send` in implementation
+
+For more information about this error, try `rustc --explain E0046`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error</pre>
+            <p><code>send</code>가 trait에 선언되어 있는데 구현에는 없다는 뜻입니다. <code>impl</code> 블록에서 <kbd class="key">Ctrl+.</kbd>의 <b>Implement missing members</b>를 쓰면 빠진 함수를 한 번에 채울 수 있습니다.</p>
+            <p><b>오류 3. dyn으로 쓸 수 없는 trait.</b> 다시 교체합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/fail/not_dyn_compatible.rs.txt">trait Cloner {
+    fn duplicate(&amp;self) -&gt; Self;
+}
+
+struct Note;
+
+impl Cloner for Note {
+    fn duplicate(&amp;self) -&gt; Self {
+        Note
+    }
+}
+
+fn main() {
+    let items: Vec&lt;Box&lt;dyn Cloner&gt;&gt; = vec![Box::new(Note)];
+    println!("{}", items.len());
+}</pre>
+<pre class="output" data-src="lab/lesson07/expected/not_dyn_compatible.txt">error[E0038]: the trait `Cloner` is not dyn compatible
+  --&gt; lesson07\examples\scratch.rs:14:28
+   |
+14 |     let items: Vec&lt;Box&lt;dyn Cloner&gt;&gt; = vec![Box::new(Note)];
+   |                            ^^^^^^ `Cloner` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit &lt;https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility&gt;
+  --&gt; lesson07\examples\scratch.rs:2:28
+   |
+ 1 | trait Cloner {
+   |       ------ this trait is not dyn compatible...
+ 2 |     fn duplicate(&amp;self) -&gt; Self;
+   |                            ^^^^ ...because method `duplicate` references the `Self` type in its return type
+   = help: consider moving `duplicate` to another trait
+   = help: only type `Note` implements `Cloner`; consider using it directly instead.
+
+For more information about this error, try `rustc --explain E0038`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error</pre>
+            <p>반환 타입이 <code>Self</code>인 메서드는 구체 타입을 알아야 해서 <code>dyn</code> 뒤에서는 크기를 알 수 없습니다. 이런 trait은 "dyn 호환(dyn compatible)"이 아닙니다. 해결책은 <code>dyn</code> 대신 제네릭(<code>impl Cloner</code>)을 쓰거나, 반환을 <code>Box&lt;dyn Cloner&gt;</code>로 바꾸는 것입니다.</p>
+          </li>
+          <li>
+            <strong>라이프타임: 왜 필요한가, 최소 예제, 오류, 해결 (이전 단계와 독립)</strong>
+            <p>두 문자열 중 더 긴 쪽을 돌려주는 함수를 참조만으로 만들면 어떻게 될까요? 돌려주는 참조가 <code>first</code>에서 왔는지 <code>second</code>에서 왔는지는 실행해 봐야 압니다. 컴파일러는 실행 전에 "돌려받은 참조가 가리키는 값이 아직 살아 있는가"를 확인해야 하므로 우리에게 관계를 적으라고 요구합니다. <span class="file">scratch.rs</span>를 아래로 교체하고 검사합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/fail/longest_no_lifetime.rs.txt">fn longest(first: &amp;str, second: &amp;str) -&gt; &amp;str {
+    if first.len() &gt;= second.len() {
+        first
+    } else {
+        second
+    }
+}
+
+fn main() {
+    println!("{}", longest("abc", "de"));
+}</pre>
+<pre class="output" data-src="lab/lesson07/expected/longest_no_lifetime.txt">error[E0106]: missing lifetime specifier
+ --&gt; lesson07\examples\scratch.rs:1:42
+  |
+1 | fn longest(first: &amp;str, second: &amp;str) -&gt; &amp;str {
+  |                   ----          ----     ^ expected named lifetime parameter
+  |
+  = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `first` or `second`
+help: consider introducing a named lifetime parameter
+  |
+1 | fn longest&lt;'a&gt;(first: &amp;'a str, second: &amp;'a str) -&gt; &amp;'a str {
+  |           ++++         ++               ++          ++
+
+For more information about this error, try `rustc --explain E0106`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error</pre>
+            <p>핵심은 <code>help</code> 한 줄입니다. 반환 타입이 빌린 값을 담고 있지만 <code>first</code>인지 <code>second</code>인지 시그니처가 말해 주지 않는다는 뜻입니다. 제안대로 <code>'a</code>를 붙입니다. 이제 <span class="file">mine.rs</span>에 완성된 코드를 입력합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/src/main.rs" data-lines="186-218">// ── 5. 라이프타임: 참조가 얼마나 사는지 컴파일러에게 알린다 ────────
+
+fn longest&lt;'a&gt;(first: &amp;'a str, second: &amp;'a str) -&gt; &amp;'a str {
+    if first.len() &gt;= second.len() {
+        first
+    } else {
+        second
+    }
+}
+
+struct Excerpt&lt;'a&gt; {
+    text: &amp;'a str,
+}
+
+impl&lt;'a&gt; Excerpt&lt;'a&gt; {
+    fn first_line(&amp;self) -&gt; &amp;str {
+        self.text.lines().next().unwrap_or("")
+    }
+}
+
+fn demo_lifetimes() {
+    let title_a = String::from("trait와 제네릭");
+    let result;
+    {
+        let title_b = String::from("라이프타임");
+        result = longest(title_a.as_str(), title_b.as_str()).to_string();
+    }
+    println!("더 긴 제목: {result}");
+
+    let note = String::from("첫 줄입니다\n둘째 줄입니다");
+    let excerpt = Excerpt { text: &amp;note };
+    println!("발췌: {}", excerpt.first_line());
+}</pre>
+            <p><code>longest&lt;'a&gt;(first: &amp;'a str, second: &amp;'a str) -&gt; &amp;'a str</code>는 "반환값은 두 입력 중 더 짧게 사는 쪽만큼만 유효하다"는 관계 설명입니다. <code>Excerpt&lt;'a&gt;</code>는 문자열을 빌려 와 들고 있는 구조체라 자신보다 원본이 먼저 사라지면 안 된다는 표시입니다. <code>first_line(&amp;self) -&gt; &amp;str</code>에는 <code>'a</code>가 없는데, <code>&amp;self</code>가 있는 메서드는 반환 참조가 <code>self</code>와 같은 수명이라는 생략 규칙이 적용되기 때문입니다. <code>main</code>에 <code>demo_lifetimes();</code>을 추가하고 실행합니다.</p>
+<pre class="output" data-src="lab/lesson07/expected/run.txt" data-lines="16-17">더 긴 제목: trait와 제네릭
+발췌: 첫 줄입니다</pre>
+          </li>
+          <li>
+            <strong>라이프타임 오류 만나기 (이전 단계와 독립)</strong>
+            <p>이번에는 <code>'a</code>를 제대로 썼는데도 막히는 경우입니다. 안쪽 중괄호 블록에서 만든 값을 바깥에서 쓰려는 코드입니다. <span class="file">scratch.rs</span>를 교체하고 검사합니다. 위 <code>demo_lifetimes</code>와 거의 같고, 차이는 결과를 <code>.to_string()</code>으로 복사하지 않고 참조로 들고 있다는 점뿐입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/fail/longest_scope.rs.txt">fn longest&lt;'a&gt;(first: &amp;'a str, second: &amp;'a str) -&gt; &amp;'a str {
+    if first.len() &gt;= second.len() {
+        first
+    } else {
+        second
+    }
+}
+
+fn main() {
+    let title_a = String::from("trait와 제네릭");
+    let result;
+    {
+        let title_b = String::from("라이프타임");
+        result = longest(title_a.as_str(), title_b.as_str());
+    }
+    println!("더 긴 제목: {result}");
+}</pre>
+<pre class="output" data-src="lab/lesson07/expected/longest_scope.txt">error[E0597]: `title_b` does not live long enough
+  --&gt; lesson07\examples\scratch.rs:14:44
+   |
+13 |         let title_b = String::from("라이프타임");
+   |             ------- binding `title_b` declared here
+14 |         result = longest(title_a.as_str(), title_b.as_str());
+   |                                            ^^^^^^^ borrowed value does not live long enough
+15 |     }
+   |     - `title_b` dropped here while still borrowed
+16 |     println!("더 긴 제목: {result}");
+   |                            ------ borrow later used here
+
+For more information about this error, try `rustc --explain E0597`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error</pre>
+            <p>"<code>title_b</code>가 블록 끝에서 버려지는데(dropped), 그 뒤에 <code>result</code>가 아직 빌려 쓰고 있다(borrow later used)"는 이야기입니다. 해결은 두 가지입니다. 완성본처럼 블록 안에서 <code>.to_string()</code>으로 값을 복사하거나, <code>title_b</code>를 바깥에서 먼저 선언해 더 오래 살게 합니다.</p>
+            <p>라이프타임 생략 규칙을 눈으로 확인하는 인레이 힌트 설정은 아래 "오늘의 VS Code 기능" 절의 <b>설정 체험하기</b>에서 합니다. 사용자 설정 파일을 직접 고치지 않도록 연습용 임시 프로필 안에서 진행합니다. 실험이 끝났으면 바로 <span class="file">examples</span> 폴더를 지웁니다(탐색기에서 폴더 우클릭 → <b>삭제</b>). 남겨 두면 바로 다음 "전체 확인"의 <code>cargo test</code>가 <span class="file">scratch.rs</span>의 일부러 낸 오류 때문에 실패합니다.</p>
+          </li>
+          <li>
+            <strong>전체 확인 (모든 단계 의존)</strong>
+            <p>완성본이 처음부터 끝까지 같은 출력을 내는지 확인하고, 연습 문제 정답까지 포함한 테스트를 실행합니다. 전체 출력은 26줄이고 마지막 9줄은 연습 문제 정답의 출력입니다.</p>
+<pre class="code" data-lang="bash">cargo run -p lesson07 --bin lesson07</pre>
+<pre class="output" data-src="lab/lesson07/expected/run.txt">Some(9)
+Some(1.5)
+Some("rust")
+None
+[10, 20, 30] 총 5건 / 더 있나? true
+[email] alice@example.com &lt;- 배포 완료
+[slack #dev] @alice &lt;- 점검 시작
+[slack #dev] @bob &lt;- 점검 시작
+[email] carol@example.com &lt;- 회의 시작
+[slack #dev] @alice &lt;- 점검 종료
+[slack #dev] @bob &lt;- 점검 종료
+가장 큰 값: 높음
+가장 큰 값: 8
+email: [email] carol@example.com &lt;- 장애 복구
+slack: [slack #ops] @carol &lt;- 장애 복구
+더 긴 제목: trait와 제네릭
+발췌: 첫 줄입니다
+[email] dave@example.com &lt;- 회의 10분 전
+[email] erin@example.com &lt;- 회의 10분 전
+[sms +82] dave &lt;- 회의 10분 전
+[sms +82] erin &lt;- 회의 10분 전
+peek = Some("둘째"), len = 2
+pop = Some("둘째")
+pop = Some("첫째")
+pop = None, 비었나? true
+가장 긴 줄: 조금 더 긴 줄</pre>
+<pre class="code" data-lang="bash">cargo test -p lesson07</pre>
+<pre class="output" data-src="lab/lesson07/expected/test.txt">running 6 tests
+test tests::largest_finds_max_and_handles_empty ... ok
+test tests::broadcast_all_uses_every_notifier ... ok
+test tests::longest_line_picks_longest_and_first_on_tie ... ok
+test tests::longest_returns_longer_string ... ok
+test tests::stack_works_like_a_stack ... ok
+test tests::sms_notifier_formats_message ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+            <p>위는 테스트 목록 부분만 발췌한 출력입니다. 테스트는 레슨 09에서 자세히 다룹니다. 지금은 정답이 맞는지 기계가 확인해 준다는 정도만 알면 됩니다. 테스트 이름의 출력 순서는 실행마다 다를 수 있습니다.</p>
+          </li>
+          <li>
+            <strong>정리하기 (모든 단계 의존)</strong>
+            <p>이 레슨에서 만든 임시 파일이 다른 레슨의 검사까지 깨뜨리지 않도록 정리합니다. 탐색기에서 <span class="file">lab/lesson07/src/bin</span> 폴더(안에 <span class="file">mine.rs</span>만 있습니다)와 <span class="file">lab/lesson07/examples</span> 폴더를 우클릭해 <b>삭제</b>합니다. 이 폴더들이 남아 있으면 <span class="file">mine.rs</span>의 미완성 코드와 <span class="file">scratch.rs</span>의 일부러 낸 오류가 워크스페이스 전체 검사에 걸립니다. 연습용 임시 프로필을 만들었다면 "VS Code 기능" 절의 마지막 항목대로 삭제합니다.</p>
+<p>정리가 끝났는지 <b>증거</b>로 확인합니다. 에디터를 클릭해 포커스를 두고 <kbd class="key">Ctrl+Shift+B</kbd>를 눌러 기본 빌드 작업 <b>cargo: check all</b>을 실행합니다. 터미널 패널 마지막에 <code>Finished</code>가 나오고 <code>error</code>가 없어야 합니다. 이어서 <kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열어 <code>Tasks: Run Test Task</code>를 실행하면 기본 테스트 작업 <b>cargo: test all</b>이 돌고, 모든 <code>test result:</code> 줄이 <code>ok</code>이어야 합니다(<code>test result: FAILED</code>가 한 줄이라도 있으면 남은 임시 파일이 없는지 다시 찾아봅니다). 이 두 작업은 <span class="file">lab</span>의 모든 레슨 크레이트를 한꺼번에 검사하므로, 임시 파일이 하나라도 깨진 채 남아 있으면 다른 레슨의 검사까지 실패합니다. 명령 팔레트에서 <code>Tasks: Run Task</code>를 실행했을 때 목록에 <b>cargo: check all</b>과 <b>cargo: test all</b> 그리고 <b>cargo: clippy all</b>과 <b>cargo: run task api</b>가 그대로 보이면 작업 설정(<span class="file">.vscode/tasks.json</span>)도 건드리지 않은 것입니다.</p>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong>이 페이지의 "자주 나는 오류"를 먼저 확인하고, 그래도 안 풀리면 완성본 <span class="file">lab/lesson07/src/main.rs</span>와 내 <span class="file">mine.rs</span>를 비교해 보세요. 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)에서 <b>File: Compare Active File With...</b>를 실행하고 다른 파일을 고르면 두 파일의 차이를 나란히 볼 수 있습니다.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Rust</th></tr></thead>
+            <tbody>
+              <tr><td>공통 동작 약속</td><td><code>interface Notifier</code></td><td><code>Protocol</code> 또는 추상 클래스</td><td><code>trait Notifier</code></td></tr>
+              <tr><td>구현 선언 위치</td><td>클래스 선언 줄 <code>class Email : Notifier</code></td><td>상속하거나 덕 타이핑(선언 없음)</td><td>타입과 별도 블록 <code>impl Notifier for Email</code></td></tr>
+              <tr><td>기본 구현</td><td>interface의 본문 있는 메서드</td><td>추상 클래스의 일반 메서드</td><td>trait 안의 본문 있는 메서드</td></tr>
+              <tr><td>제네릭과 조건</td><td><code>fun &lt;T : Comparable&lt;T&gt;&gt; largest(...)</code></td><td><code>TypeVar</code>와 타입 힌트(실행 중에는 무시)</td><td><code>fn largest&lt;T: PartialOrd&gt;(...)</code></td></tr>
+              <tr><td>제네릭의 실행 중 모습</td><td>타입 소거(<code>List&lt;String&gt;</code>과 <code>List&lt;Int&gt;</code>가 같은 클래스)</td><td>타입 정보 없음</td><td>단형성화(타입마다 코드 생성)</td></tr>
+              <tr><td>여러 구현을 한 목록에</td><td><code>List&lt;Notifier&gt;</code> (항상 동적 디스패치)</td><td>그냥 리스트</td><td><code>Vec&lt;Box&lt;dyn Notifier&gt;&gt;</code> (동적임을 명시)</td></tr>
+              <tr><td>스프링 DI와 대응</td><td><code>@Autowired List&lt;Notifier&gt;</code>가 구현체를 모아 줌</td><td><code>Depends()</code>로 주입</td><td>컨테이너 없음, 직접 목록을 만들어 넘김 (레슨 11)</td></tr>
+              <tr><td>참조의 수명</td><td>GC가 관리, 표기 없음</td><td>GC(참조 카운트)가 관리</td><td>컴파일러가 검사, 필요하면 <code>'a</code> 표기</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <pre class="code" data-lang="kotlin">interface Notifier {
+    fun name(): String
+    fun send(to: String, message: String): String
+    fun broadcast(recipients: List&lt;String&gt;, message: String): List&lt;String&gt; =
+        recipients.map { send(it, message) }
+}</pre>
+        <p>위 Kotlin 코드는 이 레슨의 <code>Notifier</code> trait과 같은 모양입니다. 실행해 확인한 코드는 아니고 비교용입니다.</p>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ① — "인터페이스 타입이 곧 기본값"이 아닙니다</strong>Kotlin에서는 <code>Notifier</code> 타입을 쓰면 늘 동적 디스패치입니다. Rust에서는 제네릭이나 <code>impl Trait</code>가 기본 선택이고, 서로 다른 구현체를 한 컬렉션에 섞을 때만 <code>Box&lt;dyn Trait&gt;</code>를 씁니다. <code>dyn</code>을 습관처럼 쓰면 Kotlin과 비슷해 편하지만, 반환 타입이 <code>Self</code>인 메서드 같은 제약(E0038)에 걸립니다.</div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ② — <code>'a</code>는 수명을 늘려 주지 않습니다</strong>라이프타임 표기는 이미 정해진 관계를 컴파일러에게 설명하는 것일 뿐, 값을 더 오래 살게 하지 못합니다. 오류가 나면 표기를 만지작거리기 전에 "그 값이 어디서 만들어져 어디서 버려지는가"를 먼저 그려 보세요. 대부분은 값을 복사(<code>.to_string()</code>, <code>.clone()</code>)하거나 선언 위치를 옮기면 해결됩니다.</div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ③ — 남의 타입에 마음대로 구현할 수 없습니다</strong>Kotlin의 확장 함수는 어느 타입에나 붙일 수 있습니다. Rust는 trait이나 타입 둘 중 하나가 내 크레이트 것이어야 <code>impl</code>할 수 있습니다(고아 규칙, orphan rule). 표준 라이브러리 타입에 표준 trait을 구현하려면 새 타입으로 감싸야 합니다. 실제 오류는 아래 "자주 나는 오류"에 있습니다.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 구현으로 이동하고 코드 액션으로 뼈대 만들기</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>구현으로 이동</td><td><kbd class="key">Ctrl+F12</kbd></td><td>trait 메서드의 실제 구현체를 찾을 때</td></tr>
+                <tr><td>코드 액션(빠른 수정)</td><td><kbd class="key">Ctrl+.</kbd></td><td><b>Implement missing members</b>로 <code>impl</code> 뼈대를 만들거나 컴파일러 제안을 적용할 때</td></tr>
+                <tr><td>호버 보기</td><td><kbd class="key">Ctrl+K Ctrl+I</kbd></td><td>마우스 없이 타입·trait bound·문서를 읽을 때</td></tr>
+                <tr><td>정의로 이동</td><td><kbd class="key">F12</kbd></td><td>trait 선언이나 함수 정의를 볼 때</td></tr>
+                <tr><td>뒤로 가기</td><td><kbd class="key">Alt+←</kbd></td><td>이동한 뒤 원래 위치로 돌아올 때</td></tr>
+                <tr><td>설정 열기</td><td><kbd class="key">Ctrl+,</kbd></td><td>rust-analyzer 인레이 힌트 같은 설정을 바꿀 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>코드 액션 이름은 rust-analyzer가 정한 것이라 확장 버전에 따라 조금 다를 수 있습니다. 예를 들어 <b>Implement missing members</b>는 빠진 필수 함수를 채우고, <b>Implement default members</b>는 기본 구현이 있는 함수의 뼈대를 만들어 줍니다.</p>
+        </div>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>연습용 임시 프로필 만들기</strong>
+<div class="callout warn"><strong>먼저 연습용 임시 프로필을 만듭니다 (내 평소 설정을 지키기 위해)</strong>이 코스는 사용자 전역 <code>settings.json</code>, <code>keybindings.json</code>, 사용자 스니펫을 직접 고치게 하지 않습니다. 설정 실험은 모두 <b>연습용 프로필</b> 안에서 하고, 끝나면 그 프로필을 삭제합니다. VS Code 공식 문서는 프로필 안에서 바꾼 설정과 확장이 현재 활성 프로필에 저장된다고 설명하므로, 연습용 프로필에서 바꾼 값은 기본 프로필(내 평소 설정)에 기록되지 않습니다.</div>
+            <ol>
+              <li>왼쪽 아래 <b>관리(Manage)</b> 톱니 아이콘을 누르고 <b>Profiles</b>를 고릅니다. 메뉴의 <b>File</b> → <b>Preferences</b> → <b>Profiles</b>도 같은 곳입니다. 프로필 편집기가 열립니다.</li>
+              <li><b>New Profile</b> 버튼을 누르고 이름에 <code>연습용</code>을 적습니다. 복사할 원본은 기본 프로필(Default)로 고르고, 아래 <b>Contents</b>의 설정·키보드 단축키·스니펫·작업·확장 항목을 <b>모두 체크한 채</b> 둡니다. <b>Create</b>를 누릅니다.
+                <ul>
+                  <li>빈 프로필(Empty Profile)로 만들지 마세요. 공식 문서에 따르면 빈 프로필에는 설정·확장·스니펫이 하나도 없어서 rust-analyzer 같은 확장이 빠지고, 이 코스의 실험이 동작하지 않습니다.</li>
+                  <li>체크를 풀지 마세요. 공식 문서에 따르면 체크하지 않은 항목은 기본 프로필의 것을 그대로 쓰기 때문에, 그 항목을 이 프로필에서 고치면 기본 프로필이 바뀝니다.</li>
+                </ul>
+              </li>
+              <li>확인합니다. 관리 아이콘에 프로필 이름의 앞 두 글자가 배지로 보이고, 아이콘에 마우스를 올리면 프로필 이름이 나옵니다. 공식 문서는 기본 프로필을 쓰는 중에는 프로필 이름이 표시되지 않는다고 설명하므로, 이름이 보이면 연습용 프로필을 쓰는 중입니다. 프로필을 만들거나 고르면 현재 폴더에 연결되어 다음에 이 폴더를 열 때도 그 프로필이 쓰이므로, 실험이 끝나면 반드시 아래 순서로 삭제합니다.</li>
+            </ol>
+          </li>
+          <li>
+            <strong>라이프타임 인레이 힌트를 켜고, 설정 파일에 기록되는 모습 확인하기 (연습용 프로필 안에서)</strong>
+            <p>(프로필 이름이 관리 아이콘에 보이는 상태에서) <kbd class="key">Ctrl+,</kbd>로 설정 화면을 열고 <code>lifetimeElisionHints</code>를 검색합니다. 값을 <code>always</code>로 바꾼 뒤 완성본 <span class="file">lab/lesson07/src/main.rs</span>의 <code>fn first_line(&amp;self) -&gt; &amp;str</code>를 보면 <code>'0</code> 이름표가 나타납니다. 값이 <code>skip_trivial</code>이면 단순한 경우를 건너뛰고, 입력 참조가 둘 이상이라 헷갈리기 쉬운 곳만 보여 줍니다.</p>
+            <p>이 값은 연습용 프로필의 설정 파일에 저장됩니다. 설정 화면 오른쪽 위의 <b>설정 열기(JSON)</b> 아이콘을 누르면 VS Code가 현재 프로필의 설정 파일을 엽니다(VS Code 소스의 명령 설명: 현재 사용자 프로필의 설정 JSON). 거기에 <code>"rust-analyzer.inlayHints.lifetimeElisionHints.enable": "always"</code> 한 줄이 생겼는지 확인하세요. 이 파일은 기본 프로필의 <code>settings.json</code>이 아닙니다. 이 코스의 완성본 <span class="file">.vscode/settings.json</span>에는 이 항목이 들어 있지 않으므로(기본값 <code>never</code>) 직접 켜 보는 설정입니다. 반면 <code>editor.inlayHints.enabled</code>와 <code>rust-analyzer.check.command</code>는 완성본에 이미 들어 있습니다.</p>
+          </li>
+          <li>
+            <strong>구현 개수를 알려 주는 CodeLens 껐다 켜기 (연습용 프로필 안에서)</strong>
+            <p>설정에서 <code>lens.implementations</code>를 검색해 <b>Lens: Implementations: Enable</b>(<code>rust-analyzer.lens.implementations.enable</code>) 체크를 해제합니다. <code>trait Notifier</code> 위의 구현 개수 링크가 사라집니다. 다시 체크하면 돌아옵니다. 기본값은 켜짐입니다.</p>
+          </li>
+          <li>
+            <strong>연습용 임시 프로필 삭제하기 (실험이 끝나면 즉시)</strong>
+<ol>
+              <li><kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열고 <code>Profiles: Switch Profile...</code>을 실행해 목록에서 기본 프로필(<b>Default</b>)로 돌아옵니다. 프로필을 고르면 현재 폴더가 그 프로필에 연결되므로, 삭제하기 전에 기본 프로필로 먼저 돌아와야 폴더가 기본 프로필에 다시 연결됩니다.</li>
+              <li>확인합니다. 관리 아이콘의 두 글자 배지가 사라지고, 마우스를 올려도 프로필 이름이 나오지 않아야 합니다(기본 프로필).</li>
+              <li><kbd class="key">Ctrl+Shift+P</kbd>로 <code>Profiles: Delete Profile...</code>을 실행하고 드롭다운에서 <code>연습용</code>만 골라 삭제합니다. 프로필 편집기(관리 아이콘 → <b>Profiles</b>)에서 <code>연습용</code> 프로필의 더 보기 메뉴에 있는 <b>Delete Profile</b>을 써도 됩니다.</li>
+              <li>확인합니다. 프로필 편집기 목록에 <code>연습용</code>이 없어야 합니다. <kbd class="key">Ctrl+,</kbd>로 설정을 열어 방금 실험한 설정 이름을 검색하면 기본값(바뀌지 않은 상태)이어야 하고, 평소 쓰던 터미널 프로필 같은 개인 설정은 그대로 있어야 합니다.</li>
+            </ol>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <p>정답은 이미 <span class="file">lab/lesson07/src/main.rs</span> 아래쪽과 <code>cargo test -p lesson07</code>에 들어 있습니다. 먼저 직접 풀고 나서 열어 보세요. 풀이는 <span class="file">mine.rs</span>에 쓰고 <code>cargo run -p lesson07 --bin mine</code>으로 확인합니다.</p>
+        <h3>문제 1. 세 번째 알림 방식과 일괄 발송</h3>
+        <p><code>Notifier</code>를 구현하는 <code>SmsNotifier { country_code: String }</code>을 만드세요. <code>send</code>는 <code>[sms +82] dave &lt;- 회의 10분 전</code> 형식으로 돌려줍니다. 그리고 <code>fn broadcast_all(notifiers: &amp;[Box&lt;dyn Notifier&gt;], recipients: &amp;[&amp;str], message: &amp;str) -&gt; Vec&lt;String&gt;</code>를 만들어, 모든 알림 방식으로 모든 수신자에게 보낸 결과를 한 목록으로 돌려주세요.</p>
+        <p><b>완료 조건:</b> 이메일과 SMS 두 구현체를 담은 목록에 <code>["dave", "erin"]</code>을 넣었을 때 4줄이 이메일 두 줄, SMS 두 줄 순서로 출력된다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>각 알림 방식의 <code>broadcast</code>(기본 구현)를 호출하고, 그 결과 <code>Vec</code>을 <code>results.extend(...)</code>로 이어 붙이세요. <kbd class="key">Ctrl+.</kbd>의 <b>Implement missing members</b>가 <code>impl</code> 뼈대를 만들어 줍니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/src/main.rs" data-lines="222-246">struct SmsNotifier {
+    country_code: String,
+}
+
+impl Notifier for SmsNotifier {
+    fn name(&amp;self) -&gt; String {
+        String::from("sms")
+    }
+
+    fn send(&amp;self, to: &amp;str, message: &amp;str) -&gt; String {
+        format!("[sms +{}] {to} &lt;- {message}", self.country_code)
+    }
+}
+
+fn broadcast_all(
+    notifiers: &amp;[Box&lt;dyn Notifier&gt;],
+    recipients: &amp;[&amp;str],
+    message: &amp;str,
+) -&gt; Vec&lt;String&gt; {
+    let mut results = Vec::new();
+    for notifier in notifiers {
+        results.extend(notifier.broadcast(recipients, message));
+    }
+    results
+}</pre>
+            <p>기대 출력(전체 실행 출력의 일부)입니다.</p>
+<pre class="output" data-src="lab/lesson07/expected/run.txt" data-lines="18-21">[email] dave@example.com &lt;- 회의 10분 전
+[email] erin@example.com &lt;- 회의 10분 전
+[sms +82] dave &lt;- 회의 10분 전
+[sms +82] erin &lt;- 회의 10분 전</pre>
+          </div>
+        </details>
+        <h3>문제 2. 제네릭 스택과 라이프타임</h3>
+        <p>제네릭 구조체 <code>Stack&lt;T&gt;</code>를 만드세요. <code>new</code>, <code>push</code>, <code>pop</code>, <code>peek(&amp;self) -&gt; Option&lt;&amp;T&gt;</code>, <code>len</code>, <code>is_empty</code>가 필요합니다. 또 여러 줄 문자열에서 가장 긴 줄을 참조로 돌려주는 <code>fn longest_line(text: &amp;str) -&gt; &amp;str</code>도 만드세요. 길이가 같으면 먼저 나온 줄을 돌려줍니다.</p>
+        <p><b>완료 조건:</b> 문자열 두 개를 <code>push</code>한 뒤 <code>peek</code>가 <code>Some("둘째")</code>를 보여 주고, <code>pop</code>을 세 번 하면 <code>Some("둘째")</code>, <code>Some("첫째")</code>, <code>None</code>이 차례로 나온다. <code>longest_line("짧음\n조금 더 긴 줄\n중간")</code>은 <code>조금 더 긴 줄</code>이다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p><code>Vec&lt;T&gt;</code>를 필드로 감싸고 <code>last()</code>, <code>pop()</code>, <code>push()</code>를 그대로 이어 주면 됩니다. <code>longest_line</code>은 반환 참조가 입력 <code>text</code>에서만 온다는 사실이 시그니처에서 읽히므로 <code>'a</code>를 쓰지 않아도 됩니다. "VS Code 기능" 절의 연습용 프로필에서 라이프타임 힌트를 <code>always</code>로 켠 채 확인해 보세요.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/src/main.rs" data-lines="248-287">#[derive(Debug)]
+struct Stack&lt;T&gt; {
+    items: Vec&lt;T&gt;,
+}
+
+impl&lt;T&gt; Stack&lt;T&gt; {
+    fn new() -&gt; Self {
+        Stack { items: Vec::new() }
+    }
+
+    fn push(&amp;mut self, item: T) {
+        self.items.push(item);
+    }
+
+    fn pop(&amp;mut self) -&gt; Option&lt;T&gt; {
+        self.items.pop()
+    }
+
+    fn peek(&amp;self) -&gt; Option&lt;&amp;T&gt; {
+        self.items.last()
+    }
+
+    fn len(&amp;self) -&gt; usize {
+        self.items.len()
+    }
+
+    fn is_empty(&amp;self) -&gt; bool {
+        self.items.is_empty()
+    }
+}
+
+fn longest_line(text: &amp;str) -&gt; &amp;str {
+    let mut best = "";
+    for line in text.lines() {
+        if line.len() &gt; best.len() {
+            best = line;
+        }
+    }
+    best
+}</pre>
+            <p>기대 출력(전체 실행 출력의 일부)입니다.</p>
+<pre class="output" data-src="lab/lesson07/expected/run.txt" data-lines="22-26">peek = Some("둘째"), len = 2
+pop = Some("둘째")
+pop = Some("첫째")
+pop = None, 비었나? true
+가장 긴 줄: 조금 더 긴 줄</pre>
+            <p>정답이 맞는지는 아래 명령으로 기계가 확인합니다. 테스트 코드는 <span class="file">main.rs</span> 맨 아래 <code>mod tests</code>에 있습니다.</p>
+<pre class="code" data-lang="bash">cargo test -p lesson07</pre>
+          </div>
+        </details>
+        <h3>더 연습하기 (rustlings)</h3>
+        <p>클론해 둔 <span class="file" data-local="rustlings/exercises/15_traits/traits1.rs">rustlings/exercises/15_traits</span> 폴더의 <code>traits1</code>부터 <code>traits5</code>, <span class="file" data-local="rustlings/exercises/14_generics/generics1.rs">14_generics</span>의 <code>generics1</code>, <code>generics2</code>, <span class="file" data-local="rustlings/exercises/16_lifetimes/lifetimes1.rs">16_lifetimes</span>의 <code>lifetimes1</code>부터 <code>lifetimes3</code>까지가 이 레슨과 같은 주제입니다. 진행 방법은 레슨 12에서 정리합니다.</p>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="rust-07-run"><span><code>cargo run -p lesson07 --bin mine</code>으로 직접 입력한 코드를 실행해 단계별 출력을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-07-codeaction"><span><kbd class="key">Ctrl+.</kbd>의 <b>Implement missing members</b>로 <code>impl</code> 뼈대를 만들어 보았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-07-gotoimpl"><span><kbd class="key">Ctrl+F12</kbd>로 구현 목록을 열고 <kbd class="key">Alt+←</kbd>로 돌아오는 것을 마우스 없이 했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-07-errors"><span>E0369, E0046, E0106, E0597 중 세 가지 이상을 <span class="file">scratch.rs</span>로 재현해 메시지의 <code>help</code>를 읽고 고쳤다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-07-hints"><span>연습용 임시 프로필 안에서 라이프타임 인레이 힌트를 <code>always</code>로 켜 <code>'0</code> 이름표를 보았고, 프로필을 삭제한 뒤 관리 아이콘에 프로필 이름이 없는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-07-practice"><span>연습 문제를 힌트 없이 먼저 시도했고, <code>cargo test -p lesson07</code>의 6개 통과를 보았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-07-dispatch"><span>정적 디스패치와 동적 디스패치의 차이를 Kotlin의 <code>interface</code>와 비교해 내 말로 설명할 수 있다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-07-clean"><span><span class="file">src/bin</span>과 <span class="file">examples</span> 폴더를 지운 뒤 <kbd class="key">Ctrl+Shift+B</kbd>의 <b>cargo: check all</b>이 <code>Finished</code>로 끝나고, <b>cargo: test all</b>의 <code>test result:</code>가 모두 <code>ok</code>인 것을 확인했다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <p>따라하기에서 직접 만난 E0369, E0046, E0038, E0106, E0597 외에 이 레슨에서 자주 만나는 오류입니다. 아래 메시지는 모두 <span class="file">scratch.rs</span>에 해당 코드를 넣고 실제로 컴파일해 얻은 출력입니다.</p>
+        <h3>증상: <code>can't compare `Task` with `Task`</code> (E0277)</h3>
+        <p>원인: 제네릭 함수가 <code>T: PartialOrd</code>를 요구하는데, 직접 만든 구조체에는 아직 비교 능력이 없습니다. 해결: 구조체 위에 <code>#[derive(PartialEq, PartialOrd)]</code>를 붙입니다. 아래 <code>help</code>에는 <code>PartialOrd</code>만 나오지만, <code>PartialOrd</code>는 <code>PartialEq</code>가 먼저 있어야 하므로 <code>#[derive(PartialOrd)]</code> 하나만 붙이면 <code>the trait PartialEq is not implemented for Task</code>라는 두 번째 오류가 이어집니다. 비교 기준이 필드 선언 순서이므로, 의미 있는 기준이 따로 있다면 <code>PartialOrd</code>를 직접 구현하세요.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/fail/no_partial_ord.rs.txt">fn largest&lt;T: PartialOrd&gt;(items: &amp;[T]) -&gt; Option&lt;&amp;T&gt; {
+    let mut iter = items.iter();
+    let mut max = iter.next()?;
+    for item in iter {
+        if item &gt; max {
+            max = item;
+        }
+    }
+    Some(max)
+}
+
+struct Task {
+    minutes: u32,
+}
+
+fn main() {
+    let tasks = [Task { minutes: 30 }, Task { minutes: 90 }];
+    let longest = largest(&amp;tasks);
+    println!("{}", longest.is_some());
+}</pre>
+<pre class="code" data-lang="bash">cargo check -p lesson07 --example scratch</pre>
+<pre class="output" data-src="lab/lesson07/expected/no_partial_ord.txt">error[E0277]: can't compare `Task` with `Task`
+  --&gt; lesson07\examples\scratch.rs:18:27
+   |
+18 |     let longest = largest(&amp;tasks);
+   |                   ------- ^^^^^^ no implementation for `Task &lt; Task` and `Task &gt; Task`
+   |                   |
+   |                   required by a bound introduced by this call
+   |
+   = help: the trait `PartialOrd` is not implemented for `Task`
+note: required by a bound in `largest`
+  --&gt; lesson07\examples\scratch.rs:1:15
+   |
+ 1 | fn largest&lt;T: PartialOrd&gt;(items: &amp;[T]) -&gt; Option&lt;&amp;T&gt; {
+   |               ^^^^^^^^^^ required by this bound in `largest`
+help: consider annotating `Task` with `#[derive(PartialOrd)]`
+   |
+12 + #[derive(PartialOrd)]
+13 | struct Task {
+   |
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error</pre>
+        <h3>증상: <code>only traits defined in the current crate can be implemented for types defined outside of the crate</code> (E0117)</h3>
+        <p>원인: 표준 라이브러리 타입(<code>Vec&lt;i32&gt;</code>)에 표준 trait(<code>Display</code>)을 구현하려고 했습니다. 둘 다 내 크레이트 것이 아니라서 금지됩니다. 해결: <code>struct Numbers(Vec&lt;i32&gt;);</code>처럼 새 타입으로 감싸고 그 타입에 <code>Display</code>를 구현합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/fail/orphan_rule.rs.txt">use std::fmt;
+
+impl fmt::Display for Vec&lt;i32&gt; {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        write!(f, "{} items", self.len())
+    }
+}
+
+fn main() {
+    println!("{}", vec![1, 2, 3]);
+}</pre>
+<pre class="code" data-lang="bash">cargo check -p lesson07 --example scratch</pre>
+<pre class="output" data-src="lab/lesson07/expected/orphan_rule.txt">error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+ --&gt; lesson07\examples\scratch.rs:3:1
+  |
+3 | impl fmt::Display for Vec&lt;i32&gt; {
+  | ^^^^^^^^^^^^^^^^^^^^^^--------
+  |                       |
+  |                       `Vec` is not defined in the current crate
+  |
+  = note: impl doesn't have any local type before any uncovered type parameters
+  = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+  = note: define and implement a trait or new type instead
+
+For more information about this error, try `rustc --explain E0117`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error</pre>
+        <h3>증상: <code>type annotations needed for `Vec&lt;_&gt;`</code> (E0282)</h3>
+        <p>원인: <code>Vec::new()</code>만으로는 원소 타입을 알 수 없고, 뒤에서도 타입을 정할 단서가 없습니다. 해결: <code>let items: Vec&lt;i32&gt; = Vec::new();</code>처럼 타입을 적거나 값을 하나 넣어 컴파일러가 추론하게 합니다. 제네릭 함수를 호출할 때 <code>collect::&lt;Vec&lt;_&gt;&gt;()</code>처럼 쓰는 터보피시(turbofish) 문법도 같은 목적입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson07/fail/type_annotations.rs.txt">fn main() {
+    let items = Vec::new();
+    println!("{}", items.len());
+}</pre>
+<pre class="code" data-lang="bash">cargo check -p lesson07 --example scratch</pre>
+<pre class="output" data-src="lab/lesson07/expected/type_annotations.txt">error[E0282]: type annotations needed for `Vec&lt;_&gt;`
+ --&gt; lesson07\examples\scratch.rs:2:9
+  |
+2 |     let items = Vec::new();
+  |         ^^^^^   ---------- type must be known at this point
+  |
+help: consider giving `items` an explicit type, where the type for type parameter `T` is specified
+  |
+2 |     let items: Vec&lt;T&gt; = Vec::new();
+  |              ++++++++
+
+For more information about this error, try `rustc --explain E0282`.
+error: could not compile `lesson07` (example "scratch") due to 1 previous error</pre>
+        <h3>증상: <code>cargo run -p lesson07</code>이 "could not determine which binary to run"이라고 한다</h3>
+        <p>원인: <span class="file">src/bin/mine.rs</span>를 만들면 이 크레이트에 실행 파일이 둘(<code>lesson07</code>, <code>mine</code>)이 되어 어느 쪽인지 정할 수 없습니다. 해결: <code>cargo run -p lesson07 --bin lesson07</code>처럼 <code>--bin</code>으로 지정하거나, 연습이 끝난 <span class="file">mine.rs</span>를 지웁니다. 실제 메시지는 이렇습니다.</p>
+<pre class="code" data-lang="bash">cargo run -p lesson07</pre>
+<pre class="output" data-src="lab/lesson07/expected/run_ambiguous.txt">error: `cargo run` could not determine which binary to run. Use the `--bin` option to specify a binary, or the `default-run` manifest key.
+available binaries: lesson07, mine</pre>
+      </section>
+
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨에서는 이 레슨에서 본 <code>Fn</code>, <code>Iterator</code> 같은 trait이 실제로 어디에 쓰이는지 클로저와 이터레이터로 확인합니다. Kotlin의 <code>map</code>·<code>filter</code>·<code>Sequence</code>가 Rust에서 어떻게 생겼고, 왜 컴파일러가 이를 반복문 못지않게 빠르게 만드는지 봅니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="06-collections-errors.html"><small>← 이전 레슨</small>06 · 컬렉션과 에러 처리</a>
+          <a class="next" rel="next" href="08-closures-iterators.html"><small>다음 레슨 →</small>08 · 클로저와 이터레이터</a>
+        </nav>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Rust 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

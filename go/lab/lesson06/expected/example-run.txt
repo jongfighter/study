@@ -1,0 +1,4 @@
+=== RUN   ExampleNormalize
+--- PASS: ExampleNormalize (0.00s)
+PASS
+ok  	golab/lesson06/mine/titles	0.246s

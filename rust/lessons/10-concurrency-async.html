@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="rust" data-lesson="10">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="스레드·채널·Arc<Mutex>와 async/await를 컴파일러 오류와 디버거로 익힙니다.">
+  <title>10 · 동시성과 async 맛보기 — Rust 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Rust 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Rs</span>
+      <span>Rust 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 10 · 동시성</p>
+        <h1>동시성과 async 맛보기</h1>
+        <p class="lead">스레드를 띄우고, 채널과 Arc&lt;Mutex&lt;T&gt;&gt;로 데이터를 주고받고, Send·Sync가 왜 컴파일 때 데이터 경쟁을 막아 주는지 오류 메시지로 확인합니다. 이어서 tokio로 async/await를 맛보고, VS Code 디버거로 조건부 중단점과 스레드 목록을 봅니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 150분</li>
+          <li><b>난이도</b> ★★★★☆</li>
+          <li><b>선행</b> <a href="09-modules-testing.html">레슨 09</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson10</span></li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li><code>thread::spawn</code>, <code>move</code> 클로저, <code>join</code>으로 스레드를 만들고 결과를 받을 수 있다.</li>
+          <li><code>mpsc</code> 채널과 <code>Arc&lt;Mutex&lt;T&gt;&gt;</code>로 스레드 사이에서 값을 주고받거나 공유하고, 그 방식을 상황에 맞게 고를 수 있다.</li>
+          <li><code>Send</code>와 <code>Sync</code>가 무엇을 막는지, 그리고 <code>Rc</code>·<code>MutexGuard</code> 오류 메시지를 읽고 고칠 수 있다.</li>
+          <li><code>async fn</code>, <code>.await</code>, <code>tokio::join!</code>, <code>tokio::spawn</code>, <code>timeout</code>의 동작을 출력으로 확인할 수 있다.</li>
+          <li>VS Code 디버거에서 조건부 중단점을 걸고, 호출 스택의 스레드 목록과 디버그 콘솔을 사용할 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>한국어 해설을 먼저 읽고 원문으로 확인하세요. 로컬 파일은 VS Code에서 <kbd class="key">Ctrl+P</kbd>로 파일명을 입력해 열 수 있습니다.</p>
+        <ul>
+          <li><a href="https://doc.rust-lang.org/book/ch16-00-concurrency.html">The Rust Book 16장 · 두려움 없는 동시성 (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch16-01-threads.md">the-rust-book/src/ch16-01-threads.md</span>, <span class="file" data-local="the-rust-book/src/ch16-02-message-passing.md">ch16-02-message-passing.md</span>, <span class="file" data-local="the-rust-book/src/ch16-03-shared-state.md">ch16-03-shared-state.md</span>, <span class="file" data-local="the-rust-book/src/ch16-04-extensible-concurrency-sync-and-send.md">ch16-04-extensible-concurrency-sync-and-send.md</span></li>
+          <li><a href="https://doc.rust-lang.org/book/ch17-00-async-await.html">The Rust Book 17장 · async와 await (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch17-01-futures-and-syntax.md">the-rust-book/src/ch17-01-futures-and-syntax.md</span>, <span class="file" data-local="the-rust-book/src/ch17-06-futures-tasks-threads.md">ch17-06-futures-tasks-threads.md</span></li>
+          <li><a href="https://doc.rust-lang.org/rust-by-example/std_misc/threads.html">Rust By Example · 스레드와 채널 (영문)</a> — 로컬 파일: <span class="file" data-local="rust-by-example/src/std_misc/threads.md">rust-by-example/src/std_misc/threads.md</span>, <span class="file" data-local="rust-by-example/src/std_misc/channels.md">std_misc/channels.md</span></li>
+          <li><a href="https://tokio.rs/tokio/tutorial">tokio 공식 튜토리얼 (영문)</a> — 이 레슨에서 쓰는 비동기 런타임입니다. 읽기는 선택입니다.</li>
+          <li>연습 문제 모음 rustlings: <span class="file" data-local="rustlings/exercises/20_threads/threads1.rs">20_threads/threads1.rs</span> 부터 <code>threads3.rs</code>, <span class="file" data-local="rustlings/exercises/24_async/async1.rs">24_async/async1.rs</span></li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>스레드(thread)</b>는 운영체제 스레드이고, <code>thread::spawn</code>이 클로저를 새 스레드에서 실행합니다. 새 스레드는 부모 함수보다 오래 살 수 있으므로 지역 변수를 빌려 쓰지 못하고 <code>move</code>로 소유권을 가져가야 합니다. 결과는 <code>join()</code>으로 받습니다. 스레드가 패닉하면 <code>join()</code>이 <code>Err</code>를 돌려줍니다.</p>
+        <p>스레드 사이에 값을 보내는 방법이 <b>채널(channel)</b>입니다. <code>mpsc</code>는 "여러 생산자, 하나의 소비자(multi-producer, single-consumer)"의 약자로, 송신 쪽 <code>tx</code>를 <code>clone</code>해 여러 스레드에 나눠 주고 수신 쪽 <code>rx</code>가 받습니다. 값은 보낸 순간 소유권이 넘어갑니다. 값을 <b>공유</b>해야 한다면 <code>Arc&lt;Mutex&lt;T&gt;&gt;</code>를 씁니다. <code>Arc</code>는 원자적 참조 카운트로 여러 스레드가 같은 값을 소유하게 해 주고, <code>Mutex</code>는 한 번에 한 스레드만 값을 고치게 합니다. 중요한 차이는 Java의 <code>synchronized</code>와 달리 <code>Mutex&lt;T&gt;</code>가 <b>데이터를 안에 품고 있다</b>는 점입니다. 락을 잡지 않으면 데이터에 아예 접근할 수 없습니다.</p>
+        <p><b><code>Send</code></b>와 <b><code>Sync</code></b>는 컴파일러가 알아서 붙이는 표시 trait입니다. <code>Send</code>는 "값을 다른 스레드로 옮겨도 안전하다", <code>Sync</code>는 "여러 스레드가 <code>&amp;T</code>로 동시에 가리켜도 안전하다"는 뜻입니다. <code>thread::spawn</code>은 클로저가 <code>Send</code>일 것을 요구하고, 컴파일러가 클로저에 들어 있는 값들을 하나씩 따져 봅니다. 참조 카운트를 원자적으로 세지 않는 <code>Rc</code>는 <code>Send</code>가 아니라서 막히고, <code>Arc</code>는 통과합니다. 이것이 Rust가 "데이터 경쟁(data race)은 컴파일 오류"라고 말하는 근거입니다.</p>
+        <p><b>async/await</b>는 스레드 없이도 "기다리는 동안 다른 일을 하게" 해 주는 문법입니다. <code>async fn</code>은 호출해도 실행되지 않고 <b>퓨처(future)</b>라는 값을 돌려줄 뿐이며, <code>.await</code>를 하거나 런타임이 실행(poll)해야 진행됩니다. 퓨처를 실제로 돌리는 <b>런타임(runtime)</b>은 표준 라이브러리에 없어서 <b>tokio</b> 같은 크레이트를 씁니다. 여러 작업이 사실상 동시에 진행되는 것은 <code>tokio::join!</code>이나 <code>tokio::spawn</code>을 썼을 때입니다. <code>.await</code>를 순서대로 쓰면 직렬입니다. <code>Send</code>는 <code>tokio::spawn</code>에서 문제가 됩니다. 스레드 풀(멀티스레드 런타임)이 <code>spawn</code>한 작업을 <code>.await</code>에서 멈춘 사이에 다른 스레드로 옮길 수 있으므로, <code>tokio::spawn</code>에 넘기는 퓨처는 <code>Send</code>여야 하고, 그러려면 <code>.await</code> 너머로 들고 있는 값이 모두 <code>Send</code>여야 합니다(tokio 공식 튜토리얼의 "Send bound"). 반면 <code>#[tokio::main]</code>이 만든 <code>main</code>의 퓨처는 <code>spawn</code>되지 않고 현재 스레드에서 실행(<code>block_on</code>)되므로 <code>Send</code>가 필요 없습니다. 락 가드를 쥔 채 <code>.await</code>하는 퓨처를 <code>tokio::spawn</code>에 넘기면 막히는 이유가 여기에 있습니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>완성본은 <span class="file">lab/lesson10/src/bin/threads.rs</span>(표준 라이브러리만), <span class="file">src/bin/async_basics.rs</span>(tokio), <span class="file">src/lib.rs</span>(연습 문제 정답과 테스트)에 있습니다. 직접 입력은 새 파일 <span class="file">src/bin/mine.rs</span>(스레드)와 <span class="file">src/bin/mine_async.rs</span>(async)에 씁니다. 터미널은 <span class="file">lab</span> 폴더에서 엽니다. <code>cargo</code>를 못 찾는 터미널(MSYS2 bash 등)은 레슨 01의 안내대로 PowerShell 터미널을 쓰거나 PATH를 보정하세요.</p>
+        <div class="callout tip"><strong>이 레슨은 외부 크레이트를 처음 씁니다</strong>처음 빌드할 때 <code>tokio</code>와 그 하위 크레이트를 내려받아 컴파일하느라 몇십 초가 걸리고 인터넷 연결이 필요합니다. 다운로드 로그가 흐르는 것은 정상입니다. 한 번 받으면 이후 빌드는 빠릅니다.</div>
+        <ol class="steps">
+          <li>
+            <strong>연습 파일 만들기와 크레이트 설정 읽기 (이전 단계 의존 없음)</strong>
+            <p>탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson10</span>의 <span class="file">Cargo.toml</span>을 엽니다. 레슨 09에서 본 <code>[workspace.dependencies]</code>를 가져다 쓰는 모양을 확인하세요. <code>tokio = { workspace = true, features = [...] }</code>는 버전은 워크스페이스에서 가져오고, 필요한 기능(<code>features</code>)만 이 크레이트에서 켠다는 뜻입니다.</p>
+<pre class="code" data-lang="toml" data-src="lab/lesson10/Cargo.toml">[package]
+name = "lesson10"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }</pre>
+            <p>이제 <span class="file">src</span> 폴더 아래에 <span class="file">bin</span> 폴더가 이미 있습니다. <span class="file">bin</span>을 우클릭해 <b>새 파일(New File)</b> <code>mine.rs</code>를 만듭니다. 터미널(<kbd class="key">Ctrl+`</kbd>)을 열고 <span class="file">lab</span> 폴더로 이동합니다. 이미 <span class="file">lab</span> 안이면 건너뜁니다.</p>
+<pre class="code" data-lang="bash">cd lab</pre>
+          </li>
+          <li>
+            <strong>스레드 만들고 기다리기, move (<span class="file">mine.rs</span>, 1단계 의존)</strong>
+            <p><span class="file">mine.rs</span>에 입력합니다. 첫 줄 <code>use</code>는 뒤 단계에서 쓰는 것까지 미리 가져옵니다(지금은 "사용되지 않음" 경고가 나도 정상입니다).</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/src/bin/threads.rs" data-lines="1-16">use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
+
+fn spawn_and_join() {
+    let handle = thread::spawn(|| (1..=100).sum::&lt;u32&gt;());
+    println!("메인 스레드: 작업이 끝나기를 기다립니다");
+    let total = handle.join().unwrap();
+    println!("1부터 100까지의 합 = {total}");
+}
+
+fn move_into_thread() {
+    let mut names = vec![String::from("alice"), String::from("bob")];
+    names.push(String::from("carol"));
+    let handle = thread::spawn(move || names.len());
+    println!("스레드가 센 이름 수 = {}", handle.join().unwrap());
+}</pre>
+            <p>파일 맨 아래에 <code>fn main() { spawn_and_join(); move_into_thread(); }</code>를 입력하고 저장한 뒤 실행합니다.</p>
+<pre class="code" data-lang="bash">cargo run -p lesson10 --bin mine</pre>
+<pre class="output" data-src="lab/lesson10/expected/threads.txt" data-lines="1-3">메인 스레드: 작업이 끝나기를 기다립니다
+1부터 100까지의 합 = 5050
+스레드가 센 이름 수 = 3</pre>
+            <p><code>thread::spawn(|| ...)</code>은 새 스레드를 만들고 <code>JoinHandle</code>을 돌려줍니다. 메인 스레드가 "기다립니다"를 먼저 찍고, <code>join().unwrap()</code>에서 스레드 결과(<code>5050</code>)를 받습니다. 두 번째 함수의 <code>move</code>는 <code>names</code>의 소유권을 클로저로 옮깁니다. 옮긴 뒤에는 메인 쪽에서 <code>names</code>를 쓸 수 없습니다.</p>
+          </li>
+          <li>
+            <strong>컴파일러가 막는 순간 ① — 빌려 쓰기와 Rc (이전 단계와 독립)</strong>
+            <p>실험용 파일을 만듭니다. 탐색기에서 <span class="file">lesson10</span> 폴더를 우클릭해 새 폴더 <code>examples</code>와 그 안의 <span class="file">scratch.rs</span>를 만듭니다. 실험이 끝나면 <span class="file">examples</span> 폴더를 지웁니다.</p>
+            <p><b>왜 필요한가.</b> 새 스레드는 부모보다 오래 살 수 있습니다. 그런데 부모의 지역 변수를 빌려 가면 부모가 끝난 뒤 사라진 값을 가리키게 됩니다. <b>최소 예제.</b> 아래 코드를 <span class="file">scratch.rs</span>에 넣고 검사합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/fail/borrow_in_thread.rs.txt">use std::thread;
+
+fn main() {
+    let numbers = vec![1, 2, 3];
+    let handle = thread::spawn(|| {
+        println!("길이 = {}", numbers.len());
+    });
+    handle.join().unwrap();
+}</pre>
+<pre class="code" data-lang="bash">cargo check -p lesson10 --example scratch</pre>
+<pre class="output" data-src="lab/lesson10/expected/borrow_in_thread.txt">error[E0373]: closure may outlive the current function, but it borrows `numbers`, which is owned by the current function
+ --&gt; lesson10\examples\scratch.rs:5:32
+  |
+5 |     let handle = thread::spawn(|| {
+  |                                ^^ may outlive borrowed value `numbers`
+6 |         println!("길이 = {}", numbers.len());
+  |                               ------- `numbers` is borrowed here
+  |
+note: function requires argument type to outlive `'static`
+ --&gt; lesson10\examples\scratch.rs:5:18
+  |
+5 |       let handle = thread::spawn(|| {
+  |  __________________^
+6 | |         println!("길이 = {}", numbers.len());
+7 | |     });
+  | |______^
+help: to force the closure to take ownership of `numbers` (and any other referenced variables), use the `move` keyword
+  |
+5 |     let handle = thread::spawn(move || {
+  |                                ++++
+
+For more information about this error, try `rustc --explain E0373`.
+error: could not compile `lesson10` (example "scratch") due to 1 previous error</pre>
+            <p><b>읽는 법.</b> <code>closure may outlive the current function</code>이 사건이고, <code>help</code>의 마지막 제안이 해결책입니다. <b>해결.</b> <code>thread::spawn(move || ...)</code>로 소유권을 넘깁니다. 레슨 08에서 클로저를 반환할 때 본 E0373과 같은 오류입니다.</p>
+            <p>이번에는 <code>move</code>로도 못 푸는 경우입니다. <code>Rc</code>는 참조 카운트를 원자적으로 세지 않아 스레드 사이에서 쓰면 데이터 경쟁이 날 수 있습니다. <span class="file">scratch.rs</span>를 교체하고 같은 명령을 실행하세요.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/fail/rc_in_thread.rs.txt">use std::rc::Rc;
+use std::thread;
+
+fn main() {
+    let shared = Rc::new(5);
+    let handle = thread::spawn(move || {
+        println!("값 = {shared}");
+    });
+    handle.join().unwrap();
+}</pre>
+<pre class="output" data-src="lab/lesson10/expected/rc_in_thread.txt">error[E0277]: `Rc&lt;i32&gt;` cannot be sent between threads safely
+   --&gt; lesson10\examples\scratch.rs:6:32
+    |
+  6 |       let handle = thread::spawn(move || {
+    |                    ------------- ^------
+    |                    |             |
+    |  __________________|_____________within this `{closure@lesson10\examples\scratch.rs:6:32: 6:39}`
+    | |                  |
+    | |                  required by a bound introduced by this call
+  7 | |         println!("값 = {shared}");
+  8 | |     });
+    | |_____^ `Rc&lt;i32&gt;` cannot be sent between threads safely
+    |
+    = help: within `{closure@lesson10\examples\scratch.rs:6:32: 6:39}`, the trait `Send` is not implemented for `Rc&lt;i32&gt;`
+note: required because it's used within this closure
+   --&gt; lesson10\examples\scratch.rs:6:32
+    |
+  6 |     let handle = thread::spawn(move || {
+    |                                ^^^^^^^
+note: required by a bound in `spawn`
+   --&gt; ...\library\std\src\thread\functions.rs:128:8
+    |
+125 | pub fn spawn&lt;F, T&gt;(f: F) -&gt; JoinHandle&lt;T&gt;
+    |        ----- required by a bound in this function
+...
+128 |     F: Send + 'static,
+    |        ^^^^ required by this bound in `spawn`
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `lesson10` (example "scratch") due to 1 previous error</pre>
+            <p>핵심은 <code>help</code>의 한 줄입니다. <code>Send</code> trait이 <code>Rc&lt;i32&gt;</code>에 구현되어 있지 않다는 뜻이고, 아래 <code>note: required by a bound in spawn</code>은 <code>spawn</code>이 <code>F: Send + 'static</code>을 요구한다는 근거입니다. 해결은 <code>Rc</code>를 <code>Arc</code>로 바꾸는 것입니다. <code>use std::sync::Arc;</code>와 <code>Arc::new(5)</code>로 바꿔 저장하면 오류가 사라집니다.</p>
+          </li>
+          <li>
+            <strong>채널로 값 주고받기, drop(tx)의 의미 (<span class="file">mine.rs</span>, 2단계 의존)</strong>
+            <p>세 스레드가 각자 계산한 값을 채널로 보냅니다. <span class="file">mine.rs</span>에 아래 함수를 추가하고 <code>main</code>에 <code>channel_workers();</code>를 덧붙여 실행합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/src/bin/threads.rs" data-lines="18-32">fn channel_workers() {
+    let (tx, rx) = mpsc::channel();
+    for worker in 0..3 {
+        let tx = tx.clone();
+        thread::spawn(move || {
+            let result = (worker + 1) * 100;
+            tx.send((worker, result)).unwrap();
+        });
+    }
+    drop(tx);
+
+    let mut results: Vec&lt;(i32, i32)&gt; = rx.iter().collect();
+    results.sort();
+    println!("채널로 받은 결과 = {results:?}");
+}</pre>
+            <p>새로 붙는 한 줄입니다.</p>
+<pre class="output" data-src="lab/lesson10/expected/threads.txt" data-lines="4-4">채널로 받은 결과 = [(0, 100), (1, 200), (2, 300)]</pre>
+            <p>스레드가 끝나는 순서는 실행마다 다를 수 있어서 <code>results.sort()</code>로 정렬해 출력을 고정했습니다. <code>drop(tx)</code>가 핵심입니다. <code>rx.iter()</code>는 모든 송신자가 사라질 때 끝나는데, 반복문 앞에서 <code>clone</code>하고 남은 원본 <code>tx</code>를 버리지 않으면 영원히 기다립니다. 직접 확인합니다. 아래 코드를 <span class="file">scratch.rs</span>에 넣고 <code>cargo run -p lesson10 --example scratch</code>로 실행하세요.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/fail/channel_hang.rs.txt">use std::sync::mpsc;
+use std::thread;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+    for worker in 0..3 {
+        let tx = tx.clone();
+        thread::spawn(move || {
+            tx.send(worker * 100).unwrap();
+        });
+    }
+
+    for value in rx.iter() {
+        println!("받음: {value}");
+    }
+    println!("모두 받았습니다");
+}</pre>
+            <p>세 값을 받은 뒤 프로그램이 끝나지 않고 멈춰 있습니다(받는 순서는 달라질 수 있습니다). 터미널에서 <kbd class="key">Ctrl+C</kbd>로 끝냅니다. 컴파일러 메시지는 없는 런타임 증상이라 실제로 4초 이상 끝나지 않는 것을 확인했습니다.</p>
+<pre class="output">받음: 0
+받음: 100
+받음: 200</pre>
+            <p>해결은 <code>for</code> 루프 앞에 <code>drop(tx);</code> 한 줄을 넣는 것입니다.</p>
+          </li>
+          <li>
+            <strong><code>Arc&lt;Mutex&lt;T&gt;&gt;</code>로 공유하기와 스코프 스레드 (<span class="file">mine.rs</span>, 4단계 의존)</strong>
+            <p>먼저 <code>Arc</code> 없이 시도하면 어떤 일이 생기는지 봅니다. 아래 코드를 <span class="file">scratch.rs</span>에 넣고 검사하세요.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/fail/mutex_moved_in_loop.rs.txt">use std::sync::Mutex;
+use std::thread;
+
+fn main() {
+    let counter = Mutex::new(0);
+    let mut handles = Vec::new();
+    for _ in 0..2 {
+        handles.push(thread::spawn(move || {
+            *counter.lock().unwrap() += 1;
+        }));
+    }
+    for handle in handles {
+        handle.join().unwrap();
+    }
+}</pre>
+<pre class="output" data-src="lab/lesson10/expected/mutex_moved_in_loop.txt">error[E0382]: use of moved value: `counter`
+ --&gt; lesson10\examples\scratch.rs:8:36
+  |
+5 |     let counter = Mutex::new(0);
+  |         ------- move occurs because `counter` has type `std::sync::Mutex&lt;i32&gt;`, which does not implement the `Copy` trait
+6 |     let mut handles = Vec::new();
+7 |     for _ in 0..2 {
+  |     ------------- inside of this loop
+8 |         handles.push(thread::spawn(move || {
+  |                                    ^^^^^^^ value moved into closure here, in previous iteration of loop
+9 |             *counter.lock().unwrap() += 1;
+  |              ------- use occurs due to use in closure
+
+For more information about this error, try `rustc --explain E0382`.
+error: could not compile `lesson10` (example "scratch") due to 1 previous error</pre>
+            <p>루프의 첫 바퀴에서 <code>counter</code>가 클로저로 이동하고, 둘째 바퀴에서 이미 이동된 값을 또 쓰려는 것입니다. 소유자가 여럿이어야 하니 <code>Arc</code>가 필요합니다. 완성형을 <span class="file">mine.rs</span>에 입력합니다. 스레드에 이름을 붙이는 <code>thread::Builder</code>는 디버거에서 스레드를 구분하기 위해서입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/src/bin/threads.rs" data-lines="34-53">fn shared_counter() {
+    let counter = Arc::new(Mutex::new(0));
+    let mut handles = Vec::new();
+    for id in 0..4 {
+        let counter = Arc::clone(&amp;counter);
+        let handle = thread::Builder::new()
+            .name(format!("worker-{id}"))
+            .spawn(move || {
+                for _ in 0..1000 {
+                    *counter.lock().unwrap() += 1;
+                }
+            })
+            .unwrap();
+        handles.push(handle);
+    }
+    for handle in handles {
+        handle.join().unwrap();
+    }
+    println!("최종 카운터 = {}", *counter.lock().unwrap());
+}</pre>
+            <p>이어서 스코프 스레드도 입력합니다. <code>thread::scope</code> 안에서 만든 스레드는 스코프가 끝나기 전에 반드시 합류하므로, <code>Arc</code> 없이도 지역 변수를 빌려 쓸 수 있습니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/src/bin/threads.rs" data-lines="55-64">fn scoped_threads() {
+    let numbers: Vec&lt;i32&gt; = (1..=6).collect();
+    let (left, right) = numbers.split_at(3);
+    let (left_sum, right_sum) = thread::scope(|scope| {
+        let a = scope.spawn(|| left.iter().sum::&lt;i32&gt;());
+        let b = scope.spawn(|| right.iter().sum::&lt;i32&gt;());
+        (a.join().unwrap(), b.join().unwrap())
+    });
+    println!("스코프 스레드 합계 = {left_sum} + {right_sum}");
+}</pre>
+            <p><code>main</code>에 <code>shared_counter(); scoped_threads();</code>를 추가해 실행합니다. 새로 붙는 두 줄입니다.</p>
+<pre class="output" data-src="lab/lesson10/expected/threads.txt" data-lines="5-6">최종 카운터 = 4000
+스코프 스레드 합계 = 6 + 15</pre>
+            <p>네 스레드가 각자 1000번씩 더해 <code>4000</code>이 정확히 나옵니다. <code>*counter.lock().unwrap() += 1;</code>에서 <code>lock()</code>이 가드(<code>MutexGuard</code>)를 돌려주고, 그 줄이 끝나면 가드가 버려지며 락이 풀립니다. 락이 풀리는 시점은 코드에 쓰이지 않고 스코프가 정합니다(레슨 04의 소유권 규칙입니다).</p>
+          </li>
+          <li>
+            <strong>디버거로 조건부 중단점과 스레드 보기 (5단계 의존)</strong>
+            <p>이제 완성본 <span class="file">src/bin/threads.rs</span>를 디버거로 멈춰 봅니다. 이 코스의 <span class="file">.vscode/launch.json</span>에는 <b>Rust: 현재 레슨 디버그</b>가 있고, 시작하면 실행 파일 이름을 묻습니다. <span class="file">src/bin/threads.rs</span>의 실행 파일 이름은 파일 이름인 <code>threads</code>입니다(<span class="file">src/main.rs</span>라면 크레이트 이름입니다). 이 설정은 시작 전에 <code>cargo: build current lesson</code> 작업을 자동으로 실행해 지금 열려 있는 파일이 속한 레슨 크레이트를 빌드합니다. 그러니 <b>반드시 <span class="file">threads.rs</span>를 에디터에 연 채로(커서가 에디터에 있는 상태로)</b> 시작하세요. <span class="file">lab/lesson10/src/bin</span> 안에 컴파일 오류가 있는 <span class="file">mine.rs</span>가 있으면 같은 크레이트가 함께 빌드되며 실패하므로, 오류를 고치거나 <span class="file">mine.rs</span>를 지운 뒤 시작합니다.</p>
+            <p><b>1) 조건부 중단점.</b> <span class="file">threads.rs</span>의 <code>shared_counter</code> 안에서 <code>let counter = Arc::clone(&amp;counter);</code> 줄을 클릭하고 <kbd class="key">F9</kbd>로 중단점을 겁니다. 줄 번호 왼쪽의 빨간 점을 우클릭해 <b>Edit Breakpoint</b>를 고르고, 조건 종류를 <b>Expression</b>으로 두고 <code>id == 2</code>를 입력한 뒤 엔터 키를 누릅니다. 명령 팔레트(<kbd class="key">Ctrl+Shift+P</kbd>)의 <code>Debug: Add Conditional Breakpoint...</code>로도 만들 수 있습니다. 이제 이 줄은 <code>id</code>가 2일 때, 즉 세 번째 반복에서만 멈춥니다.</p>
+            <p><b>2) 시작.</b> <kbd class="key">Ctrl+Shift+D</kbd>로 실행 및 디버그 보기를 열고 위쪽 드롭다운에서 <b>Rust: 현재 레슨 디버그</b>를 고릅니다. 다시 <span class="file">threads.rs</span> 에디터를 클릭해 포커스를 옮기고 <kbd class="key">F5</kbd>를 누릅니다. 위쪽에 입력창이 뜨면 <code>threads</code>를 입력하고 엔터 키를 누릅니다. 먼저 <code>cargo build</code>가 돌고 이어서 프로그램이 시작됩니다. 앞의 출력이 몇 줄 나온 뒤 <code>shared_counter</code>의 그 줄에서 멈춥니다. 이 프로그램이 찍는 출력은 통합 터미널이 아니라 아래쪽 패널의 <b>디버그 콘솔</b>에 나옵니다. <span class="file">launch.json</span>의 이 구성은 <code>console</code> 값을 따로 적지 않아 기본값(<code>internalConsole</code>, VS Code 디버그 콘솔로 출력)을 쓰기 때문입니다(cpptools 확장의 설정 스키마로 확인했습니다). 이 방식은 키보드 입력을 받지 못합니다. 입력이 필요한 프로그램이라면 구성에 <code>"console": "integratedTerminal"</code>을 추가해 통합 터미널에서 실행하세요. 이 레슨의 프로그램은 입력이 필요 없습니다.</p>
+            <p><b>3) 값 보기.</b> 왼쪽 <b>VARIABLES</b> 영역에서 <code>id</code>가 2인지 확인합니다. <kbd class="key">Ctrl+Shift+Y</kbd>로 <b>디버그 콘솔</b>(방금 본 프로그램 출력이 쌓인 같은 창입니다)을 열어 <code>id</code>를 입력하고 엔터 키를 눌러 값을 평가해 보세요. 콘솔에서 쓸 수 있는 식의 범위는 디버거가 정하므로, 안 되는 식이 있으면 단순한 변수 이름부터 시도합니다. <kbd class="key">F10</kbd>으로 한 줄씩, <kbd class="key">F11</kbd>로 함수 안으로 들어갈 수 있고, <kbd class="key">Shift+F11</kbd>로 빠져나옵니다.</p>
+            <p><b>4) 스레드 목록.</b> 중단점을 지웁니다(<kbd class="key">F9</kbd>를 한 번 더). 이번에는 스레드 안의 <code>*counter.lock().unwrap() += 1;</code> 줄에 <kbd class="key">F9</kbd>로 중단점을 걸고 <kbd class="key">Ctrl+Shift+F5</kbd>로 디버깅을 다시 시작합니다(입력창이 다시 뜨면 <code>threads</code>). 멈추면 <b>CALL STACK</b> 영역을 보세요. 메인 스레드와 작업 스레드가 목록으로 나뉘어 보이고, 항목을 클릭하면 그 스레드의 호출 경로와 변수로 바뀝니다. 표시 모양과 스레드 이름이 보이는지는 디버거에 따라 다를 수 있습니다. 확인이 끝나면 <kbd class="key">Shift+F5</kbd>로 끝냅니다.</p>
+          </li>
+          <li>
+            <strong>async/await와 tokio (<span class="file">mine_async.rs</span>, 1단계 의존)</strong>
+            <p><span class="file">src/bin</span> 폴더에 새 파일 <code>mine_async.rs</code>를 만들고 입력합니다. 한 파일에 전부 들어 있습니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/src/bin/async_basics.rs">use std::time::{Duration, Instant};
+
+use tokio::time::{sleep, timeout};
+
+async fn fetch_user(id: u32) -&gt; String {
+    sleep(Duration::from_millis(100)).await;
+    format!("사용자#{id}")
+}
+
+fn rounded_ms(started: Instant) -&gt; u128 {
+    started.elapsed().as_millis() / 100 * 100
+}
+
+#[tokio::main]
+async fn main() {
+    let started = Instant::now();
+    let first = fetch_user(1).await;
+    let second = fetch_user(2).await;
+    println!(
+        "순차 실행: {first}, {second} (약 {}ms)",
+        rounded_ms(started)
+    );
+
+    let started = Instant::now();
+    let (third, fourth) = tokio::join!(fetch_user(3), fetch_user(4));
+    println!(
+        "join! 실행: {third}, {fourth} (약 {}ms)",
+        rounded_ms(started)
+    );
+
+    let handles: Vec&lt;_&gt; = (5..=7).map(|id| tokio::spawn(fetch_user(id))).collect();
+    for handle in handles {
+        println!("spawn 결과: {}", handle.await.unwrap());
+    }
+
+    match timeout(Duration::from_millis(30), fetch_user(8)).await {
+        Ok(user) =&gt; println!("제때 도착: {user}"),
+        Err(error) =&gt; println!("시간 초과: {error}"),
+    }
+}</pre>
+<pre class="code" data-lang="bash">cargo run -p lesson10 --bin mine_async</pre>
+<pre class="output" data-src="lab/lesson10/expected/async_basics.txt">순차 실행: 사용자#1, 사용자#2 (약 200ms)
+join! 실행: 사용자#3, 사용자#4 (약 100ms)
+spawn 결과: 사용자#5
+spawn 결과: 사용자#6
+spawn 결과: 사용자#7
+시간 초과: deadline has elapsed</pre>
+            <p>읽는 법입니다.</p>
+            <ul>
+              <li><code>#[tokio::main]</code>은 <code>main</code>을 async로 만들고 tokio 런타임을 자동으로 띄웁니다. <code>features</code>에 <code>macros</code>와 <code>rt-multi-thread</code>가 필요한 이유입니다.</li>
+              <li>순차 실행은 <code>.await</code>를 두 번 이어 써서 100ms + 100ms, 약 200ms가 걸립니다. <code>join!</code>은 두 퓨처를 함께 진행시켜 약 100ms에 끝납니다. 출력은 100ms 단위로 내림한 값이라 PC 성능에 따라 <code>200ms</code>와 <code>100ms</code>가 이 값과 다르게 나올 수 있습니다(매우 느린 PC 한정).</li>
+              <li><code>tokio::spawn</code>은 퓨처를 독립 작업(task)으로 띄우고 <code>JoinHandle</code>을 돌려줍니다. 핸들을 순서대로 <code>.await</code>하므로 결과 순서는 5, 6, 7로 고정됩니다.</li>
+              <li><code>timeout</code>은 지정한 시간 안에 끝나지 않으면 <code>Err</code>를 돌려줍니다. 30ms 안에 100ms짜리 작업은 끝나지 못해 <code>deadline has elapsed</code>가 나옵니다.</li>
+            </ul>
+          </li>
+          <li>
+            <strong>컴파일러가 막는 순간 ② — async의 흔한 실수 (이전 단계와 독립)</strong>
+            <p><span class="file">examples/scratch.rs</span>(없으면 다시 만듭니다)에 차례로 넣고 <code>cargo check -p lesson10 --example scratch</code>를 실행합니다.</p>
+            <p><b>오류 1. async가 아닌 함수에서 <code>.await</code>.</b></p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/fail/await_outside_async.rs.txt">async fn fetch_user(id: u32) -&gt; String {
+    format!("사용자#{id}")
+}
+
+fn main() {
+    let user = fetch_user(1).await;
+    println!("{user}");
+}</pre>
+<pre class="output" data-src="lab/lesson10/expected/await_outside_async.txt">error[E0728]: `await` is only allowed inside `async` functions and blocks
+ --&gt; lesson10\examples\scratch.rs:6:30
+  |
+5 | fn main() {
+  | --------- this is not `async`
+6 |     let user = fetch_user(1).await;
+  |                              ^^^^^ only allowed inside `async` functions and blocks
+
+For more information about this error, try `rustc --explain E0728`.
+error: could not compile `lesson10` (example "scratch") due to 1 previous error</pre>
+            <p><code>main</code>에 <code>async</code>가 없다는 지적입니다. <code>#[tokio::main] async fn main()</code>으로 바꾸면 해결됩니다.</p>
+            <p><b>경고 1. <code>.await</code>를 빼먹었을 때.</b> 오류가 아니라 경고라서 컴파일은 되지만 함수 본문이 실행되지 않습니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/fail/forgot_await.rs.txt">use std::time::Duration;
+
+async fn save_log() {
+    tokio::time::sleep(Duration::from_millis(10)).await;
+    println!("저장 완료");
+}
+
+#[tokio::main]
+async fn main() {
+    save_log();
+    println!("끝");
+}</pre>
+<pre class="output" data-src="lab/lesson10/expected/forgot_await.txt">warning: unused implementer of `Future` that must be used
+  --&gt; lesson10\examples\scratch.rs:10:5
+   |
+10 |     save_log();
+   |     ^^^^^^^^^^
+   |
+   = note: futures do nothing unless you `.await` or poll them
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lesson10` (example "scratch") generated 1 warning</pre>
+            <p>경고의 <code>note</code>에 나온 <code>futures do nothing unless you .await or poll them</code>이 요약입니다. Kotlin의 <code>launch</code>는 호출 즉시 시작하지만 Rust의 <code>async fn</code> 호출은 퓨처를 만들 뿐입니다. <code>save_log().await;</code>로 고칩니다.</p>
+            <p><b>오류 2. 락 가드를 쥔 채 <code>.await</code>.</b> 3단계의 <code>Rc</code> 오류와 같은 뿌리(<code>Send</code>)입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/fail/guard_across_await.rs.txt">use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+#[tokio::main]
+async fn main() {
+    let counter = Arc::new(Mutex::new(0));
+    let shared = Arc::clone(&amp;counter);
+    let handle = tokio::spawn(async move {
+        let mut guard = shared.lock().unwrap();
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        *guard += 1;
+    });
+    handle.await.unwrap();
+    println!("{}", counter.lock().unwrap());
+}</pre>
+<pre class="output" data-src="lab/lesson10/expected/guard_across_await.txt">error: future cannot be sent between threads safely
+   --&gt; lesson10\examples\scratch.rs:8:18
+    |
+  8 |       let handle = tokio::spawn(async move {
+    |  __________________^
+  9 | |         let mut guard = shared.lock().unwrap();
+ 10 | |         tokio::time::sleep(Duration::from_millis(10)).await;
+ 11 | |         *guard += 1;
+ 12 | |     });
+    | |______^ future created by async block is not `Send`
+    |
+    = help: within `{async block@lesson10\examples\scratch.rs:8:31: 8:41}`, the trait `Send` is not implemented for `std::sync::MutexGuard&lt;'_, i32&gt;`
+note: future is not `Send` as this value is used across an await
+   --&gt; lesson10\examples\scratch.rs:10:55
+    |
+  9 |         let mut guard = shared.lock().unwrap();
+    |             --------- has type `std::sync::MutexGuard&lt;'_, i32&gt;` which is not `Send`
+ 10 |         tokio::time::sleep(Duration::from_millis(10)).await;
+    |                                                       ^^^^^ await occurs here, with `mut guard` maybe used later
+note: required by a bound in `tokio::spawn`
+   --&gt; ...\tokio-1.54.1\src\task\spawn.rs:176:21
+    |
+174 |     pub fn spawn&lt;F&gt;(future: F) -&gt; JoinHandle&lt;F::Output&gt;
+    |            ----- required by a bound in this function
+175 |     where
+176 |         F: Future + Send + 'static,
+    |                     ^^^^ required by this bound in `spawn`
+
+error: could not compile `lesson10` (example "scratch") due to 1 previous error</pre>
+            <p><code>tokio::spawn</code>이 퓨처에 <code>Send</code>를 요구하는데, <code>std::sync::MutexGuard</code>는 <code>Send</code>가 아니고 <code>.await</code> 너머로 살아 있다는 지적입니다. 같은 가드를 <code>spawn</code> 없이 <code>main</code>의 퓨처 안에서 직접 쥔 채 <code>.await</code>하면 컴파일되고 실행됩니다(이 PC에서 확인). 즉 <code>Send</code> 요구는 <code>tokio::spawn</code>이 거는 조건입니다. 해결은 락을 짧게 잡아 <code>.await</code> 전에 놓는 것입니다. <code>{ let mut guard = shared.lock().unwrap(); *guard += 1; }</code>처럼 블록으로 가두고 <code>.await</code>는 블록 밖에 둡니다. <code>.await</code> 너머로 락을 들고 있어야 하는 드문 경우에는 <code>tokio::sync::Mutex</code>를 씁니다. 실험이 끝났으니 <span class="file">examples</span> 폴더를 지웁니다.</p>
+          </li>
+          <li>
+            <strong>전체 확인 (모든 단계 의존)</strong>
+            <p><span class="file">mine.rs</span>와 <span class="file">mine_async.rs</span>를 지웠거나 컴파일되는 상태에서 완성본의 테스트를 실행합니다. 연습 문제 정답(<span class="file">src/lib.rs</span>)에 대한 테스트 3개가 통과해야 합니다.</p>
+<pre class="code" data-lang="bash">cargo test -p lesson10</pre>
+<pre class="output" data-src="lab/lesson10/expected/test.txt">     Running unittests src\lib.rs (...)
+
+running 3 tests
+test tests::parallel_sum_rejects_zero_workers - should panic ... ok
+test tests::parallel_sum_matches_sequential_sum ... ok
+test tests::fetch_all_keeps_input_order ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running unittests src\bin\async_basics.rs (...)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\threads.rs (...)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests lesson10
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+            <p><code>async fn</code> 테스트는 <code>#[tokio::test]</code>로 씁니다. <code>0.06s</code>는 테스트 하나가 50ms 동안 잠드는 시간이라 PC마다 조금 달라집니다. 위 출력은 <span class="file">mine.rs</span>와 <span class="file">mine_async.rs</span>를 지운 상태입니다. 지우지 않았다면 <code>Running unittests src\bin\mine.rs</code>와 <code>Running unittests src\bin\mine_async.rs</code> 구간이 두 개 더 나오고, 둘 다 <code>running 0 tests</code>입니다. 통과 개수 <code>3 passed</code>는 같습니다.</p>
+          </li>
+          <li>
+            <strong>정리하기 (모든 단계 의존)</strong>
+            <p>이 레슨에서 만든 임시 파일이 다른 레슨의 검사까지 깨뜨리지 않도록 정리합니다. 탐색기에서 <span class="file">lab/lesson10/src/bin</span> 폴더 안의 <span class="file">mine.rs</span>와 <span class="file">mine_async.rs</span> 두 파일만 우클릭해 <b>삭제</b>합니다. <span class="file">bin</span> 폴더 자체와 <span class="file">threads.rs</span>, <span class="file">async_basics.rs</span>는 완성본이므로 지우지 마세요. 이어서 <span class="file">lab/lesson10/examples</span> 폴더도 지웁니다. 남아 있으면 미완성 코드와 일부러 낸 오류가 워크스페이스 전체 검사에 걸립니다. 연습용 임시 프로필을 만들었다면 "VS Code 기능" 절의 마지막 항목대로 삭제합니다. 디버거를 쓰다 서버나 프로그램이 남아 있다면 <kbd class="key">Shift+F5</kbd>로 끝냅니다.</p>
+<p>정리가 끝났는지 <b>증거</b>로 확인합니다. 에디터를 클릭해 포커스를 두고 <kbd class="key">Ctrl+Shift+B</kbd>를 눌러 기본 빌드 작업 <b>cargo: check all</b>을 실행합니다. 터미널 패널 마지막에 <code>Finished</code>가 나오고 <code>error</code>가 없어야 합니다. 이어서 <kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열어 <code>Tasks: Run Test Task</code>를 실행하면 기본 테스트 작업 <b>cargo: test all</b>이 돌고, 모든 <code>test result:</code> 줄이 <code>ok</code>이어야 합니다(<code>test result: FAILED</code>가 한 줄이라도 있으면 남은 임시 파일이 없는지 다시 찾아봅니다). 이 두 작업은 <span class="file">lab</span>의 모든 레슨 크레이트를 한꺼번에 검사하므로, 임시 파일이 하나라도 깨진 채 남아 있으면 다른 레슨의 검사까지 실패합니다. 명령 팔레트에서 <code>Tasks: Run Task</code>를 실행했을 때 목록에 <b>cargo: check all</b>과 <b>cargo: test all</b> 그리고 <b>cargo: clippy all</b>과 <b>cargo: run task api</b>가 그대로 보이면 작업 설정(<span class="file">.vscode/tasks.json</span>)도 건드리지 않은 것입니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Rust</th></tr></thead>
+            <tbody>
+              <tr><td>스레드 만들기</td><td><code>Thread { ... }.start()</code>, <code>ExecutorService</code></td><td><code>threading.Thread(...)</code></td><td><code>thread::spawn(move || ...)</code></td></tr>
+              <tr><td>결과 기다리기</td><td><code>Future.get()</code>, <code>join()</code></td><td><code>thread.join()</code></td><td><code>handle.join().unwrap()</code></td></tr>
+              <tr><td>스레드 간 값 전달</td><td><code>Channel</code>(코루틴), <code>BlockingQueue</code></td><td><code>queue.Queue</code></td><td><code>mpsc::channel()</code></td></tr>
+              <tr><td>공유 상태 보호</td><td><code>synchronized</code>, <code>ReentrantLock</code> (락과 데이터가 따로)</td><td><code>threading.Lock</code> (따로)</td><td><code>Arc&lt;Mutex&lt;T&gt;&gt;</code> (데이터를 락이 품음)</td></tr>
+              <tr><td>데이터 경쟁</td><td>실행 중에 발견되는 버그</td><td>GIL이 일부 가려 줌</td><td><code>Send</code>/<code>Sync</code>로 컴파일 때 차단</td></tr>
+              <tr><td>비동기 문법</td><td><code>suspend fun</code>, <code>launch</code>, <code>async { }.await()</code></td><td><code>async def</code>, <code>await</code>, <code>asyncio.gather</code></td><td><code>async fn</code>, <code>.await</code>, <code>tokio::join!</code></td></tr>
+              <tr><td>작업을 바로 시작?</td><td><code>launch</code>는 즉시 시작</td><td><code>create_task</code>는 즉시, 코루틴 객체는 <code>await</code>해야</td><td>퓨처는 <code>.await</code>나 <code>spawn</code> 전까지 실행 안 됨</td></tr>
+              <tr><td>런타임</td><td><code>kotlinx.coroutines</code> 라이브러리, <code>Dispatchers</code></td><td><code>asyncio</code> 이벤트 루프(표준)</td><td>표준에 없음, <code>tokio</code> 등 선택</td></tr>
+              <tr><td>웹 요청 처리 모델</td><td>Spring MVC는 요청당 스레드 풀 스레드, WebFlux는 논블로킹</td><td><code>async def</code>는 이벤트 루프, 일반 <code>def</code>는 스레드 풀</td><td>axum은 tokio 위에서 핸들러를 async 작업으로 실행 (레슨 11)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <pre class="code" data-lang="kotlin">val counter = AtomicInteger()
+val jobs = List(4) { thread { repeat(1000) { counter.incrementAndGet() } } }
+jobs.forEach { it.join() }
+println(counter.get())</pre>
+        <pre class="code" data-lang="python">import asyncio
+
+async def fetch_user(i):
+    await asyncio.sleep(0.1)
+    return f"사용자#{i}"
+
+async def main():
+    print(await asyncio.gather(fetch_user(3), fetch_user(4)))
+
+asyncio.run(main())</pre>
+        <p>위 Kotlin·Python 코드는 이 레슨의 <code>shared_counter</code>, <code>tokio::join!</code>과 같은 일을 하는 비교용 코드이며 실행해 확인한 것은 아닙니다.</p>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ① — Mutex는 데이터를 감쌉니다</strong>Java·Kotlin의 <code>synchronized</code> 블록은 락과 데이터가 별개라 락을 잊어도 컴파일이 됩니다. Rust의 <code>Mutex&lt;T&gt;</code>는 <code>lock()</code>으로 가드를 얻어야만 <code>T</code>에 접근할 수 있어서 잊을 수가 없습니다. 대신 락을 잡은 스레드가 패닉하면 락이 "오염(poison)"되어 다음 <code>lock().unwrap()</code>이 실패합니다(아래 참고).</div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ② — <code>async fn</code> 호출은 실행이 아닙니다</strong>Kotlin의 <code>launch { }</code>나 Python의 <code>asyncio.create_task</code>는 부르는 순간 일정이 잡히지만, Rust는 퓨처를 <code>.await</code>하거나 <code>spawn</code>해야 움직입니다. <code>.await</code>를 빼먹으면 컴파일은 되고 아무 일도 일어나지 않습니다. 컴파일러가 내는 경고를 놓치지 마세요.</div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정 ③ — async 안에서 오래 막으면 런타임이 막힙니다</strong>async 작업 안에서 <code>std::thread::sleep</code>이나 무거운 계산을 하면 그 작업이 올라 있는 런타임 스레드가 통째로 묶입니다. 기다림은 <code>tokio::time::sleep(...).await</code>처럼 비동기 버전을 쓰고, 무거운 계산이나 블로킹 호출은 <code>tokio::task::spawn_blocking</code>으로 따로 돌리는 것이 권장 방식입니다(tokio 튜토리얼 참고). 이 레슨의 실험으로 직접 확인한 내용은 아닙니다.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 디버거 심화 — 조건부 중단점, 스레드 보기, 디버그 콘솔</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>실행 및 디버그 보기 열기</td><td><kbd class="key">Ctrl+Shift+D</kbd></td><td>디버그 구성을 고를 때, 중단점 목록을 볼 때</td></tr>
+                <tr><td>중단점 켜고 끄기</td><td><kbd class="key">F9</kbd></td><td>커서가 있는 줄에 중단점을 걸거나 지울 때</td></tr>
+                <tr><td>디버깅 시작 / 계속</td><td><kbd class="key">F5</kbd></td><td>선택한 구성을 시작하거나 다음 중단점까지 계속할 때</td></tr>
+                <tr><td>한 줄 실행(함수는 건너뜀)</td><td><kbd class="key">F10</kbd></td><td>흐름을 따라 갈 때</td></tr>
+                <tr><td>함수 안으로 / 밖으로</td><td><kbd class="key">F11</kbd> <kbd class="key">Shift+F11</kbd></td><td>호출한 함수 내부를 볼 때 / 빠져나올 때</td></tr>
+                <tr><td>디버깅 다시 시작</td><td><kbd class="key">Ctrl+Shift+F5</kbd></td><td>코드를 고친 뒤 처음부터 다시 볼 때</td></tr>
+                <tr><td>디버깅 끝내기</td><td><kbd class="key">Shift+F5</kbd></td><td>확인이 끝났을 때</td></tr>
+                <tr><td>디버그 콘솔 열기</td><td><kbd class="key">Ctrl+Shift+Y</kbd></td><td>멈춘 상태에서 변수·식을 평가해 볼 때(디버그로 실행한 프로그램의 출력도 여기에 나옵니다)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>VS Code 공식 문서가 설명하는 중단점 종류(조건부, 로그포인트, 함수, 데이터 등)는 <b>디버거 확장이 지원하는 만큼</b>만 쓸 수 있습니다. Rust를 <code>cppvsdbg</code>(C/C++ 확장)로 디버그할 때 어떤 종류와 조건식이 되는지는 확장에 달려 있으므로, 이 레슨은 가장 단순한 형태인 "변수와 숫자의 비교" 조건만 사용합니다.</p>
+        </div>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>연습용 임시 프로필 만들기</strong>
+<div class="callout warn"><strong>먼저 연습용 임시 프로필을 만듭니다 (내 평소 설정을 지키기 위해)</strong>이 코스는 사용자 전역 <code>settings.json</code>, <code>keybindings.json</code>, 사용자 스니펫을 직접 고치게 하지 않습니다. 설정 실험은 모두 <b>연습용 프로필</b> 안에서 하고, 끝나면 그 프로필을 삭제합니다. VS Code 공식 문서는 프로필 안에서 바꾼 설정과 확장이 현재 활성 프로필에 저장된다고 설명하므로, 연습용 프로필에서 바꾼 값은 기본 프로필(내 평소 설정)에 기록되지 않습니다.</div>
+            <ol>
+              <li>왼쪽 아래 <b>관리(Manage)</b> 톱니 아이콘을 누르고 <b>Profiles</b>를 고릅니다. 메뉴의 <b>File</b> → <b>Preferences</b> → <b>Profiles</b>도 같은 곳입니다. 프로필 편집기가 열립니다.</li>
+              <li><b>New Profile</b> 버튼을 누르고 이름에 <code>연습용</code>을 적습니다. 복사할 원본은 기본 프로필(Default)로 고르고, 아래 <b>Contents</b>의 설정·키보드 단축키·스니펫·작업·확장 항목을 <b>모두 체크한 채</b> 둡니다. <b>Create</b>를 누릅니다.
+                <ul>
+                  <li>빈 프로필(Empty Profile)로 만들지 마세요. 공식 문서에 따르면 빈 프로필에는 설정·확장·스니펫이 하나도 없어서 rust-analyzer 같은 확장이 빠지고, 이 코스의 실험이 동작하지 않습니다.</li>
+                  <li>체크를 풀지 마세요. 공식 문서에 따르면 체크하지 않은 항목은 기본 프로필의 것을 그대로 쓰기 때문에, 그 항목을 이 프로필에서 고치면 기본 프로필이 바뀝니다.</li>
+                </ul>
+              </li>
+              <li>확인합니다. 관리 아이콘에 프로필 이름의 앞 두 글자가 배지로 보이고, 아이콘에 마우스를 올리면 프로필 이름이 나옵니다. 공식 문서는 기본 프로필을 쓰는 중에는 프로필 이름이 표시되지 않는다고 설명하므로, 이름이 보이면 연습용 프로필을 쓰는 중입니다. 프로필을 만들거나 고르면 현재 폴더에 연결되어 다음에 이 폴더를 열 때도 그 프로필이 쓰이므로, 실험이 끝나면 반드시 아래 순서로 삭제합니다.</li>
+            </ol>
+          </li>
+          <li>
+            <strong>디버그 도구 모음 위치와 중단점 표시 바꿔 보기 (연습용 프로필 안에서)</strong>
+            <p>(관리 아이콘에 프로필 이름이 보이는 상태에서) <kbd class="key">Ctrl+,</kbd>로 설정을 열고 <code>debug.toolBarLocation</code>을 검색합니다. 값은 <code>floating</code>(에디터 위에 떠 있음), <code>docked</code>(실행 및 디버그 보기 안에 고정), <code>hidden</code>(숨김) 중에서 고릅니다. <code>docked</code>로 바꾸고 디버깅을 시작하면 도구 모음이 왼쪽 보기 위쪽으로 옮겨 갑니다. 이어서 <code>debug.showBreakpointsInOverviewRuler</code>를 검색해 체크하면 에디터 오른쪽 스크롤 막대에도 중단점 위치가 표시됩니다.</p>
+            <p>설정 화면 오른쪽 위의 <b>설정 열기(JSON)</b> 아이콘으로 현재 프로필(연습용)의 설정 파일을 열어, 방금 바꾼 두 값이 한 줄씩 기록되었는지 확인하세요. 이 코스의 완성본 <span class="file">.vscode/settings.json</span>에는 <code>debug.allowBreakpointsEverywhere</code>가 이미 <code>true</code>로 들어 있고(레슨 09), 위 두 값은 들어 있지 않습니다. 워크스페이스 설정과 프로필(사용자) 설정에 같은 키가 있으면 워크스페이스 값이 우선합니다. 값을 되돌릴 필요는 없습니다. 아래 항목에서 프로필째 삭제하기 때문입니다.</p>
+          </li>
+          <li>
+            <strong>연습용 임시 프로필 삭제하기 (실험이 끝나면 즉시)</strong>
+<ol>
+              <li><kbd class="key">Ctrl+Shift+P</kbd>로 명령 팔레트를 열고 <code>Profiles: Switch Profile...</code>을 실행해 목록에서 기본 프로필(<b>Default</b>)로 돌아옵니다. 프로필을 고르면 현재 폴더가 그 프로필에 연결되므로, 삭제하기 전에 기본 프로필로 먼저 돌아와야 폴더가 기본 프로필에 다시 연결됩니다.</li>
+              <li>확인합니다. 관리 아이콘의 두 글자 배지가 사라지고, 마우스를 올려도 프로필 이름이 나오지 않아야 합니다(기본 프로필).</li>
+              <li><kbd class="key">Ctrl+Shift+P</kbd>로 <code>Profiles: Delete Profile...</code>을 실행하고 드롭다운에서 <code>연습용</code>만 골라 삭제합니다. 프로필 편집기(관리 아이콘 → <b>Profiles</b>)에서 <code>연습용</code> 프로필의 더 보기 메뉴에 있는 <b>Delete Profile</b>을 써도 됩니다.</li>
+              <li>확인합니다. 프로필 편집기 목록에 <code>연습용</code>이 없어야 합니다. <kbd class="key">Ctrl+,</kbd>로 설정을 열어 방금 실험한 설정 이름을 검색하면 기본값(바뀌지 않은 상태)이어야 하고, 평소 쓰던 터미널 프로필 같은 개인 설정은 그대로 있어야 합니다.</li>
+            </ol>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <p>정답은 <span class="file">lab/lesson10/src/lib.rs</span>에 이미 들어 있습니다. 먼저 직접 풀고 열어 보세요. 풀 때는 <span class="file">examples/scratch.rs</span>나 <span class="file">mine.rs</span>에 쓰고, 정답 파일과 비교해 보세요.</p>
+        <h3>문제 1. 스레드로 나눠 더하기</h3>
+        <p><code>pub fn parallel_sum(numbers: &amp;[u64], workers: usize) -&gt; u64</code>를 만드세요. 숫자들을 <code>workers</code>개 구간으로 나눠 각 구간의 합을 스레드가 계산하고, 마지막에 모두 더합니다. <code>workers</code>가 0이면 패닉합니다. <code>Arc</code> 없이 빌려 쓰는 <code>thread::scope</code>를 써 보세요.</p>
+        <p><b>완료 조건:</b> <code>1..=1000</code>의 합이 <code>workers</code>가 4일 때도 7일 때도 <code>500500</code>, 빈 슬라이스는 <code>0</code>이다. <code>cargo test -p lesson10</code>의 <code>parallel_sum_*</code> 두 테스트가 통과한다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>구간 크기는 <code>numbers.len().div_ceil(workers)</code>이고(최소 1), <code>numbers.chunks(구간 크기)</code>가 구간을 나눠 줍니다. 각 구간에서 <code>scope.spawn(move || chunk.iter().sum::&lt;u64&gt;())</code>를 만들어 핸들을 모아 두고, 마지막에 <code>join().unwrap()</code>한 값을 합칩니다. <code>move</code>를 붙여도 <code>chunk</code>는 참조라 복사되는 것이 아니라 빌림이 옮겨질 뿐입니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/src/lib.rs" data-lines="6-19">pub fn parallel_sum(numbers: &amp;[u64], workers: usize) -&gt; u64 {
+    assert!(workers &gt; 0, "workers는 1 이상이어야 합니다");
+    let chunk_size = numbers.len().div_ceil(workers).max(1);
+    thread::scope(|scope| {
+        let handles: Vec&lt;_&gt; = numbers
+            .chunks(chunk_size)
+            .map(|chunk| scope.spawn(move || chunk.iter().sum::&lt;u64&gt;()))
+            .collect();
+        handles
+            .into_iter()
+            .map(|handle| handle.join().unwrap())
+            .sum()
+    })
+}</pre>
+          </div>
+        </details>
+        <h3>문제 2. 순서를 지키는 병렬 조회</h3>
+        <p><code>pub async fn fetch_all(ids: Vec&lt;u32&gt;) -&gt; Vec&lt;String&gt;</code>을 만드세요. 각 <code>id</code>마다 <code>tokio::spawn</code>으로 <code>fetch_user</code>를 띄워 동시에 진행시키되, 결과는 입력 순서대로 돌려줍니다.</p>
+        <p><b>완료 조건:</b> <code>fetch_all(vec![3, 1, 2])</code>가 <code>["사용자#3", "사용자#1", "사용자#2"]</code>를 돌려준다. <code>cargo test -p lesson10</code>의 <code>fetch_all_keeps_input_order</code>가 통과한다.</p>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>먼저 모든 <code>spawn</code>을 끝내 핸들을 <code>Vec</code>에 모읍니다. 그다음 핸들을 순서대로 <code>.await</code>하면 결과 순서가 입력 순서와 같아집니다. 반복문 안에서 <code>spawn</code>과 <code>.await</code>를 한꺼번에 하면 직렬이 됩니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/src/lib.rs" data-lines="21-24">pub async fn fetch_user(id: u32) -&gt; String {
+    sleep(Duration::from_millis(50)).await;
+    format!("사용자#{id}")
+}</pre>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/src/lib.rs" data-lines="26-36">pub async fn fetch_all(ids: Vec&lt;u32&gt;) -&gt; Vec&lt;String&gt; {
+    let handles: Vec&lt;_&gt; = ids
+        .into_iter()
+        .map(|id| tokio::spawn(fetch_user(id)))
+        .collect();
+    let mut users = Vec::new();
+    for handle in handles {
+        users.push(handle.await.unwrap());
+    }
+    users
+}</pre>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/src/lib.rs" data-lines="38-61">#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parallel_sum_matches_sequential_sum() {
+        let numbers: Vec&lt;u64&gt; = (1..=1000).collect();
+        assert_eq!(parallel_sum(&amp;numbers, 4), 500_500);
+        assert_eq!(parallel_sum(&amp;numbers, 7), 500_500);
+        assert_eq!(parallel_sum(&amp;[], 3), 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "workers")]
+    fn parallel_sum_rejects_zero_workers() {
+        parallel_sum(&amp;[1, 2, 3], 0);
+    }
+
+    #[tokio::test]
+    async fn fetch_all_keeps_input_order() {
+        let users = fetch_all(vec![3, 1, 2]).await;
+        assert_eq!(users, vec!["사용자#3", "사용자#1", "사용자#2"]);
+    }
+}</pre>
+          </div>
+        </details>
+        <h3>더 연습하기 (rustlings)</h3>
+        <p>클론해 둔 <span class="file" data-local="rustlings/exercises/20_threads/threads1.rs">rustlings/exercises/20_threads</span>의 <code>threads1</code>부터 <code>threads3</code>, <span class="file" data-local="rustlings/exercises/24_async/async1.rs">24_async/async1.rs</span>가 같은 주제입니다. 진행 방법은 레슨 12에서 정리합니다.</p>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="rust-10-threads"><span><code>cargo run -p lesson10 --bin mine</code>으로 직접 입력한 스레드 예제의 출력 6줄을 확인했고, <code>Rc</code>를 <code>thread::spawn</code>에 넣어 E0277을 재현한 뒤 <code>Arc</code>로 고쳤다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-10-hang"><span><code>drop(tx)</code>를 빼면 프로그램이 끝나지 않는 것을 직접 확인하고 <kbd class="key">Ctrl+C</kbd>로 끝냈다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-10-async"><span><code>cargo run -p lesson10 --bin mine_async</code>의 출력에서 순차(약 200ms)와 <code>join!</code>(약 100ms)의 차이를 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-10-conditional"><span><code>id == 2</code> 조건부 중단점에서 멈춰 <b>VARIABLES</b>의 <code>id</code> 값이 2인 것을 확인했다(또는 안 되는 경우 원인을 적어 두었다).</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-10-threadview"><span>디버거가 멈춘 상태에서 <b>CALL STACK</b>의 스레드 목록을 보고 <kbd class="key">Ctrl+Shift+Y</kbd>로 디버그 콘솔을 열어 보았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-10-setting"><span>연습용 임시 프로필에서 <code>debug.toolBarLocation</code>을 바꾸고 프로필의 설정 JSON에 기록된 줄을 확인한 뒤, 프로필을 삭제하고 관리 아이콘에 프로필 이름이 없는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-10-practice"><span>연습 문제를 힌트 없이 먼저 시도했고 <code>cargo test -p lesson10</code>의 3개 통과를 보았다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-10-clean"><span><span class="file">mine.rs</span>, <span class="file">mine_async.rs</span>, <span class="file">examples</span>를 지운 뒤 <b>cargo: check all</b>의 <code>Finished</code>와 <b>cargo: test all</b>의 <code>test result:</code> 전부 <code>ok</code>를 보았다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <p>따라하기에서 만난 E0373, E0277(<code>Rc</code>, <code>MutexGuard</code>), E0382, E0728과 채널 멈춤 외에 자주 겪는 상황입니다. 메시지는 모두 실제로 실행해 얻었습니다.</p>
+        <h3>증상: <code>cargo run -p lesson10</code>이 "could not determine which binary to run"이라고 한다</h3>
+        <p>원인: 이 크레이트에는 <span class="file">src/main.rs</span>가 없고 <span class="file">src/bin</span> 아래에 실행 파일이 여럿입니다. 해결: <code>--bin 이름</code>으로 지정합니다. 이 목록에는 <span class="file">mine.rs</span>와 <span class="file">mine_async.rs</span>를 만들었다면 그 이름도 함께 나옵니다.</p>
+<pre class="code" data-lang="bash">cargo run -p lesson10</pre>
+<pre class="output" data-src="lab/lesson10/expected/run_ambiguous.txt">error: `cargo run` could not determine which binary to run. Use the `--bin` option to specify a binary, or the `default-run` manifest key.
+available binaries: async_basics, threads</pre>
+        <h3>증상: <code>called `Result::unwrap()` on an `Err` value: PoisonError { .. }</code></h3>
+        <p>원인: 락을 잡은 스레드가 패닉하면 <code>Mutex</code>가 오염(poison)됩니다. 이후 <code>lock()</code>은 <code>Err(PoisonError)</code>를 돌려주고 <code>unwrap()</code>이 패닉합니다. 실제 서비스 코드에서는 <code>lock().unwrap_or_else(|e| e.into_inner())</code>로 오염된 값을 그대로 쓰거나, 패닉 자체를 없애는 쪽을 택합니다. 해결의 핵심은 락을 쥔 채로 패닉할 수 있는 코드를 줄이는 것입니다. 아래는 <span class="file">scratch.rs</span>에 넣고 <code>cargo run -p lesson10 --example scratch</code>로 실행한 결과입니다. 스레드의 패닉 메시지와 메인의 패닉 메시지가 stderr/stdout 버퍼링 때문에 섞여 보일 수 있습니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson10/fail/mutex_poison.rs.txt">use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() {
+    let data = Arc::new(Mutex::new(0));
+    let worker = Arc::clone(&amp;data);
+    let result = thread::spawn(move || {
+        let _guard = worker.lock().unwrap();
+        panic!("락을 잡은 채로 패닉");
+    })
+    .join();
+    println!("스레드 결과는 Err인가? {}", result.is_err());
+    println!("{}", data.lock().unwrap());
+}</pre>
+<pre class="code" data-lang="bash">cargo run -p lesson10 --example scratch</pre>
+<pre class="output" data-src="lab/lesson10/expected/mutex_poison.txt">thread '&lt;unnamed&gt;' (...) panicked at lesson10\examples\scratch.rs:9:9:
+락을 잡은 채로 패닉
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+스레드 결과는 Err인가? true
+
+thread 'main' (...) panicked at lesson10\examples\scratch.rs:13:32:
+called `Result::unwrap()` on an `Err` value: PoisonError { .. }
+error: process didn't exit successfully: `...\scratch.exe` (exit code: 101)</pre>
+        <h3>증상: 디버그를 시작했더니 빌드 작업이 실패한다</h3>
+        <p>원인: <b>Rust: 현재 레슨 디버그</b>는 시작 전에 <code>cargo: build current lesson</code>을 실행하는데, 이 작업은 지금 열려 있는 파일의 폴더를 기준으로 합니다. 다른 파일을 열어 둔 채 시작했거나, 같은 크레이트의 다른 파일(<span class="file">mine.rs</span> 등)에 컴파일 오류가 있으면 실패합니다. 해결: 디버그할 레슨의 소스 파일을 에디터에서 열고 클릭한 뒤 시작하고, 터미널에서 <code>cargo build -p lesson10</code>이 성공하는지 먼저 확인합니다.</p>
+        <h3>증상: 입력창에 이름을 넣었는데 "program does not exist"류 오류가 난다</h3>
+        <p>원인: <b>Rust: 현재 레슨 디버그</b>는 <span class="file">lab/target/debug/입력한이름.exe</span>를 실행합니다. 이름이 크레이트 이름이 아니라 실행 파일 이름이어야 합니다(<span class="file">src/bin/threads.rs</span>는 <code>threads</code>). 해결: 이름을 확인하고, <span class="file">lab/target/debug</span>에 해당 <span class="file">.exe</span>가 있는지 탐색기로 봅니다. 이 증상의 정확한 문구는 디버거 확장이 정하는 것이라 이 레슨에서 직접 재현해 싣지 않았습니다.</p>
+      </section>
+
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨에서는 이 레슨의 tokio 위에서 axum으로 Task REST API를 만듭니다. 라우팅, <code>Path</code>·<code>Json</code>·<code>State</code> 추출기, <code>serde</code>, 에러 응답, <code>oneshot</code> 통합 테스트까지 이어지고, <code>tasks.json</code>·<code>launch.json</code>·<code>.http</code> 파일을 실제로 씁니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="09-modules-testing.html"><small>← 이전 레슨</small>09 · 모듈·크레이트·테스트</a>
+          <a class="next" rel="next" href="11-axum-taskapi.html"><small>다음 레슨 →</small>11 · axum으로 만드는 Task API</a>
+        </nav>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Rust 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

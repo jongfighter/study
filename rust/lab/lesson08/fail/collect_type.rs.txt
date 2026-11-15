@@ -1,0 +1,6 @@
+fn main() {
+    let numbers = [1, 2, 3];
+    let doubled = numbers.iter().map(|n| n * 2).collect();
+    println!("{}", numbers.len());
+    let _ = doubled;
+}

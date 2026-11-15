@@ -1,0 +1,12 @@
+[ ] #1 Go 공부하기
+{1 Go 공부하기 false}
+{ID:1 Title:Go 공부하기 Done:false}
+BrokenToggle 이후: false
+Toggle 이후: true
+Go 공부하기 / 복사본
+포인터로 수정
+[x] #2 테스트 작성
+range 복사본을 바꾼 뒤: false false
+인덱스로 바꾼 뒤: true true
+zero value: {ID:0 Title: Done:false}
+true

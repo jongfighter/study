@@ -1,0 +1,8 @@
+async fn fetch_user(id: u32) -> String {
+    format!("사용자#{id}")
+}
+
+fn main() {
+    let user = fetch_user(1).await;
+    println!("{user}");
+}

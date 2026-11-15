@@ -1,0 +1,10 @@
+Diff in \\?\D:\study\rust\lab\lesson02\src\bin\scratch.rs:1:
+-fn main(){
+-let x=5;
+-    let y   =  10;
+-  println!("{}",x+y);
++fn main() {
++    let x = 5;
++    let y = 10;
++    println!("{}", x + y);
+ }

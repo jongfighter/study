@@ -1,0 +1,11 @@
+func (s *taskStore) list() []Task {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []Task
+	for _, t := range s.tasks {
+		out = append(out, t)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}

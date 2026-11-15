@@ -1,0 +1,23 @@
+error[E0373]: closure may outlive the current function, but it borrows `numbers`, which is owned by the current function
+ --> lesson10\examples\scratch.rs:5:32
+  |
+5 |     let handle = thread::spawn(|| {
+  |                                ^^ may outlive borrowed value `numbers`
+6 |         println!("길이 = {}", numbers.len());
+  |                               ------- `numbers` is borrowed here
+  |
+note: function requires argument type to outlive `'static`
+ --> lesson10\examples\scratch.rs:5:18
+  |
+5 |       let handle = thread::spawn(|| {
+  |  __________________^
+6 | |         println!("길이 = {}", numbers.len());
+7 | |     });
+  | |______^
+help: to force the closure to take ownership of `numbers` (and any other referenced variables), use the `move` keyword
+  |
+5 |     let handle = thread::spawn(move || {
+  |                                ++++
+
+For more information about this error, try `rustc --explain E0373`.
+error: could not compile `lesson10` (example "scratch") due to 1 previous error

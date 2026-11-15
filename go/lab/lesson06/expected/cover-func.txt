@@ -1,0 +1,3 @@
+ok  	golab/lesson06/mine/titles	0.300s	coverage: 100.0% of statements
+golab/lesson06/mine/titles/titles.go:18:	Normalize	100.0%
+total:						(statements)	100.0%

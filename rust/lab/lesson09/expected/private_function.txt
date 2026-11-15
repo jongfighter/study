@@ -1,0 +1,14 @@
+error[E0603]: function `is_slug_char` is private
+  --> lesson09\examples\scratch.rs:4:26
+   |
+ 4 |     println!("{}", text::is_slug_char('a'));
+   |                          ^^^^^^^^^^^^ private function
+   |
+note: the function `is_slug_char` is defined here
+  --> lesson09\src\text.rs:69:1
+   |
+69 | fn is_slug_char(ch: char) -> bool {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0603`.
+error: could not compile `lesson09` (example "scratch") due to 1 previous error

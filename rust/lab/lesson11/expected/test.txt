@@ -1,0 +1,19 @@
+     Running tests\api.rs (...)
+
+running 14 tests
+test unknown_task_returns_404_json ... ok
+test missing_content_type_returns_415 ... ok
+test put_is_not_allowed ... ok
+test health_returns_ok ... ok
+test create_sets_location_header ... ok
+test create_rejects_empty_title ... ok
+test invalid_id_returns_400_json ... ok
+test list_is_empty_array_then_ordered_by_id ... ok
+test patch_updates_only_the_sent_fields ... ok
+test delete_then_get_returns_404 ... ok
+test create_then_get_task ... ok
+test create_limits_title_to_100_characters ... ok
+test create_rejects_broken_json_and_unknown_fields ... ok
+test patch_checks_body_before_looking_up_the_task ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

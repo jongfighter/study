@@ -1,0 +1,29 @@
+warning: unneeded `return` statement
+ --> lesson02\src\bin\scratch.rs:2:5
+  |
+2 |     return x * x;
+  |     ^^^^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#needless_return
+  = note: `#[warn(clippy::needless_return)]` on by default
+help: remove `return`
+  |
+2 -     return x * x;
+2 +     x * x
+  |
+
+warning: the loop variable `i` is only used to index `numbers`
+ --> lesson02\src\bin\scratch.rs:9:14
+  |
+9 |     for i in 0..numbers.len() {
+  |              ^^^^^^^^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#needless_range_loop
+  = note: `#[warn(clippy::needless_range_loop)]` on by default
+help: consider using an iterator
+  |
+9 -     for i in 0..numbers.len() {
+9 +     for <item> in &numbers {
+  |
+
+warning: `lesson02` (bin "scratch") generated 2 warnings (run `cargo clippy --fix --bin "scratch" -p lesson02 -- ` to apply 1 suggestion)

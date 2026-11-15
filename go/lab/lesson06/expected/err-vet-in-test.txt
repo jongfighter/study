@@ -1,0 +1,5 @@
+# golab/lesson06/mine/titles
+# [golab/lesson06/mine/titles]
+lesson06\mine\titles\titles_test.go:43:31: (*testing.common).Errorf format %d has arg got of wrong type string
+FAIL	golab/lesson06/mine/titles [build failed]
+FAIL

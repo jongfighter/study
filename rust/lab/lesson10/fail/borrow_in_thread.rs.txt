@@ -1,0 +1,9 @@
+use std::thread;
+
+fn main() {
+    let numbers = vec![1, 2, 3];
+    let handle = thread::spawn(|| {
+        println!("길이 = {}", numbers.len());
+    });
+    handle.join().unwrap();
+}

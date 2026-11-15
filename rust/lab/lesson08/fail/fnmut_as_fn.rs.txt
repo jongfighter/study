@@ -1,0 +1,15 @@
+fn apply_twice<F: Fn(i32) -> i32>(f: F, x: i32) -> i32 {
+    f(f(x))
+}
+
+fn main() {
+    let mut calls = 0;
+    let result = apply_twice(
+        |n| {
+            calls += 1;
+            n + 1
+        },
+        1,
+    );
+    println!("{result}, 호출 횟수 {calls}");
+}

@@ -1,0 +1,5 @@
+fn main() {
+    let hello = String::from("안녕");
+    let part = &hello[0..1];
+    println!("{part}");
+}

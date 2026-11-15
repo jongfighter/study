@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light" data-course="rust" data-lesson="05">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="구조체·열거형·match·Option을 Kotlin의 data class·sealed class와 비교합니다.">
+  <title>05 · 구조체·열거형·패턴 매칭 — Rust 실전 입문</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Rust 실전 입문 홈">
+      <span class="brand-mark" aria-hidden="true">Rs</span>
+      <span>Rust 실전 입문</span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">
+      <span class="sr-only">메뉴 열기</span><span aria-hidden="true">☰</span>
+    </button>
+    <nav id="primary-nav" class="primary-nav" aria-label="주요 메뉴">
+      <a href="../index.html#lessons">레슨 목록</a>
+      <a href="00-vscode-start.html">VS Code 시작</a>
+      <a href="vscode-cheatsheet.html">치트시트</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="어두운 테마로 전환" aria-pressed="false" title="어두운 테마로 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <div class="shell lesson-layout">
+    <aside class="toc" aria-label="이 레슨의 목차">
+      <h2>이 레슨의 목차</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress">
+        <progress id="lesson-progress-bar" value="0" max="100" aria-label="이 레슨 진도">0%</progress>
+        <p><span id="lesson-progress-count">0</span>/<span id="lesson-progress-total">0</span> 체크 완료</p>
+      </div>
+    </aside>
+
+    <main id="main" class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">LESSON 05 · 데이터 모델링</p>
+        <h1>구조체·열거형·패턴 매칭</h1>
+        <p class="lead">Task 같은 도메인 데이터를 <code>struct</code>와 <code>enum</code>으로 모델링하고, <code>match</code>와 <code>Option</code>으로 안전하게 다룹니다. VS Code의 정의로 이동·이름 바꾸기로 여러 파일을 오가는 법도 익힙니다.</p>
+        <ul class="meta">
+          <li><b>소요</b> 약 120분</li>
+          <li><b>난이도</b> ★★★☆☆</li>
+          <li><b>선행</b> <a href="04-ownership.html">레슨 04</a></li>
+          <li><b>실습 폴더</b> <span class="file">lab/lesson05</span></li>
+        </ul>
+      </header>
+
+      <section id="goals" class="lesson-section" data-section="goals">
+        <h2><span class="tag">GOAL</span>학습 목표</h2>
+        <ul>
+          <li><code>struct</code>를 정의하고 <code>impl</code> 블록에 메서드(<code>&amp;self</code>, <code>&amp;mut self</code>)와 연관 함수(<code>Rectangle::square</code>)를 만들 수 있다.</li>
+          <li>데이터를 담는 <code>enum</code>과 <code>match</code>로 모든 경우를 빠짐없이 처리하고, 처리하지 않은 경우가 있을 때의 컴파일 오류를 읽을 수 있다.</li>
+          <li><code>null</code> 대신 <code>Option&lt;T&gt;</code>를 쓰고 <code>match</code>, <code>if let</code>, <code>let … else</code>, <code>unwrap_or</code>로 꺼낼 수 있다.</li>
+          <li><code>#[derive(Debug, Clone, PartialEq)]</code>가 Kotlin의 <code>data class</code> 기능 중 무엇에 해당하는지 설명할 수 있다.</li>
+          <li>VS Code에서 정의로 이동, 참조 찾기, 이름 바꾸기, 심볼 검색으로 여러 파일을 오가며 코드를 읽을 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="read" class="lesson-section" data-section="read">
+        <h2><span class="tag">READ</span>먼저 읽기 (원문 자료 안내)</h2>
+        <p>영문 원문은 한국어 해설을 먼저 읽은 뒤 확인하세요. 로컬 파일은 <kbd class="key">Ctrl+P</kbd>로 파일 이름을 입력해 열 수 있습니다.</p>
+        <ul>
+          <li><a href="https://doc.rust-lang.org/book/ch05-01-defining-structs.html">The Rust Programming Language · 5.1 Defining and Instantiating Structs (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch05-01-defining-structs.md">the-rust-book/src/ch05-01-defining-structs.md</span>, 예제 프로그램은 <span class="file" data-local="the-rust-book/src/ch05-02-example-structs.md">ch05-02-example-structs.md</span>, 메서드는 <span class="file" data-local="the-rust-book/src/ch05-03-method-syntax.md">ch05-03-method-syntax.md</span></li>
+          <li><a href="https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html">The Rust Programming Language · 6.1 Defining an Enum (영문)</a> — 로컬 파일: <span class="file" data-local="the-rust-book/src/ch06-01-defining-an-enum.md">the-rust-book/src/ch06-01-defining-an-enum.md</span>, <code>match</code>는 <span class="file" data-local="the-rust-book/src/ch06-02-match.md">ch06-02-match.md</span>, <code>if let</code>은 <span class="file" data-local="the-rust-book/src/ch06-03-if-let.md">ch06-03-if-let.md</span></li>
+          <li><a href="https://doc.rust-lang.org/rust-by-example/custom_types/structs.html">Rust by Example · Structures (영문)</a> — 로컬 파일: <span class="file" data-local="rust-by-example/src/custom_types/structs.md">rust-by-example/src/custom_types/structs.md</span>, 열거형은 <span class="file" data-local="rust-by-example/src/custom_types/enum.md">rust-by-example/src/custom_types/enum.md</span>, 패턴은 <span class="file" data-local="rust-by-example/src/flow_control/match.md">rust-by-example/src/flow_control/match.md</span></li>
+          <li>연습: rustlings <span class="file" data-local="rustlings/exercises/07_structs">07_structs</span>, <span class="file" data-local="rustlings/exercises/08_enums">08_enums</span>, <span class="file" data-local="rustlings/exercises/12_options">12_options</span> 폴더</li>
+        </ul>
+        <h3>핵심 개념 한국어 요약</h3>
+        <p><b>구조체(struct)</b>는 이름 붙은 필드를 묶는 타입입니다. 데이터는 <code>struct</code> 블록에, 동작은 별도의 <b><code>impl</code> 블록</b>에 적습니다. Kotlin 클래스처럼 한 덩어리가 아니라 데이터와 메서드가 분리돼 있습니다. 메서드의 첫 매개변수 <code>&amp;self</code>(읽기), <code>&amp;mut self</code>(수정), <code>self</code>(소유권을 가져감)로 이 메서드가 값을 어떻게 다루는지 시그니처에 드러납니다. <code>self</code>가 없는 함수는 <b>연관 함수</b>(associated function)이고 <code>Rectangle::square(10)</code>처럼 부릅니다. Kotlin의 companion object 팩토리 함수와 비슷합니다.</p>
+        <p><b>열거형(enum)</b>은 "여러 경우 중 하나"를 나타내는 타입이며, 각 경우(variant)가 서로 다른 데이터를 담을 수 있습니다. <code>Add(String)</code>은 문자열 하나를, <code>Remove { id, force }</code>는 이름 붙은 필드를 담습니다. Kotlin의 <code>sealed class</code>와 하위 <code>data class</code> 여러 개를 한 선언으로 쓰는 셈입니다. <b><code>match</code></b>는 enum의 모든 경우를 검사하는 분기이며, <b>빠진 경우가 있으면 컴파일이 안 됩니다</b>(exhaustive 검사). 나중에 variant를 추가하면 처리하지 않은 모든 <code>match</code>가 컴파일 오류로 알려 주기 때문에 안전한 수정이 가능합니다.</p>
+        <p>Rust에는 <code>null</code>이 없습니다. "값이 없을 수 있음"은 표준 라이브러리 enum인 <b><code>Option&lt;T&gt;</code></b>(<code>Some(값)</code> 또는 <code>None</code>)로 표현하고, 값을 꺼내려면 <code>match</code>나 <code>if let</code>으로 두 경우를 모두 다뤄야 합니다. <code>let Some(n) = … else { … }</code>(let-else)는 값이 있으면 변수에 꺼내고 없으면 일찍 빠져나가는 형태입니다. <code>#[derive(Debug, Clone, PartialEq)]</code>는 컴파일러에게 디버그 출력(<code>{:?}</code>), 복제(<code>clone</code>), 비교(<code>==</code>) 코드를 자동으로 만들어 달라는 요청입니다. Kotlin의 <code>data class</code>가 <code>toString</code>, <code>copy</code>, <code>equals</code>를 공짜로 주는 것과 달리, Rust는 필요한 것만 하나씩 요청합니다.</p>
+      </section>
+
+      <section id="steps" class="lesson-section" data-section="steps">
+        <h2><span class="tag">HANDS-ON</span>따라하기</h2>
+        <p>앞 레슨의 <span class="file">lab</span> 터미널에서 이어갑니다. 직접 입력할 파일은 <span class="file">lab/lesson05/src/bin</span>에 <code>my_</code>를 붙여 만들고, 오류 재현용은 <code>scratch.rs</code>를 씁니다. 이 레슨의 크레이트는 <b>라이브러리</b>(<span class="file">src/lib.rs</span>)와 실행 파일 여러 개로 이루어져 있습니다. 라이브러리의 <code>Task</code>를 실행 파일들이 가져다 쓰는 구조여서, 4~7단계에서 여러 파일을 오가며 VS Code 탐색 기능을 연습합니다.</p>
+        <ol class="steps">
+          <li>
+            <strong>구조체와 메서드 입력하기</strong>
+            <p>(앞 단계 없음) 탐색기(<kbd class="key">Ctrl+Shift+E</kbd>)에서 <span class="file">lab/lesson05/src/bin</span>에 <code>my_structs.rs</code>를 만들어 입력하고 실행합니다. 이 코드는 책의 직사각형 예제를 따른 것입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson05/src/bin/structs.rs">#[derive(Debug, Clone, PartialEq)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn square(size: u32) -&gt; Rectangle {
+        Rectangle {
+            width: size,
+            height: size,
+        }
+    }
+
+    fn area(&amp;self) -&gt; u32 {
+        self.width * self.height
+    }
+
+    fn can_hold(&amp;self, other: &amp;Rectangle) -&gt; bool {
+        self.width &gt; other.width &amp;&amp; self.height &gt; other.height
+    }
+
+    fn grow(&amp;mut self, amount: u32) {
+        self.width += amount;
+        self.height += amount;
+    }
+}
+
+struct Meters(f64);
+
+fn main() {
+    let mut rect = Rectangle {
+        width: 30,
+        height: 50,
+    };
+    println!("{rect:?}");
+    println!("넓이: {}", rect.area());
+
+    let small = Rectangle::square(10);
+    println!("rect가 small을 담을 수 있나? {}", rect.can_hold(&amp;small));
+
+    rect.grow(5);
+    println!("키운 뒤: {rect:#?}");
+
+    let wide = Rectangle {
+        width: 100,
+        ..rect.clone()
+    };
+    println!("너비만 바꾼 복사본: {wide:?}");
+    println!("같은가? {}", wide == rect);
+
+    let distance = Meters(12.5);
+    println!("거리: {}m", distance.0);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn area_multiplies_sides() {
+        let rect = Rectangle {
+            width: 3,
+            height: 4,
+        };
+        assert_eq!(rect.area(), 12);
+    }
+
+    #[test]
+    fn can_hold_needs_both_sides_larger() {
+        let big = Rectangle::square(10);
+        assert!(big.can_hold(&amp;Rectangle::square(5)));
+        assert!(!big.can_hold(&amp;Rectangle::square(10)));
+    }
+
+    #[test]
+    fn grow_changes_both_sides() {
+        let mut rect = Rectangle::square(2);
+        rect.grow(3);
+        assert_eq!(rect, Rectangle::square(5));
+    }
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson05 --bin my_structs</pre>
+<pre class="output" data-src="lab/lesson05/expected/structs.txt">Rectangle { width: 30, height: 50 }
+넓이: 1500
+rect가 small을 담을 수 있나? true
+키운 뒤: Rectangle {
+    width: 35,
+    height: 55,
+}
+너비만 바꾼 복사본: Rectangle { width: 100, height: 55 }
+같은가? false
+거리: 12.5m</pre>
+            <p>확인할 점입니다. <code>{rect:?}</code>는 한 줄 출력, <code>{rect:#?}</code>는 여러 줄 출력이며 둘 다 <code>#[derive(Debug)]</code> 덕분입니다. <code>rect.area()</code>는 <code>&amp;self</code>를 받아 읽기만 하고, <code>rect.grow(5)</code>는 <code>&amp;mut self</code>라서 <code>rect</code>가 <code>let mut</code>이어야 합니다. <code>Rectangle { width: 100, ..rect.clone() }</code>는 나머지 필드를 다른 값에서 가져오는 <b>구조체 갱신 문법</b>이며 Kotlin의 <code>copy(width = 100)</code>과 비슷합니다. <code>struct Meters(f64);</code>는 필드에 이름이 없는 <b>튜플 구조체</b>이고 <code>distance.0</code>으로 꺼냅니다.</p>
+          </li>
+          <li>
+            <strong>열거형과 <code>match</code>, <code>Option</code> 입력하기</strong>
+            <p>(1단계 이후) <code>my_enums.rs</code>를 만들어 입력하고 실행합니다. <code>describe</code> 함수의 <code>match</code> 팔(arm)이 순서대로 검사된다는 점, <code>parse_number</code>가 <code>Option</code>을 돌려준다는 점에 주목하세요. <code>text.parse().ok()</code>는 변환에 실패하면 <code>None</code>이 되는 형태입니다(<code>Result</code>는 레슨 06).</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson05/src/bin/enums.rs">#[derive(Debug)]
+enum Command {
+    Add(String),
+    Done(u32),
+    Remove { id: u32, force: bool },
+    List,
+}
+
+fn describe(command: &amp;Command) -&gt; String {
+    match command {
+        Command::Add(title) =&gt; format!("추가: {title}"),
+        Command::Done(id) =&gt; format!("완료 처리: #{id}"),
+        Command::Remove { id: 0, .. } =&gt; String::from("0번은 지울 수 없습니다"),
+        Command::Remove { id, force: true } =&gt; format!("강제 삭제: #{id}"),
+        Command::Remove { id, force: false } =&gt; format!("삭제: #{id}"),
+        Command::List =&gt; String::from("목록 보기"),
+    }
+}
+
+fn parse_number(text: &amp;str) -&gt; Option&lt;u32&gt; {
+    text.parse().ok()
+}
+
+fn main() {
+    let commands = [
+        Command::Add(String::from("우유 사기")),
+        Command::Done(3),
+        Command::Remove {
+            id: 0,
+            force: false,
+        },
+        Command::Remove { id: 4, force: true },
+        Command::List,
+    ];
+    for command in &amp;commands {
+        println!("{}", describe(command));
+    }
+
+    let maybe = parse_number("42");
+    match maybe {
+        Some(n) =&gt; println!("숫자 {n}"),
+        None =&gt; println!("숫자가 아님"),
+    }
+
+    if let Some(n) = parse_number("abc") {
+        println!("파싱 성공: {n}");
+    } else {
+        println!("abc는 숫자가 아닙니다");
+    }
+
+    let Some(n) = parse_number("7") else {
+        println!("여기에는 오지 않습니다");
+        return;
+    };
+    println!("let-else로 꺼낸 값: {n}");
+
+    println!("기본값 사용: {}", parse_number("x").unwrap_or(0));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn describe_covers_each_variant() {
+        assert_eq!(describe(&amp;Command::Add(String::from("a"))), "추가: a");
+        assert_eq!(describe(&amp;Command::Done(1)), "완료 처리: #1");
+        assert_eq!(describe(&amp;Command::List), "목록 보기");
+    }
+
+    #[test]
+    fn remove_zero_is_protected() {
+        let command = Command::Remove { id: 0, force: true };
+        assert_eq!(describe(&amp;command), "0번은 지울 수 없습니다");
+    }
+
+    #[test]
+    fn parse_number_returns_option() {
+        assert_eq!(parse_number("12"), Some(12));
+        assert_eq!(parse_number("x"), None);
+    }
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson05 --bin my_enums
+cargo test -p lesson05 --bin my_enums</pre>
+<pre class="output" data-src="lab/lesson05/expected/enums.txt">추가: 우유 사기
+완료 처리: #3
+0번은 지울 수 없습니다
+강제 삭제: #4
+목록 보기
+숫자 42
+abc는 숫자가 아닙니다
+let-else로 꺼낸 값: 7
+기본값 사용: 0</pre>
+            <p><code>Command::Remove { id: 0, .. }</code>는 id가 0인 경우만 걸러내는 <b>리터럴 패턴</b>이고, 그 아래의 <code>force: true</code>, <code>force: false</code>는 불리언 값으로 나누는 패턴입니다. <code>..</code>은 나머지 필드를 무시한다는 뜻입니다. 순서가 중요해서, 더 구체적인 패턴(<code>id: 0</code>)을 일반적인 패턴보다 먼저 둡니다. <code>let Some(n) = … else { return; };</code>는 값이 없으면 <code>else</code> 블록에서 반드시 빠져나가야 합니다. 마지막 <code>unwrap_or(0)</code>은 <code>None</code>일 때의 기본값을 정합니다. <code>Option</code>의 이런 도우미 메서드는 레슨 08의 클로저와 이어집니다.</p>
+          </li>
+          <li>
+            <strong>처리하지 않은 경우: 컴파일 오류 읽기</strong>
+            <p>(2단계 이후) <code>scratch.rs</code>를 만들고 <span class="file">lab/lesson05/fail/non_exhaustive_match.rs.txt</span>를 복사해 붙입니다. 신호등 enum 세 개 중 하나를 빠뜨린 <code>match</code>입니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson05/fail/non_exhaustive_match.rs.txt">enum Light {
+    Red,
+    Yellow,
+    Green,
+}
+
+fn main() {
+    let light = Light::Yellow;
+    let action = match light {
+        Light::Red =&gt; "정지",
+        Light::Green =&gt; "출발",
+    };
+    println!("{action}");
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson05 --bin scratch</pre>
+<pre class="output" data-src="lab/lesson05/expected/non_exhaustive_match.err.txt">error[E0004]: non-exhaustive patterns: `Light::Yellow` not covered
+  --&gt; lesson05\src\bin\scratch.rs:9:24
+   |
+ 9 |     let action = match light {
+   |                        ^^^^^ pattern `Light::Yellow` not covered
+   |
+note: `Light` defined here
+  --&gt; lesson05\src\bin\scratch.rs:1:6
+   |
+ 1 | enum Light {
+   |      ^^^^^
+ 2 |     Red,
+ 3 |     Yellow,
+   |     ------ not covered
+   = note: the matched value is of type `Light`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+11 ~         Light::Green =&gt; "출발",
+12 ~         Light::Yellow =&gt; todo!(),
+   |
+
+For more information about this error, try `rustc --explain E0004`.
+error: could not compile `lesson05` (bin "scratch") due to 1 previous error</pre>
+            <p>컴파일러가 빠진 경우(<code>Light::Yellow</code>)를 이름까지 짚고, enum 정의에서 그 variant 위치(<code>not covered</code>)를 표시하며, 채울 코드까지 제안합니다. <code>Light::Yellow =&gt; "주의"</code> 팔을 추가해 고쳐 보세요. 고친 뒤 <code>variants … are never constructed</code>(만들어지지 않는 variant가 있다)는 경고가 나올 수 있는데, 이 예제가 <code>Yellow</code>만 쓰기 때문이니 지금은 무시해도 됩니다. 에디터에서는 <code>match</code> 줄에 밑줄이 생기고, 전구(Quick Fix)에서 빠진 팔을 채워 주는 코드 액션이 보일 수 있습니다. 나중에 enum에 variant를 추가했을 때 같은 오류가 모든 관련 <code>match</code>에 나타나므로 빠뜨릴 수 없습니다.</p>
+          </li>
+          <li>
+            <strong>여러 파일로 나뉜 코드 읽기</strong>
+            <p>(2단계와 별개, 이미 들어 있는 완성본) <kbd class="key">Ctrl+P</kbd>를 눌러 <code>lesson05/src/lib</code>를 입력해 <span class="file">lab/lesson05/src/lib.rs</span>를 열고 위에서 아래로 읽습니다. <code>pub</code>은 이 항목을 다른 파일(크레이트 밖)에서 쓸 수 있게 공개한다는 표시입니다(모듈과 공개 범위는 레슨 09). 이어서 <span class="file">lab/lesson05/src/bin/task_board.rs</span>를 열어 <code>use lesson05::{…}</code> 줄이 라이브러리의 항목을 가져오는 것을 확인하고 실행합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson05/src/lib.rs" data-lines="27-61">#[derive(Debug, Clone, PartialEq)]
+pub struct Task {
+    pub id: u32,
+    pub title: String,
+    pub done: bool,
+    pub priority: Priority,
+}
+
+impl Task {
+    pub fn new(id: u32, title: &amp;str, priority: Priority) -&gt; Task {
+        Task {
+            id,
+            title: title.to_string(),
+            done: false,
+            priority,
+        }
+    }
+
+    pub fn complete(&amp;mut self) {
+        self.done = true;
+    }
+
+    pub fn summary(&amp;self) -&gt; String {
+        let mark = if self.done { "x" } else { " " };
+        format!("[{mark}] #{} {}", self.id, self.title)
+    }
+}
+
+pub fn find_task(tasks: &amp;[Task], id: u32) -&gt; Option&lt;&amp;Task&gt; {
+    tasks.iter().find(|task| task.id == id)
+}
+
+pub fn first_pending(tasks: &amp;[Task]) -&gt; Option&lt;&amp;Task&gt; {
+    tasks.iter().find(|task| !task.done)
+}</pre>
+<pre class="code" data-lang="rust" data-src="lab/lesson05/src/bin/task_board.rs">use lesson05::{Priority, Task, find_task, first_pending};
+
+fn main() {
+    let mut tasks = vec![
+        Task::new(1, "우유 사기", Priority::Low),
+        Task::new(2, "보고서 쓰기", Priority::High),
+        Task::new(3, "운동하기", Priority::Medium),
+    ];
+
+    for task in &amp;tasks {
+        println!("{} (우선순위 {})", task.summary(), task.priority.weight());
+    }
+
+    match find_task(&amp;tasks, 2) {
+        Some(task) =&gt; println!("찾음: {}", task.title),
+        None =&gt; println!("2번 할 일이 없습니다"),
+    }
+
+    if let Some(task) = tasks.first_mut() {
+        task.complete();
+    }
+
+    match first_pending(&amp;tasks) {
+        Some(task) =&gt; println!("다음에 할 일: {}", task.title),
+        None =&gt; println!("모두 끝났습니다"),
+    }
+
+    let label = Priority::from_label("urgent");
+    println!("urgent 라벨: {label:?}");
+}</pre>
+<pre class="code" data-lang="powershell">cargo run -p lesson05 --bin task_board</pre>
+<pre class="output" data-src="lab/lesson05/expected/task_board.txt">[ ] #1 우유 사기 (우선순위 1)
+[ ] #2 보고서 쓰기 (우선순위 3)
+[ ] #3 운동하기 (우선순위 2)
+찾음: 보고서 쓰기
+다음에 할 일: 보고서 쓰기
+urgent 라벨: None</pre>
+            <p><code>Task</code>의 <code>find_task</code>와 <code>first_pending</code>은 <code>Option&lt;&amp;Task&gt;</code>를 돌려줍니다. 목록 안의 <code>Task</code>를 복사하지 않고 <b>빌려서</b> 돌려주기 때문입니다(레슨 04). 이 두 함수의 본문은 처음에 <code>for</code> 루프로 썼다가 clippy의 권고(<code>manual_find</code>)에 따라 <code>iter().find(…)</code>로 바꾼 것입니다. 클로저(<code>|task| …</code>)는 레슨 08에서 배우니 지금은 "조건을 만족하는 첫 요소를 찾는다"로만 이해하세요.</p>
+          </li>
+          <li>
+            <strong>정의로 이동·피크·참조 찾기 (<kbd class="key">F12</kbd>, <kbd class="key">Alt+F12</kbd>, <kbd class="key">Shift+F12</kbd>)</strong>
+            <p>(4단계 이후) <span class="file">task_board.rs</span>에서 다음을 차례로 해 봅니다. 먼저 rust-analyzer가 로딩을 마쳤는지 상태 표시줄을 확인합니다.</p>
+            <ol>
+              <li><code>Task::new(1, …)</code>의 <code>new</code> 위에 커서를 두고 <kbd class="key">F12</kbd>를 누릅니다. 다른 파일 <span class="file">lib.rs</span>의 <code>pub fn new</code>로 점프합니다. 키보드만으로 <b>정의로 이동</b>(Go to Definition)했습니다.</li>
+              <li><kbd class="key">Alt+←</kbd>를 눌러 직전 위치(<span class="file">task_board.rs</span>)로 돌아오고, <kbd class="key">Alt+→</kbd>로 다시 앞으로 갑니다. 코드 읽기에서 가장 자주 쓰는 한 쌍입니다.</li>
+              <li><code>match first_pending(&amp;tasks)</code>의 <code>first_pending</code> 위에서 <kbd class="key">Alt+F12</kbd>를 누르면 현재 파일을 떠나지 않고 정의를 작은 창(Peek)으로 보여 줍니다. Esc 키로 닫습니다.</li>
+              <li><span class="file">lib.rs</span>로 가서 <code>pub struct Task</code>의 <code>Task</code> 위에서 <kbd class="key">Shift+F12</kbd>를 누르면 <code>Task</code>를 쓰는 모든 곳(<code>impl</code> 블록, 함수 시그니처, 테스트, <span class="file">task_board.rs</span>)이 목록으로 보입니다. 항목을 클릭하면 이동합니다. 이름을 바꾸기 전에 영향 범위를 확인하는 용도로 씁니다.</li>
+            </ol>
+          </li>
+          <li>
+            <strong>이름 바꾸기 (<kbd class="key">F2</kbd>)</strong>
+            <p>(5단계 이후) <span class="file">lib.rs</span>에서 <code>pub fn first_pending</code>의 함수 이름 위에 커서를 두고 <kbd class="key">F2</kbd>를 누르면 입력 칸이 뜹니다. <code>next_pending</code>을 입력하고 Enter를 누릅니다. 같은 파일뿐 아니라 <span class="file">task_board.rs</span>와 테스트의 호출까지 한꺼번에 바뀝니다. <span class="file">task_board.rs</span>를 열어 <code>match next_pending(&amp;tasks)</code>로 바뀐 것을 확인하세요. 단순 검색·바꾸기(<code>Ctrl+H</code>)와 달리 rust-analyzer가 코드 구조를 이해하고 있어서, 문자열 안의 같은 글자나 다른 함수의 같은 이름은 건드리지 않습니다.</p>
+            <p>확인이 끝나면 같은 방법으로 <kbd class="key">F2</kbd>를 눌러 이름을 <code>first_pending</code>으로 되돌립니다. 바뀐 파일들의 탭에 저장되지 않은 표시(●)가 남아 있으면 각 탭에서 <kbd class="key">Ctrl+S</kbd>로 저장합니다. 마지막으로 <code>cargo run -p lesson05 --bin task_board</code>의 출력이 4단계와 같은지 확인합니다. 이름을 되돌려 두면 이 레슨의 나머지 설명과 코드가 일치합니다.</p>
+          </li>
+          <li>
+            <strong>심볼 이동 (<kbd class="key">Ctrl+Shift+O</kbd>, <kbd class="key">Ctrl+T</kbd>)</strong>
+            <p>(6단계 이후) <span class="file">lib.rs</span>에서 <kbd class="key">Ctrl+Shift+O</kbd>를 누르면 이 파일 안의 심볼(<code>Priority</code>, <code>Task</code>, 각 함수, 테스트 모듈)이 목록으로 뜹니다. <code>:</code>를 입력하면 종류별로 묶입니다. <code>weight</code>를 입력하고 Enter를 누르면 그 함수로 바로 이동합니다. 현재 파일에서 큰 개요를 볼 때 유용합니다.</p>
+            <p>이번에는 <kbd class="key">Ctrl+T</kbd>를 눌러 <code>Task</code>를 입력합니다. 워크스페이스 전체에서 <code>Task</code>라는 이름의 타입이 목록으로 나타납니다(레슨 06 등 다른 크레이트에도 같은 이름이 있으면 파일 경로로 구분). 이어서 <code>first_pending</code>을 입력해 보세요. rust-analyzer는 기본 설정에서 <b>타입만</b> 찾기 때문에 함수는 나타나지 않습니다. 공식 매뉴얼은 이름 뒤에 <code>#</code>을 붙이면(<code>first_pending#</code>) 함수까지 찾는다고 설명합니다. 이 동작은 아래 "설정 체험하기"에서 설정으로 바꿔 봅니다.</p>
+          </li>
+          <li>
+            <strong>테스트 실행하기</strong>
+            <p>(7단계 이후) 터미널에서 라이브러리의 테스트를 실행합니다. 라이브러리 테스트만 보려면 <code>--lib</code>를 붙입니다.</p>
+<pre class="code" data-lang="powershell">cargo test -p lesson05 --lib</pre>
+<pre class="output">running 5 tests
+test tests::complete_marks_done ... ok
+test tests::find_task_returns_some_or_none ... ok
+test tests::first_pending_skips_done_tasks ... ok
+test tests::new_task_starts_pending ... ok
+test tests::priority_weights_and_labels ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+            <p>테스트 줄의 순서와 걸린 시간(<code>finished in …s</code>)은 실행마다 조금 다를 수 있습니다.</p>
+            <p>테스트 함수 이름 옆의 <code>ok</code>가 통과입니다. <code>-p lesson05</code>만 쓰면 이 크레이트의 모든 실행 파일 안의 테스트도 함께 돌아갑니다.</p>
+          </li>
+        </ol>
+        <div class="callout tip"><strong>막히면</strong> 같은 레슨의 "자주 나는 오류"를 먼저 확인하세요. 이름 바꾸기 후 <code>cargo test</code>가 실패하면 일부 파일만 바뀌었거나 저장이 안 된 것입니다. <code>first_pending</code>으로 되돌렸는지 <span class="file">lib.rs</span>와 <span class="file">task_board.rs</span> 양쪽에서 확인하세요.</div>
+      </section>
+
+      <section id="compare" class="lesson-section" data-section="compare">
+        <h2><span class="tag">COMPARE</span>Kotlin · Spring · FastAPI와 비교</h2>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>개념</th><th>Kotlin / Spring</th><th>Python / FastAPI</th><th>Rust</th></tr></thead>
+            <tbody>
+              <tr><td>데이터 타입</td><td><code>data class Task(val id: Int, val title: String)</code></td><td><code>@dataclass class Task</code>, pydantic <code>BaseModel</code></td><td><code>struct Task { id: u32, title: String }</code></td></tr>
+              <tr><td>자동 제공 기능</td><td><code>toString</code>, <code>equals</code>, <code>copy</code>가 기본</td><td><code>@dataclass</code>가 <code>__repr__</code>, <code>__eq__</code> 생성</td><td><code>#[derive(Debug, Clone, PartialEq)]</code>로 필요한 것만 요청</td></tr>
+              <tr><td>메서드 위치</td><td>클래스 본문</td><td>클래스 본문</td><td>별도 <code>impl Task { … }</code> 블록</td></tr>
+              <tr><td>자기 자신</td><td><code>this</code></td><td><code>self</code></td><td><code>&amp;self</code>, <code>&amp;mut self</code>, <code>self</code></td></tr>
+              <tr><td>팩토리 함수</td><td><code>companion object { fun create() }</code></td><td><code>@classmethod</code></td><td>연관 함수 <code>Task::new(…)</code></td></tr>
+              <tr><td>일부 필드만 바꾼 복사</td><td><code>task.copy(done = true)</code></td><td><code>dataclasses.replace(task, done=True)</code></td><td><code>Task { done: true, ..task.clone() }</code></td></tr>
+              <tr><td>경우 나누기 타입</td><td><code>sealed class Command</code> + 하위 클래스</td><td>상속 또는 <code>Union</code></td><td><code>enum Command { Add(String), … }</code></td></tr>
+              <tr><td>분기</td><td><code>when (cmd) { is Add -&gt; … }</code></td><td><code>match cmd:</code> (3.10+, 빠진 경우 검사 없음)</td><td><code>match cmd { Command::Add(t) =&gt; … }</code></td></tr>
+              <tr><td>값이 없을 수 있음</td><td><code>Int?</code>, <code>?.</code>, <code>?:</code></td><td><code>Optional[int]</code>, <code>None</code></td><td><code>Option&lt;i32&gt;</code>, <code>match</code>, <code>unwrap_or</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout compare-note"><strong>익숙함이 만드는 함정</strong>Kotlin은 <code>val n: Int? = …</code>을 <code>if (n != null)</code>로 확인하면 자동으로 <code>Int</code>처럼 쓸 수 있지만, Rust의 <code>Option&lt;i32&gt;</code>는 <code>i32</code>와 완전히 다른 타입이라 자동으로 벗겨지지 않습니다(아래 오류 참조). 두 번째로, Kotlin의 <code>val task</code>는 <code>task.done = true</code>가 가능하지만(필드가 <code>var</code>이면), Rust는 구조체 <b>값 전체</b>가 <code>let mut</code>이어야 필드를 바꿀 수 있습니다. 세 번째로, <code>{:?}</code>로 출력하려면 <code>#[derive(Debug)]</code>를 직접 붙여야 하고 빠뜨리면 컴파일 오류입니다. <code>data class</code>처럼 기본 제공되지 않습니다.</div>
+      </section>
+
+      <section id="vscode" class="lesson-section" data-section="vscode">
+        <h2><span class="tag">VS CODE</span>오늘의 VS Code 기능</h2>
+        <div class="callout vscode-box">
+          <strong>오늘의 주제: 정의·참조·이름·심볼로 코드 탐색하기</strong>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>동작</th><th>단축키 (Windows)</th><th>언제 쓰나</th></tr></thead>
+              <tbody>
+                <tr><td>정의로 이동</td><td><kbd class="key">F12</kbd></td><td>호출하는 함수나 타입이 어디서 정의됐는지 볼 때</td></tr>
+                <tr><td>정의 피크</td><td><kbd class="key">Alt+F12</kbd></td><td>파일을 떠나지 않고 정의를 작은 창으로 볼 때</td></tr>
+                <tr><td>참조 찾기</td><td><kbd class="key">Shift+F12</kbd></td><td>이 이름을 쓰는 모든 곳을 볼 때</td></tr>
+                <tr><td>이름 바꾸기</td><td><kbd class="key">F2</kbd></td><td>변수·함수·타입 이름을 안전하게 바꿀 때</td></tr>
+                <tr><td>파일 안 심볼 이동</td><td><kbd class="key">Ctrl+Shift+O</kbd></td><td>큰 파일에서 함수·타입 목록으로 이동할 때</td></tr>
+                <tr><td>워크스페이스 심볼 이동</td><td><kbd class="key">Ctrl+T</kbd></td><td>이름만 알고 파일을 모를 때</td></tr>
+                <tr><td>뒤로 / 앞으로</td><td><kbd class="key">Alt+←</kbd> <kbd class="key">Alt+→</kbd></td><td>점프한 뒤 원래 위치로 돌아올 때</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p>정의로 이동과 뒤로 가기를 한 쌍으로 익히면 낯선 코드를 읽는 속도가 크게 달라집니다. IntelliJ에서 <code>Ctrl+B</code>와 <code>Ctrl+Alt+←</code>를 쓰던 습관과 같은 역할입니다. <kbd class="key">Shift+F12</kbd>로 영향 범위를 확인하고 <kbd class="key">F2</kbd>로 바꾸는 순서를 기억하세요.</p>
+        <h3>설정 체험하기</h3>
+        <ol class="steps">
+          <li>
+            <strong>워크스페이스 심볼 검색에 함수 포함하기: <code>rust-analyzer.workspace.symbol.search.kind</code></strong>
+            <p><kbd class="key">Ctrl+,</kbd>로 설정을 열고 검색창에 <code>@id:rust-analyzer.workspace.symbol.search.kind</code>를 입력합니다(<code>@id:</code>는 설정 ID로 찾는 필터입니다). 값은 <code>only_types</code>(기본)와 <code>all_symbols</code> 중 하나입니다. <b>작업 영역</b> 탭에서 <code>all_symbols</code>를 고릅니다. 이제 <kbd class="key">Ctrl+T</kbd>에서 <code>first_pending</code>을 입력하면 함수도 검색됩니다. <span class="file">.vscode/settings.json</span>에 <code>"rust-analyzer.workspace.symbol.search.kind": "all_symbols"</code>가 기록된 것을 확인하세요. 함수가 너무 많이 섞여 오히려 불편하다면 다시 <code>only_types</code>로 되돌립니다. 이 코스의 완성본 설정에는 이 항목이 없으며 기본값(<code>only_types</code>)입니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="practice" class="lesson-section" data-section="practice">
+        <h2><span class="tag">PRACTICE</span>연습 문제</h2>
+        <h3>문제 1. 도형 넓이</h3>
+        <p><span class="file">lab/lesson05/src/bin/my_practice_shapes.rs</span>에 <code>enum Shape</code>(원 <code>Circle(f64)</code>, 직사각형 <code>Rectangle { width, height }</code>, 삼각형 <code>Triangle { base, height }</code>)와 <code>fn area(shape: &amp;Shape) -&gt; f64</code>를 만듭니다. 아래 테스트를 붙여 넣고 통과시키세요. <b>완료 조건</b>: 테스트 3개가 통과하고, <code>match</code>에서 <code>_</code> 와일드카드 없이 세 경우를 모두 명시했습니다. 그다음 <code>Shape</code>에 네 번째 variant를 추가해 보고, 처리하지 않은 <code>match</code>에서 컴파일 오류가 나는 것을 확인하세요(확인 후 삭제).</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson05/src/bin/practice_shapes.rs" data-lines="34-60">#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rectangle_area() {
+        let shape = Shape::Rectangle {
+            width: 3.0,
+            height: 4.0,
+        };
+        assert!((area(&amp;shape) - 12.0).abs() &lt; 1e-9);
+    }
+
+    #[test]
+    fn triangle_area_is_half_of_base_times_height() {
+        let shape = Shape::Triangle {
+            base: 6.0,
+            height: 2.5,
+        };
+        assert!((area(&amp;shape) - 7.5).abs() &lt; 1e-9);
+    }
+
+    #[test]
+    fn circle_area_uses_pi() {
+        assert!((area(&amp;Shape::Circle(2.0)) - 4.0 * PI).abs() &lt; 1e-9);
+    }
+}</pre>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p>원의 넓이는 <code>std::f64::consts::PI</code> 상수를 <code>use</code>해서 씁니다. <code>match shape { Shape::Circle(radius) =&gt; … }</code>에서 <code>shape</code>가 참조(<code>&amp;Shape</code>)이므로 <code>radius</code>도 참조로 바인딩되지만, 곱셈에는 그대로 쓸 수 있습니다. 소수 비교는 <code>==</code> 대신 차이의 절댓값이 아주 작은지로 합니다(테스트가 그렇게 되어 있습니다).</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson05/src/bin/practice_shapes.rs">use std::f64::consts::PI;
+
+enum Shape {
+    Circle(f64),
+    Rectangle { width: f64, height: f64 },
+    Triangle { base: f64, height: f64 },
+}
+
+fn area(shape: &amp;Shape) -&gt; f64 {
+    match shape {
+        Shape::Circle(radius) =&gt; PI * radius * radius,
+        Shape::Rectangle { width, height } =&gt; width * height,
+        Shape::Triangle { base, height } =&gt; base * height / 2.0,
+    }
+}
+
+fn main() {
+    let shapes = [
+        Shape::Circle(1.0),
+        Shape::Rectangle {
+            width: 3.0,
+            height: 4.0,
+        },
+        Shape::Triangle {
+            base: 6.0,
+            height: 2.5,
+        },
+    ];
+    for shape in &amp;shapes {
+        println!("넓이: {:.2}", area(shape));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rectangle_area() {
+        let shape = Shape::Rectangle {
+            width: 3.0,
+            height: 4.0,
+        };
+        assert!((area(&amp;shape) - 12.0).abs() &lt; 1e-9);
+    }
+
+    #[test]
+    fn triangle_area_is_half_of_base_times_height() {
+        let shape = Shape::Triangle {
+            base: 6.0,
+            height: 2.5,
+        };
+        assert!((area(&amp;shape) - 7.5).abs() &lt; 1e-9);
+    }
+
+    #[test]
+    fn circle_area_uses_pi() {
+        assert!((area(&amp;Shape::Circle(2.0)) - 4.0 * PI).abs() &lt; 1e-9);
+    }
+}</pre>
+<pre class="output">running 3 tests
+test tests::circle_area_uses_pi ... ok
+test tests::rectangle_area ... ok
+test tests::triangle_area_is_half_of_base_times_height ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+<pre class="output" data-src="lab/lesson05/expected/practice_shapes.txt">넓이: 3.14
+넓이: 12.00
+넓이: 7.50</pre>
+          </div>
+        </details>
+        <h3>문제 2. 가장 급한 할 일 찾기</h3>
+        <p><span class="file">my_practice_pending.rs</span>에서 라이브러리의 <code>Task</code>와 <code>Priority</code>를 가져와(<code>use lesson05::{Priority, Task};</code>) <code>fn highest_pending(tasks: &amp;[Task]) -&gt; Option&lt;&amp;Task&gt;</code>를 구현합니다. 완료되지 않은 할 일 중 <code>priority.weight()</code>가 가장 큰 것을 돌려주고, 없으면 <code>None</code>입니다. 가중치가 같으면 먼저 나온 것을 유지합니다. <b>완료 조건</b>: 아래 테스트 3개가 통과합니다.</p>
+<pre class="code" data-lang="rust" data-src="lab/lesson05/src/bin/practice_pending.rs" data-lines="29-58">#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn picks_highest_priority_pending_task() {
+        let tasks = [
+            Task::new(1, "a", Priority::Low),
+            Task::new(2, "b", Priority::High),
+            Task::new(3, "c", Priority::Medium),
+        ];
+        assert_eq!(highest_pending(&amp;tasks).map(|t| t.id), Some(2));
+    }
+
+    #[test]
+    fn skips_done_tasks() {
+        let mut urgent = Task::new(1, "a", Priority::High);
+        urgent.complete();
+        let tasks = [urgent, Task::new(2, "b", Priority::Low)];
+        assert_eq!(highest_pending(&amp;tasks).map(|t| t.id), Some(2));
+    }
+
+    #[test]
+    fn empty_or_all_done_gives_none() {
+        assert!(highest_pending(&amp;[]).is_none());
+        let mut only = Task::new(1, "a", Priority::Low);
+        only.complete();
+        assert!(highest_pending(&amp;[only]).is_none());
+    }
+}</pre>
+        <details class="hint">
+          <summary>힌트 보기</summary>
+          <div><p><code>let mut best: Option&lt;&amp;Task&gt; = None;</code>으로 시작해 <code>for task in tasks</code>를 돌며 완료된 것은 <code>continue</code>로 건너뜁니다. 지금까지의 최선과 비교하는 부분은 <code>match best</code>로 <code>Some(current)</code>와 <code>None</code>을 나눕니다. 가드 <code>Some(current) if … =&gt; {}</code>를 쓰면 편합니다.</p></div>
+        </details>
+        <details class="hint">
+          <summary>정답 예시 보기</summary>
+          <div>
+<pre class="code" data-lang="rust" data-src="lab/lesson05/src/bin/practice_pending.rs">use lesson05::{Priority, Task};
+
+fn highest_pending(tasks: &amp;[Task]) -&gt; Option&lt;&amp;Task&gt; {
+    let mut best: Option&lt;&amp;Task&gt; = None;
+    for task in tasks {
+        if task.done {
+            continue;
+        }
+        match best {
+            Some(current) if current.priority.weight() &gt;= task.priority.weight() =&gt; {}
+            _ =&gt; best = Some(task),
+        }
+    }
+    best
+}
+
+fn main() {
+    let tasks = [
+        Task::new(1, "우유 사기", Priority::Low),
+        Task::new(2, "보고서 쓰기", Priority::High),
+        Task::new(3, "운동하기", Priority::Medium),
+    ];
+    match highest_pending(&amp;tasks) {
+        Some(task) =&gt; println!("가장 급한 일: {}", task.title),
+        None =&gt; println!("남은 일이 없습니다"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn picks_highest_priority_pending_task() {
+        let tasks = [
+            Task::new(1, "a", Priority::Low),
+            Task::new(2, "b", Priority::High),
+            Task::new(3, "c", Priority::Medium),
+        ];
+        assert_eq!(highest_pending(&amp;tasks).map(|t| t.id), Some(2));
+    }
+
+    #[test]
+    fn skips_done_tasks() {
+        let mut urgent = Task::new(1, "a", Priority::High);
+        urgent.complete();
+        let tasks = [urgent, Task::new(2, "b", Priority::Low)];
+        assert_eq!(highest_pending(&amp;tasks).map(|t| t.id), Some(2));
+    }
+
+    #[test]
+    fn empty_or_all_done_gives_none() {
+        assert!(highest_pending(&amp;[]).is_none());
+        let mut only = Task::new(1, "a", Priority::Low);
+        only.complete();
+        assert!(highest_pending(&amp;[only]).is_none());
+    }
+}</pre>
+<pre class="output">running 3 tests
+test tests::empty_or_all_done_gives_none ... ok
+test tests::skips_done_tasks ... ok
+test tests::picks_highest_priority_pending_task ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</pre>
+<pre class="output" data-src="lab/lesson05/expected/practice_pending.txt">가장 급한 일: 보고서 쓰기</pre>
+          </div>
+        </details>
+        <h3>문제 3 (권장). rustlings 구조체·열거형·옵션 문제</h3>
+        <p>클론해 둔 <span class="file" data-local="rustlings/exercises/07_structs/structs1.rs">rustlings/exercises/07_structs/structs1.rs</span>~<code>structs3.rs</code>, <span class="file" data-local="rustlings/exercises/08_enums/enums1.rs">rustlings/exercises/08_enums/enums1.rs</span>~<code>enums3.rs</code>, <span class="file" data-local="rustlings/exercises/12_options/options1.rs">rustlings/exercises/12_options/options1.rs</span>~<code>options3.rs</code>를 읽고 각 <code>TODO</code>가 요구하는 수정을 메모해 보세요. rustlings의 설치와 진행은 레슨 12에서 안내합니다. <b>완료 조건</b>: <code>options1.rs</code>와 <code>options2.rs</code>의 <code>TODO</code>를 이 레슨의 <code>Option</code> 문법으로 해결하는 코드를 말로 설명할 수 있습니다.</p>
+      </section>
+
+      <section id="check" class="lesson-section" data-section="check">
+        <h2><span class="tag">CHECK</span>셀프 체크</h2>
+        <p>모든 항목을 증거와 함께 확인했을 때 체크하세요. 체크 상태는 이 브라우저에 저장됩니다.</p>
+        <ul class="checklist">
+          <li><label><input type="checkbox" data-progress="rust-05-structs"><span><code>my_structs.rs</code>를 직접 입력해 <code>{rect:#?}</code>의 여러 줄 출력을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-05-match"><span><code>non_exhaustive_match</code> 오류를 재현하고 빠진 팔을 추가해 컴파일되게 고쳤다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-05-goto"><span><kbd class="key">F12</kbd>로 다른 파일의 정의로 이동하고 <kbd class="key">Alt+←</kbd>로 돌아오는 것을 마우스 없이 했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-05-references"><span><kbd class="key">Shift+F12</kbd>로 <code>Task</code>의 참조 목록을 보고 두 파일 이상에서 쓰이는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-05-rename"><span><kbd class="key">F2</kbd>로 <code>first_pending</code>의 이름을 바꿨고 다른 파일의 호출이 함께 바뀐 것을 본 뒤 원래 이름으로 되돌렸다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-05-symbols"><span><kbd class="key">Ctrl+Shift+O</kbd>와 <kbd class="key">Ctrl+T</kbd>로 심볼을 검색해 이동했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-05-setting"><span><code>rust-analyzer.workspace.symbol.search.kind</code>를 바꿔 <kbd class="key">Ctrl+T</kbd>에서 함수가 검색되는 것을 확인했다.</span></label></li>
+          <li><label><input type="checkbox" data-progress="rust-05-practice"><span>연습 문제 1, 2의 테스트가 통과하는 것을 직접 봤다.</span></label></li>
+        </ul>
+      </section>
+
+      <section id="troubleshoot" class="lesson-section" data-section="troubleshoot">
+        <h2><span class="tag">FIX</span>자주 나는 오류</h2>
+        <p>아래 오류는 <span class="file">lab/lesson05/fail</span> 폴더의 <code>.rs.txt</code> 파일 내용을 <span class="file">lab/lesson05/src/bin/scratch.rs</span>에 복사하고 <code>cargo check -p lesson05 --bin scratch</code>로 재현한 출력입니다.</p>
+        <h3>증상: <code>Option&lt;i32&gt;</code> 값을 <code>i32</code> 자리에 썼다</h3>
+        <p>Kotlin의 <code>Int?</code>를 <code>null</code> 확인 없이 <code>Int</code>로 쓸 수 없는 것과 비슷하지만, Rust는 "있을 수도 없을 수도 있다"를 <b>다른 타입</b>으로 구분합니다. 컴파일러가 <code>expect</code>로 꺼내라고 제안하지만, 실제로는 <code>match</code>, <code>if let</code>, <code>unwrap_or</code>로 없는 경우를 설계에 맞게 다루는 쪽이 낫습니다. 제안된 <code>.expect("REASON")</code>은 값이 없으면 패닉이므로 임시 방편입니다. 이 파일은 <span class="file">fail/option_as_value.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson05/expected/option_as_value.err.txt">error[E0308]: mismatched types
+ --&gt; lesson05\src\bin\scratch.rs:6:18
+  |
+6 |     let n: i32 = parse_number("5");
+  |            ---   ^^^^^^^^^^^^^^^^^ expected `i32`, found `Option&lt;i32&gt;`
+  |            |
+  |            expected due to this
+  |
+  = note: expected type `i32`
+             found enum `Option&lt;i32&gt;`
+help: consider using `Option::expect` to unwrap the `Option&lt;i32&gt;` value, panicking if the value is an `Option::None`
+  |
+6 |     let n: i32 = parse_number("5").expect("REASON");
+  |                                   +++++++++++++++++
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `lesson05` (bin "scratch") due to 1 previous error</pre>
+        <h3>증상: 불변 구조체의 필드를 바꾸려 했다 (<code>E0594</code>)</h3>
+        <p>필드 하나만 바꾸더라도 구조체 변수가 <code>let mut</code>이어야 합니다. 도움말의 <code>mut</code> 한 칸을 선언에 추가하면 됩니다. 이 파일은 <span class="file">fail/mutate_immutable_field.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson05/expected/mutate_immutable_field.err.txt">error[E0594]: cannot assign to `task.done`, as `task` is not declared as mutable
+  --&gt; lesson05\src\bin\scratch.rs:11:5
+   |
+11 |     task.done = true;
+   |     ^^^^^^^^^^^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+ 7 |     let mut task = Task {
+   |         +++
+
+For more information about this error, try `rustc --explain E0594`.
+error: could not compile `lesson05` (bin "scratch") due to 1 previous error</pre>
+        <h3>증상: 구조체를 만들 때 필드를 빠뜨렸다 (<code>E0063</code>)</h3>
+        <p>모든 필드에 값을 주어야 구조체가 만들어집니다. Kotlin의 기본값 매개변수 같은 것이 구조체 리터럴에는 없습니다(<code>Default</code> trait을 쓰는 방법이 있고 레슨 07 이후에 다룹니다). 이 파일은 <span class="file">fail/missing_field.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson05/expected/missing_field.err.txt">error[E0063]: missing field `done` in initializer of `Task`
+ --&gt; lesson05\src\bin\scratch.rs:8:16
+  |
+8 |     let task = Task {
+  |                ^^^^ missing `done`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `lesson05` (bin "scratch") due to 1 previous error</pre>
+        <h3>증상: <code>{:?}</code>로 출력했더니 <code>doesn't implement Debug</code></h3>
+        <p>구조체나 enum 선언 위에 <code>#[derive(Debug)]</code>를 붙이면 됩니다. 컴파일러가 붙일 위치까지 <code>+</code> 줄로 보여 줍니다. 이 파일은 <span class="file">fail/missing_derive_debug.rs.txt</span>입니다.</p>
+<pre class="output" data-src="lab/lesson05/expected/missing_derive_debug.err.txt">error[E0277]: `Point` doesn't implement `Debug`
+ --&gt; lesson05\src\bin\scratch.rs:8:15
+  |
+8 |     println!("{p:?}");
+  |               ^^^^^ `Point` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+  |
+  = help: the trait `Debug` is not implemented for `Point`
+help: consider annotating `Point` with `#[derive(Debug)]`
+  |
+1 + #[derive(Debug)]
+2 | struct Point {
+  |
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `lesson05` (bin "scratch") due to 1 previous error</pre>
+        <h3>증상: 이름 바꾸기(<kbd class="key">F2</kbd>) 후 <code>cargo run</code>이 실패한다</h3>
+        <p>다른 탭에 저장되지 않은 변경(●)이 남아 있으면 디스크의 파일은 옛 이름이라 컴파일러가 두 이름이 섞인 코드를 봅니다. 열려 있는 모든 탭을 저장하고 다시 실행하세요. 되돌리다 일부만 바꿨다면 <span class="file">lib.rs</span>의 함수 이름과 <span class="file">task_board.rs</span>의 호출 이름이 같은지 <kbd class="key">Shift+F12</kbd>로 확인합니다.</p>
+      </section>
+
+      <section id="next" class="lesson-section" data-section="next">
+        <h2><span class="tag">NEXT</span>다음 단계</h2>
+        <p>다음 레슨에서는 <code>Vec</code>, <code>String</code>, <code>HashMap</code>을 다루고, 예외 대신 <code>Result</code>와 <code>?</code> 연산자로 오류를 전달합니다. 표준 라이브러리만으로 사용자 정의 오류 타입을 만들고, VS Code의 멀티 커서와 찾기/바꾸기로 반복 편집을 빠르게 하는 법도 익힙니다.</p>
+        <nav class="lesson-nav" aria-label="레슨 이동">
+          <a class="prev" rel="prev" href="04-ownership.html"><small>← 이전 레슨</small>04 · 소유권·빌림·슬라이스</a>
+          <a class="next" rel="next" href="06-collections-errors.html"><small>다음 레슨 →</small>06 · 컬렉션과 에러 처리</a>
+        </nav>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="shell">Rust 실전 입문 · 체크 상태는 이 브라우저에만 저장됩니다.</div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

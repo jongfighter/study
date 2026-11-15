@@ -1,0 +1,6 @@
+fn main() {
+    let mut scores = vec![85, 92, 78];
+    scores.push(64);
+    let index = scores.len() + 6;
+    println!("{}", scores[index]);
+}
